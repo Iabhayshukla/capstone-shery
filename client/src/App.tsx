@@ -4,7 +4,27 @@ import { Layers, Server, Sparkles, Activity, ArrowRight, Github } from 'lucide-r
 function App() {
   const [healthStatus, setHealthStatus] = useState<'checking' | 'connected' | 'error'>('checking');
   const [dbStatus, setDbStatus] = useState<string>('Initializing...');
+  const [streamData, setStreamData] = useState("");
+  const startStreaming = () => {
 
+    setStreamData("");
+
+    const eventSource = new EventSource(
+      "http://127.0.0.1:8000/stream"
+    );
+
+    eventSource.onmessage = (event) => {
+
+      setStreamData((prev) => prev + event.data);
+
+    };
+
+    eventSource.onerror = () => {
+
+      eventSource.close();
+
+    };
+  };
   useEffect(() => {
     // Attempt to contact server health endpoint
     fetch('/api/health')
@@ -80,14 +100,50 @@ function App() {
           <p className="text-lg text-slate-400 leading-relaxed mb-8">
             The folder structure has been fully initialized with React, Vite, TypeScript, and Tailwind CSS on the frontend, and Express on the backend.
           </p>
-          <div className="flex items-center justify-center gap-4">
-            <div className="px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 font-semibold text-white shadow-lg shadow-indigo-600/30 transition-all duration-300 cursor-pointer flex items-center gap-2 group">
+          <div className="flex flex-col md:flex-row items-center justify-center gap-8">
+
+            <button className="px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 font-semibold text-white shadow-lg shadow-indigo-600/30 transition-all duration-300 cursor-pointer flex items-center gap-2 group">
               Explore Project
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </div>
-          </div>
-        </div>
+            </button>
 
+            <button
+              onClick={startStreaming}
+              className="px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 font-semibold text-white shadow-lg transition-all duration-300"
+            >
+              Start AI Streaming
+            </button>
+
+          </div>
+
+          <div className="max-w-5xl mx-auto mb-16">
+
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 backdrop-blur-sm">
+
+              <h2 className="text-xl font-bold mb-4 text-cyan-400">
+                Live AI Streaming
+              </h2>
+
+              <div className="min-h-[120px] text-slate-300 whitespace-pre-wrap leading-relaxed">
+
+                {
+                  streamData ? (
+                    <div
+                      dangerouslySetInnerHTML={{ __html: streamData }}
+                    />
+                  ) : (
+                    "AI response will appear here..."
+                  )
+                }
+
+              </div>
+
+            </div>
+
+          </div>
+
+
+</div>
         {/* Features / Status Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
           {/* Card 1: React Client */}
