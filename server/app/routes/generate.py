@@ -1,26 +1,22 @@
 from fastapi import APIRouter
+from app.validators.generate_request import GenerateRequest
+from app.services.llm_service import generate_website
+from app.prompts.website_prompt import build_website_prompt
 
 router = APIRouter()
 
 @router.post("/generate")
-async def generate():
+async def generate(request: GenerateRequest):
 
-    mock_html = """
-    <section 
-        data-section-id="hero"
-        class="bg-black text-white p-20"
-    >
-        <h1 class="text-5xl font-bold">
-            AI Website Builder
-        </h1>
+    full_prompt = build_website_prompt(
+    request.prompt
+)
 
-        <p class="mt-4 text-lg">
-            Build websites with AI
-        </p>
-    </section>
-    """
+    html = await generate_website(
+        full_prompt
+    )
 
     return {
         "success": True,
-        "html": mock_html
+        "html": html
     }
