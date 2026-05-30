@@ -1,10 +1,54 @@
 import { useState, useEffect } from 'react';
 import { Layers, Server, Sparkles, Activity, ArrowRight, Github } from 'lucide-react';
 
+
 function App() {
+  const [prompt, setPrompt] = useState("");
+  const [generatedHtml, setGeneratedHtml] = useState("");
   const [healthStatus, setHealthStatus] = useState<'checking' | 'connected' | 'error'>('checking');
   const [dbStatus, setDbStatus] = useState<string>('Initializing...');
   const [streamData, setStreamData] = useState("");
+  const [loading, setLoading] = useState(false);
+ 
+  const generateWebsite = async () => {
+    if (!prompt.trim()) {
+    alert("Please enter a prompt");
+    return;
+  }
+
+    setLoading(true);
+
+    try {
+
+      const response = await fetch(
+        "http://127.0.0.1:8000/generate",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            prompt
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      setGeneratedHtml(data.html);
+
+    } 
+    catch (error) {
+      alert("Failed to generate website");
+      console.error(error);
+    }
+    finally {
+
+      setLoading(false);
+
+    }
+  };
+
   const startStreaming = () => {
 
     setStreamData("");
@@ -25,15 +69,16 @@ function App() {
 
     };
   };
+  
   useEffect(() => {
     // Attempt to contact server health endpoint
-    fetch('/api/health')
+    fetch('http://127.0.0.1:8000/')
       .then((res) => {
         if (res.ok) return res.json();
         throw new Error('Server returned error status');
       })
       .then((data) => {
-        if (data.status === 'ok') {
+        if (data.message) {
           setHealthStatus('connected');
           setDbStatus(data.database || 'Connected');
         } else {
@@ -91,15 +136,44 @@ function App() {
         <div className="text-center max-w-3xl mx-auto mb-16">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold mb-6 animate-fade-in">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>React + Vite & Express App Initialized</span>
+            <span>React + Vite + FastAPI + Nova Pro</span>
           </div>
           <h1 className="text-5xl md:text-6xl font-extrabold tracking-tight mb-6 bg-gradient-to-b from-white to-slate-300 bg-clip-text text-transparent">
-            Your Premium Workspace <br />
-            Is Ready For Action
+            AI Website Builder <br />
+            Generate Production-Ready Websites with Amazon Nova Pro
           </h1>
-          <p className="text-lg text-slate-400 leading-relaxed mb-8">
-            The folder structure has been fully initialized with React, Vite, TypeScript, and Tailwind CSS on the frontend, and Express on the backend.
-          </p>
+          <div className="text-lg text-slate-400 leading-relaxed mb-8">
+            <div className="max-w-2xl mx-auto mt-6">
+
+            <textarea
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder="Describe the website you want to generate..."
+              className="w-full p-4 rounded-xl bg-slate-900 border border-slate-700 text-white"
+            />
+            <div className="mt-3 text-sm text-slate-500 text-left">
+              <p>Try:</p>
+              <p>• SaaS Landing Page</p>
+              <p>• Restaurant Website</p>
+              <p>• AI Startup Homepage</p>
+              <p>• Personal Portfolio Website</p>
+            </div>
+           
+          
+            <button
+              onClick={generateWebsite}
+              disabled={loading}
+              className={`mt-4 px-6 py-3 rounded-xl text-white transition-all ${
+                loading
+                  ? "bg-slate-600 cursor-not-allowed"
+                  : "bg-indigo-600 hover:bg-indigo-500"
+              }`}>
+              {loading ? "Generating..." : "Generate Website"}
+            </button>
+
+          </div>
+            The platform is powered by React, Vite, FastAPI, AWS Bedrock and Amazon Nova Pro.
+          </div>
           <div className="flex flex-col md:flex-row items-center justify-center gap-8">
 
             <button className="px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 font-semibold text-white shadow-lg shadow-indigo-600/30 transition-all duration-300 cursor-pointer flex items-center gap-2 group">
@@ -115,13 +189,50 @@ function App() {
             </button>
 
           </div>
+          {generatedHtml && (
+  <div className="max-w-7xl mx-auto mb-16">
+
+    <h2 className="text-3xl font-bold mb-6 text-center">
+      Website Preview
+    </h2>
+    <div className="flex justify-center mb-4">
+  <button
+    onClick={() => {
+      const blob = new Blob([generatedHtml], {
+        type: "text/html",
+      });
+
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+
+      a.href = url;
+      a.download = "website.html";
+      a.click();
+
+      URL.revokeObjectURL(url);
+    }}
+    className="px-5 py-2 bg-emerald-600 rounded-xl text-white hover:bg-emerald-500"
+  >
+    Download HTML
+  </button>
+</div>
+    <iframe
+      title="Website Preview"
+      srcDoc={generatedHtml}
+      className="w-full h-[900px] rounded-2xl border border-slate-700 bg-white"
+      sandbox="allow-scripts"
+    />
+
+  </div>
+)}
 
           <div className="max-w-5xl mx-auto mb-16">
 
             <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 backdrop-blur-sm">
 
               <h2 className="text-xl font-bold mb-4 text-cyan-400">
-                Live AI Streaming
+                Generation Activity
               </h2>
 
               <div className="min-h-[120px] text-slate-300 whitespace-pre-wrap leading-relaxed">
@@ -135,13 +246,14 @@ function App() {
                     "AI response will appear here..."
                   )
                 }
+                
+                
 
               </div>
 
             </div>
 
           </div>
-
 
 </div>
         {/* Features / Status Grid */}
@@ -165,9 +277,9 @@ function App() {
             <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 w-fit mb-5">
               <Server className="w-6 h-6" />
             </div>
-            <h3 className="text-lg font-bold text-white mb-2">Express Backend</h3>
+            <h3 className="text-lg font-bold text-white mb-2">FastAPI Backend</h3>
             <p className="text-sm text-slate-400 leading-relaxed mb-4">
-              TypeScript-based Express REST API running on port 5000 with environment configuration.
+              FastAPI backend integrated with AWS Bedrock and Amazon Nova Pro.
             </p>
             <div className="text-xs font-mono text-purple-400/90 bg-purple-950/40 px-3 py-2 rounded-lg border border-purple-900/30">
               cd server && npm run dev
@@ -192,7 +304,7 @@ function App() {
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-slate-400">API URL:</span>
-                <span className="font-mono text-xs text-slate-300">/api/health</span>
+                <span className="font-mono text-xs text-slate-300">http://127.0.0.1:8000</span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-slate-400">Message:</span>
