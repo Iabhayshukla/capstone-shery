@@ -10,6 +10,7 @@ function App() {
   const [streamData, setStreamData] = useState("");
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"preview" | "code">("preview");
+  const [projects, setProjects] = useState<any[]>([]);
  
   const generateWebsite = async () => {
     if (!prompt.trim()) {
@@ -37,7 +38,7 @@ function App() {
       const data = await response.json();
 
       setGeneratedHtml(data.html);
-
+      fetchProjects();
     } 
     catch (error) {
       alert("Failed to generate website");
@@ -49,6 +50,20 @@ function App() {
 
     }
   };
+  const fetchProjects = async () => {
+    try {
+      const response = await fetch(
+        "http://127.0.0.1:8000/projects"
+      );
+
+      const data = await response.json();
+
+      setProjects(data);
+    }
+    catch (error) {
+      console.error(error);
+    }
+};
 
   const startStreaming = () => {
 
@@ -92,7 +107,9 @@ function App() {
         setDbStatus('Server offline');
       });
   }, []);
-
+  useEffect(() => {
+  fetchProjects();
+}, []);
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-indigo-500 selection:text-white relative overflow-hidden">
       {/* Background Gradients */}
@@ -292,6 +309,41 @@ function App() {
             </div>
 
           </div>
+
+</div>
+<div className="max-w-5xl mx-auto mb-16">
+
+  <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6">
+
+    <h2 className="text-2xl font-bold mb-6 text-indigo-400">
+      Project History
+    </h2>
+
+    <div className="space-y-3">
+
+      {projects.map((project) => (
+
+        <div
+          key={project.id}
+          onClick={() => setGeneratedHtml(project.html)}
+          className="p-4 rounded-xl border border-slate-700 hover:border-indigo-500 cursor-pointer transition"
+        >
+
+          <div className="font-semibold text-white">
+            {project.prompt}
+          </div>
+
+          <div className="text-sm text-slate-400">
+            {project.created_at}
+          </div>
+
+        </div>
+
+      ))}
+
+    </div>
+
+  </div>
 
 </div>
         {/* Features / Status Grid */}
