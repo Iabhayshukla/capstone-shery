@@ -9,6 +9,7 @@ function App() {
   const [dbStatus, setDbStatus] = useState<string>('Initializing...');
   const [streamData, setStreamData] = useState("");
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<"preview" | "code">("preview");
  
   const generateWebsite = async () => {
     if (!prompt.trim()) {
@@ -195,6 +196,31 @@ function App() {
     <h2 className="text-3xl font-bold mb-6 text-center">
       Website Preview
     </h2>
+    <div className="flex justify-center gap-3 mb-6">
+
+      <button
+        onClick={() => setActiveTab("preview")}
+        className={`px-4 py-2 rounded-lg ${
+          activeTab === "preview"
+            ? "bg-indigo-600 text-white"
+            : "bg-slate-800 text-slate-300"
+        }`}
+      >
+        Preview
+      </button>
+
+  <button
+    onClick={() => setActiveTab("code")}
+    className={`px-4 py-2 rounded-lg ${
+      activeTab === "code"
+        ? "bg-indigo-600 text-white"
+        : "bg-slate-800 text-slate-300"
+    }`}
+  >
+    Code
+  </button>
+
+</div>
     <div className="flex justify-center mb-4">
   <button
     onClick={() => {
@@ -217,12 +243,24 @@ function App() {
     Download HTML
   </button>
 </div>
-    <iframe
-      title="Website Preview"
-      srcDoc={generatedHtml}
-      className="w-full h-[900px] rounded-2xl border border-slate-700 bg-white"
-      sandbox="allow-scripts"
-    />
+    {activeTab === "preview" ? (
+
+  <iframe
+    title="Website Preview"
+    srcDoc={generatedHtml}
+    className="w-full h-[900px] rounded-2xl border border-slate-700 bg-white shadow-2xl"
+    sandbox="allow-scripts"
+  />
+
+) : (
+
+  <pre className="w-full h-[900px] overflow-auto rounded-2xl border border-slate-700 bg-slate-950 text-emerald-400 p-6 text-sm">
+    <code>
+      {generatedHtml}
+    </code>
+  </pre>
+
+)}
 
   </div>
 )}
