@@ -8,11 +8,9 @@ const INDEX_HTML = `<!DOCTYPE html>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    /* Tailwind-like base styles */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: ui-sans-serif, system-ui, sans-serif; line-height: 1.5; }
 
-    /* Typography */
     .text-xl { font-size: 1.25rem; line-height: 1.75rem; }
     .text-2xl { font-size: 1.5rem; line-height: 2rem; }
     .text-3xl { font-size: 1.875rem; line-height: 2.25rem; }
@@ -25,7 +23,6 @@ const INDEX_HTML = `<!DOCTYPE html>
     .font-medium { font-weight: 500; }
     .text-center { text-align: center; }
 
-    /* Colors - text */
     .text-white { color: #ffffff; }
     .text-gray-400 { color: #9ca3af; }
     .text-gray-500 { color: #6b7280; }
@@ -38,7 +35,6 @@ const INDEX_HTML = `<!DOCTYPE html>
     .text-red-600 { color: #dc2626; }
     .text-blue-600 { color: #2563eb; }
 
-    /* Colors - background */
     .bg-white { background-color: #ffffff; }
     .bg-gray-50 { background-color: #f9fafb; }
     .bg-gray-100 { background-color: #f3f4f6; }
@@ -52,7 +48,6 @@ const INDEX_HTML = `<!DOCTYPE html>
     .bg-green-50 { background-color: #f0fdf4; }
     .bg-yellow-50 { background-color: #fefce8; }
 
-    /* Spacing - padding */
     .p-2 { padding: 0.5rem; }
     .p-4 { padding: 1rem; }
     .p-6 { padding: 1.5rem; }
@@ -70,7 +65,6 @@ const INDEX_HTML = `<!DOCTYPE html>
     .pt-4 { padding-top: 1rem; }
     .pb-4 { padding-bottom: 1rem; }
 
-    /* Spacing - margin */
     .m-0 { margin: 0; }
     .mt-1 { margin-top: 0.25rem; }
     .mt-2 { margin-top: 0.5rem; }
@@ -85,7 +79,6 @@ const INDEX_HTML = `<!DOCTYPE html>
     .mb-10 { margin-bottom: 2.5rem; }
     .mx-auto { margin-left: auto; margin-right: auto; }
 
-    /* Layout */
     .flex { display: flex; }
     .grid { display: grid; }
     .block { display: block; }
@@ -103,13 +96,11 @@ const INDEX_HTML = `<!DOCTYPE html>
     .gap-8 { gap: 2rem; }
     .flex-wrap { flex-wrap: wrap; }
 
-    /* Grid */
     .grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
     .grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 
-    /* Sizing */
     .w-full { width: 100%; }
     .w-auto { width: auto; }
     .h-full { height: 100%; }
@@ -122,7 +113,6 @@ const INDEX_HTML = `<!DOCTYPE html>
     .max-w-4xl { max-width: 56rem; }
     .max-w-6xl { max-width: 72rem; }
 
-    /* Border */
     .border { border-width: 1px; border-style: solid; }
     .border-2 { border-width: 2px; border-style: solid; }
     .border-gray-200 { border-color: #e5e7eb; }
@@ -135,13 +125,11 @@ const INDEX_HTML = `<!DOCTYPE html>
     .rounded-2xl { border-radius: 1rem; }
     .rounded-full { border-radius: 9999px; }
 
-    /* Shadow */
     .shadow { box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
     .shadow-md { box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
     .shadow-lg { box-shadow: 0 10px 15px rgba(0,0,0,0.1); }
     .shadow-xl { box-shadow: 0 20px 25px rgba(0,0,0,0.1); }
 
-    /* Position */
     .relative { position: relative; }
     .absolute { position: absolute; }
     .fixed { position: fixed; }
@@ -149,79 +137,65 @@ const INDEX_HTML = `<!DOCTYPE html>
     .top-0 { top: 0; }
     .inset-0 { top: 0; right: 0; bottom: 0; left: 0; }
 
-    /* Overflow */
     .overflow-hidden { overflow: hidden; }
     .overflow-auto { overflow: auto; }
-
-    /* Cursor */
     .cursor-pointer { cursor: pointer; }
-
-    /* Transition */
     .transition { transition-property: all; transition-duration: 150ms; }
     .duration-300 { transition-duration: 300ms; }
-
-    /* Opacity */
     .opacity-50 { opacity: 0.5; }
     .opacity-75 { opacity: 0.75; }
 
-    /* Section highlight — duplicate hataya, clean version */
     [data-section-id] { cursor: pointer; transition: box-shadow 0.2s ease, outline 0.2s ease; }
-[data-section-id]:hover:not(.section-selected) { outline: 2px dashed rgba(99,102,241,0.6); outline-offset: 0px; }
-[data-section-id].section-selected {
-  outline: 2px solid #6366f1;
-  box-shadow: 0 0 0 4px rgba(99,102,241,0.15), 0 0 20px rgba(99,102,241,0.3), inset 0 0 20px rgba(99,102,241,0.05);
-  animation: sectionGlow 2s ease infinite;
-}
-@keyframes sectionGlow {
-  0%,100% { box-shadow: 0 0 0 4px rgba(99,102,241,0.15), 0 0 20px rgba(99,102,241,0.3), inset 0 0 20px rgba(99,102,241,0.05); }
-  50% { box-shadow: 0 0 0 4px rgba(99,102,241,0.25), 0 0 35px rgba(99,102,241,0.5), inset 0 0 30px rgba(99,102,241,0.1); }
-}
+    [data-section-id]:hover:not(.section-selected) { outline: 2px dashed rgba(99,102,241,0.6); outline-offset: 0px; }
+    [data-section-id].section-selected {
+      outline: 2px solid #6366f1;
+      box-shadow: 0 0 0 4px rgba(99,102,241,0.15), 0 0 20px rgba(99,102,241,0.3), inset 0 0 20px rgba(99,102,241,0.05);
+      animation: sectionGlow 2s ease infinite;
+    }
+    @keyframes sectionGlow {
+      0%,100% { box-shadow: 0 0 0 4px rgba(99,102,241,0.15), 0 0 20px rgba(99,102,241,0.3), inset 0 0 20px rgba(99,102,241,0.05); }
+      50% { box-shadow: 0 0 0 4px rgba(99,102,241,0.25), 0 0 35px rgba(99,102,241,0.5), inset 0 0 30px rgba(99,102,241,0.1); }
+    }
   </style>
 </head>
 <body>
   <div id="root"></div>
-<script>
-  window.onerror = function(msg, src, line) {
-    window.parent.postMessage({ type: 'console_error', message: msg + ' (' + src + ':' + line + ')' }, '*');
-  };
-
-  document.addEventListener('click', function(e) {
-    const target = e.target.closest('[data-section-id]');
-    if (target) {
-      window.parent.postMessage({
-        type: 'section_click',
-        sectionId: target.getAttribute('data-section-id')
-      }, '*');
-    }
-  });
-
-  window.addEventListener('message', function(e) {
-    document.querySelectorAll('[data-section-id]').forEach(function(el) {
-      el.classList.remove('section-selected');
+  <script>
+    window.onerror = function(msg, src, line) {
+      window.parent.postMessage({ type: 'console_error', message: msg + ' (' + src + ':' + line + ')' }, '*');
+    };
+    document.addEventListener('click', function(e) {
+      const target = e.target.closest('[data-section-id]');
+      if (target) {
+        window.parent.postMessage({
+          type: 'section_click',
+          sectionId: target.getAttribute('data-section-id')
+        }, '*');
+      }
     });
-
-    if (e.data && e.data.type === 'highlight_section' && e.data.sectionId) {
-      var target = document.querySelector('[data-section-id="' + e.data.sectionId + '"]');
-      if (target) target.classList.add('section-selected');
-    }
-  });
-<\/script>
+    window.addEventListener('message', function(e) {
+      document.querySelectorAll('[data-section-id]').forEach(function(el) {
+        el.classList.remove('section-selected');
+      });
+      if (e.data && e.data.type === 'highlight_section' && e.data.sectionId) {
+        var target = document.querySelector('[data-section-id="' + e.data.sectionId + '"]');
+        if (target) target.classList.add('section-selected');
+      }
+    });
+  <\/script>
 </body>
 </html>`;
 
-// ── Singleton ────────────────────────────────────────────────
 let globalInstance: WebContainer | null = null;
 let bootPromise: Promise<WebContainer> | null = null;
 
 async function getWebContainer(): Promise<WebContainer> {
   if (globalInstance) return globalInstance;
   if (bootPromise) return bootPromise;
-
   bootPromise = WebContainer.boot().then((wc) => {
     globalInstance = wc;
     return wc;
   });
-
   return bootPromise;
 }
 
@@ -236,7 +210,6 @@ export function useWebContainer() {
     async function boot() {
       try {
         setStatus({ status: 'booting' });
-
         const wc = await getWebContainer();
         if (cancelled) return;
         webcontainerRef.current = wc;
@@ -255,7 +228,6 @@ export function useWebContainer() {
         });
 
         setStatus({ status: 'installing' });
-
         const install = await wc.spawn('npm', ['install']);
         const installCode = await install.exit;
         if (installCode !== 0) throw new Error('npm install failed');
@@ -272,24 +244,17 @@ export function useWebContainer() {
         });
 
       } catch (err: any) {
-        if (!cancelled) {
-          setStatus({ status: 'error', error: err.message });
-        }
+        if (!cancelled) setStatus({ status: 'error', error: err.message });
       }
     }
 
     boot();
-
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
-  // Fix — status dependency hataya, sirf ref use karo
   const updateHtml = useCallback(async (html: string) => {
     const wc = webcontainerRef.current;
     if (!wc) return;
-
     const fullHtml = INDEX_HTML.replace('<div id="root"></div>', html);
     await wc.fs.writeFile('index.html', fullHtml);
   }, []);

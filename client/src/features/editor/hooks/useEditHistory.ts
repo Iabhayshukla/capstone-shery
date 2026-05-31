@@ -8,7 +8,7 @@ export function useEditHistory(initialHtml: string = '') {
   const [future, setFuture] = useState<string[]>([]);
 
   const push = useCallback((newHtml: string) => {
-    setPast((prev) => [...prev, present].slice(-MAX_HISTORY));
+    setPast(prev => [...prev, present].slice(-MAX_HISTORY));
     setPresent(newHtml);
     setFuture([]);
   }, [present]);
@@ -17,7 +17,7 @@ export function useEditHistory(initialHtml: string = '') {
     if (past.length === 0) return;
     const previous = past[past.length - 1];
     setPast(past.slice(0, -1));
-    setFuture((prev) => [present, ...prev]);
+    setFuture(prev => [present, ...prev]);
     setPresent(previous);
   }, [past, present]);
 
@@ -25,17 +25,9 @@ export function useEditHistory(initialHtml: string = '') {
     if (future.length === 0) return;
     const next = future[0];
     setFuture(future.slice(1));
-    setPast((prev) => [...prev, present]);
+    setPast(prev => [...prev, present]);
     setPresent(next);
   }, [future, present]);
 
-  return {
-    html: present,
-    push,
-    undo,
-    redo,
-    canUndo: past.length > 0,
-    canRedo: future.length > 0,
-    historySize: past.length,
-  };
+  return { html: present, push, undo, redo, canUndo: past.length > 0, canRedo: future.length > 0, historySize: past.length };
 }

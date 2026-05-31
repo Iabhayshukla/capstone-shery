@@ -7,26 +7,14 @@ export default function ConsoleErrorPanel({ errors, onClear }: ConsoleErrorPanel
   if (errors.length === 0) return null;
 
   return (
-    <div className="bg-gray-900 border-t border-red-800 text-xs font-mono max-h-32 overflow-y-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between px-3 py-1 bg-red-900 text-red-200 sticky top-0">
-        <span>⚠️ Console Errors ({errors.length})</span>
-        <button
-          onClick={onClear}
-          className="text-red-300 hover:text-white transition-colors"
-        >
-          Clear ✕
-        </button>
+    <div style={{ background:'#1a1a1a', border:'1px solid #333', borderRadius:'6px', maxHeight:'100px', overflow:'auto', flexShrink:0 }}>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'4px 10px', background:'#2d2d2d', borderBottom:'1px solid #333', position:'sticky', top:0 }}>
+        <span style={{ fontSize:'10px', color:'#f87171', fontWeight:700 }}>⚠ Console ({errors.length})</span>
+        <button onClick={onClear} style={{ fontSize:'10px', color:'#666', background:'transparent', border:'none', cursor:'pointer' }}>Clear</button>
       </div>
-
-      {/* Error list */}
       {errors.map((err, i) => (
-        <div
-          key={i}
-          className="flex gap-2 px-3 py-1 border-b border-gray-800 text-red-400 hover:bg-gray-800"
-        >
-          <span className="text-gray-500 select-none">{i + 1}</span>
-          <span>{err}</span>
+        <div key={i} style={{ padding:'4px 10px', fontSize:'10px', color:'#f87171', borderBottom:'1px solid #222', fontFamily:'monospace' }}>
+          {i + 1}. {err}
         </div>
       ))}
     </div>

@@ -5,15 +5,10 @@ interface SectionHighlightProps {
   iframeRef: React.RefObject<HTMLIFrameElement>;
 }
 
-export default function SectionHighlight({
-  selectedSectionId,
-  iframeRef,
-}: SectionHighlightProps) {
+export default function SectionHighlight({ selectedSectionId, iframeRef }: SectionHighlightProps) {
   useEffect(() => {
     const iframe = iframeRef.current;
     if (!iframe) return;
-
-    // contentDocument nahi — postMessage se iframe ko batao
     iframe.contentWindow?.postMessage(
       { type: 'highlight_section', sectionId: selectedSectionId },
       '*'
