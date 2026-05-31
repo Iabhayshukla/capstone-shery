@@ -9,7 +9,6 @@ load_dotenv()
 class NovaService:
 
     def __init__(self):
-
         self.client = boto3.client(
             service_name="bedrock-runtime",
             region_name=os.getenv("AWS_REGION")
@@ -61,4 +60,58 @@ class NovaService:
         return html
 
     async def stream_website(self, prompt: str):
-        yield "Streaming..."
+
+        response = self.client.converse_stream(
+            modelId=self.model_id,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "text": build_website_prompt(prompt)
+                        }
+                    ]
+                }
+            ]
+        )
+
+        full_html = ""
+
+        for event in response["stream"]:
+
+            if "contentBlockDelta" in event:
+
+                delta = event["contentBlockDelta"]
+
+                if "delta" in delta:
+
+                    if "text" in delta["delta"]:
+
+                        text = delta["delta"]["text"]
+
+                        
+
+                        text = text.replace("```html", "")
+                        text = text.replace("```", "")
+                        text = text.replace('\\"', '"')
+
+                        full_html += text
+
+                        yield text.replace("\n", " ")
+    async def test_stream(self, prompt: str):
+
+        response = self.client.converse_stream(
+            modelId=self.model_id,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "text": prompt
+                        }
+                    ]
+                }
+            ]
+        )
+
+        return  response

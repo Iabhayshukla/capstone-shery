@@ -8,9 +8,14 @@ function App() {
   const [healthStatus, setHealthStatus] = useState<'checking' | 'connected' | 'error'>('checking');
   const [dbStatus, setDbStatus] = useState<string>('Initializing...');
   const [streamData, setStreamData] = useState("");
+  const [aiStatus, setAiStatus] = useState("Idle");
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"preview" | "code">("preview");
   const [projects, setProjects] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  
+  const [generationTime, setGenerationTime] = useState(0);
+  // const [startTime, setStartTime] = useState(0);
  
   const generateWebsite = async () => {
     if (!prompt.trim()) {
@@ -64,28 +69,94 @@ function App() {
       console.error(error);
     }
 };
+  const deleteProject = async (projectId: number) => {
+
+  try {
+
+    await fetch(
+      `http://127.0.0.1:8000/projects/${projectId}`,
+      {
+        method: "DELETE",
+      }
+    );
+
+    fetchProjects();
+
+  } catch (error) {
+
+    console.error(error);
+
+  }
+};
+  
 
   const startStreaming = () => {
 
+    if (!prompt.trim()) {
+      alert("Please enter a prompt");
+      return;
+    }
+    const startTime = Date.now();
+    setLoading(true);
+    setGeneratedHtml("");
     setStreamData("");
+    setAiStatus("🧠 Understanding Prompt...");
 
     const eventSource = new EventSource(
-      "http://127.0.0.1:8000/stream"
-    );
+  `http://127.0.0.1:8000/stream?prompt=${encodeURIComponent(prompt)}`
+);
 
-    eventSource.onmessage = (event) => {
+let fullHtml = "";
 
-      setStreamData((prev) => prev + event.data);
+eventSource.onmessage = (event) => {
 
-    };
+  fullHtml += event.data;
 
-    eventSource.onerror = () => {
+  setStreamData(fullHtml);
 
-      eventSource.close();
+  if (fullHtml.length < 500) {
+    setAiStatus("🧠 Understanding Requirements...");
+  }
+  else if (fullHtml.length < 2000) {
+    setAiStatus("⚡ Generating Layout...");
+  }
+  else if (fullHtml.length < 5000) {
+    setAiStatus("🎨 Creating UI Components...");
+  }
+  else {
+    setAiStatus("🔧 Optimizing Structure...");
+  }
 
-    };
-  };
+};
+
+eventSource.onerror = () => {
+
+  const cleanHtml = fullHtml
+    .replace(/```html/g, "")
+    .replace(/```/g, "")
+    .trim();
+//   console.log("FULL HTML START");
+// console.log(fullHtml);
+// console.log("FULL HTML END");
+// console.log(cleanHtml.substring(0,500));
+  setGeneratedHtml(cleanHtml);
+  setActiveTab("preview");
   
+  const endTime = Date.now();
+
+setGenerationTime(
+  Number(
+    ((endTime - startTime) / 1000).toFixed(1)
+  )
+);
+
+  setAiStatus("✅ Website Ready");
+
+  setActiveTab("preview");
+  setLoading(false);
+  eventSource.close();
+};
+  };
   useEffect(() => {
     // Attempt to contact server health endpoint
     fetch('http://127.0.0.1:8000/')
@@ -161,37 +232,44 @@ function App() {
             Generate Production-Ready Websites with Amazon Nova Pro
           </h1>
           <div className="text-lg text-slate-400 leading-relaxed mb-8">
-            <div className="max-w-2xl mx-auto mt-6">
 
-            <textarea
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Describe the website you want to generate..."
-              className="w-full p-4 rounded-xl bg-slate-900 border border-slate-700 text-white"
-            />
-            <div className="mt-3 text-sm text-slate-500 text-left">
-              <p>Try:</p>
-              <p>• SaaS Landing Page</p>
-              <p>• Restaurant Website</p>
-              <p>• AI Startup Homepage</p>
-              <p>• Personal Portfolio Website</p>
-            </div>
-           
-          
-            <button
-              onClick={generateWebsite}
-              disabled={loading}
-              className={`mt-4 px-6 py-3 rounded-xl text-white transition-all ${
-                loading
-                  ? "bg-slate-600 cursor-not-allowed"
-                  : "bg-indigo-600 hover:bg-indigo-500"
-              }`}>
-              {loading ? "Generating..." : "Generate Website"}
-            </button>
+  <div className="max-w-2xl mx-auto mt-6">
 
-          </div>
-            The platform is powered by React, Vite, FastAPI, AWS Bedrock and Amazon Nova Pro.
-          </div>
+    <textarea
+      value={prompt}
+      onChange={(e) => setPrompt(e.target.value)}
+      placeholder="Describe the website you want to generate..."
+      className="w-full p-4 rounded-xl bg-slate-900 border border-slate-700 text-white"
+    />
+
+    <div className="mt-3 text-sm text-slate-500 text-left">
+      <p>Try:</p>
+      <p>• SaaS Landing Page</p>
+      <p>• Restaurant Website</p>
+      <p>• AI Startup Homepage</p>
+      <p>• Personal Portfolio Website</p>
+    </div>
+
+    <button
+      onClick={startStreaming}
+      disabled={loading}
+      className={`mt-4 px-6 py-3 rounded-xl text-white transition-all ${
+        loading
+          ? "bg-slate-600 cursor-not-allowed"
+          : "bg-indigo-600 hover:bg-indigo-500"
+      }`}
+    >
+      {loading ? "Generating..." : "Generate Website"}
+    </button>
+
+  </div>
+
+  <p className="mt-6">
+    The platform is powered by React, Vite, FastAPI,
+    AWS Bedrock and Amazon Nova Pro.
+  </p>
+
+</div>
           <div className="flex flex-col md:flex-row items-center justify-center gap-8">
 
             <button className="px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 font-semibold text-white shadow-lg shadow-indigo-600/30 transition-all duration-300 cursor-pointer flex items-center gap-2 group">
@@ -199,15 +277,9 @@ function App() {
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </button>
 
-            <button
-              onClick={startStreaming}
-              className="px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 font-semibold text-white shadow-lg transition-all duration-300"
-            >
-              Start AI Streaming
-            </button>
-
+        
           </div>
-          {generatedHtml && (
+          {generatedHtml.length > 500 && (
   <div className="max-w-7xl mx-auto mb-16">
 
     <h2 className="text-3xl font-bold mb-6 text-center">
@@ -259,23 +331,32 @@ function App() {
   >
     Download HTML
   </button>
+  <button
+  onClick={() => {
+    navigator.clipboard.writeText(generatedHtml);
+    alert("Code Copied!");
+  }}
+  className="ml-3 px-5 py-2 bg-cyan-600 rounded-xl text-white hover:bg-cyan-500"
+>
+  Copy Code
+</button>
 </div>
     {activeTab === "preview" ? (
 
   <iframe
-    title="Website Preview"
-    srcDoc={generatedHtml}
-    className="w-full h-[900px] rounded-2xl border border-slate-700 bg-white shadow-2xl"
-    sandbox="allow-scripts"
-  />
+  title="Website Preview"
+  srcDoc={generatedHtml}
+  className="w-full h-[1200px] rounded-2xl border border-slate-700 bg-white shadow-2xl"
+  sandbox="allow-scripts allow-same-origin"
+/>
 
 ) : (
 
-  <pre className="w-full h-[900px] overflow-auto rounded-2xl border border-slate-700 bg-slate-950 text-emerald-400 p-6 text-sm">
-    <code>
-      {generatedHtml}
-    </code>
-  </pre>
+  <pre className="w-full h-[900px] overflow-auto whitespace-pre-wrap break-words rounded-2xl border border-slate-700 bg-slate-950 text-emerald-400 p-6 text-sm">
+  <code>
+    {generatedHtml}
+  </code>
+</pre>
 
 )}
 
@@ -286,31 +367,51 @@ function App() {
 
             <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 backdrop-blur-sm">
 
-              <h2 className="text-xl font-bold mb-4 text-cyan-400">
-                Generation Activity
-              </h2>
+              <h2 className="text-xl font-bold mb-2 text-cyan-400">
+  AI Generation Status
+</h2>
 
-              <div className="min-h-[120px] text-slate-300 whitespace-pre-wrap leading-relaxed">
+<div className="mb-4 text-emerald-400 font-semibold">
+  {aiStatus}
+</div>
+<div className="text-slate-400 text-sm mb-4">
+  Generation Time: {generationTime}s
+</div>
+<div className="min-h-[120px]">
 
-                {
-                  streamData ? (
-                    <div
-                      dangerouslySetInnerHTML={{ __html: streamData }}
-                    />
-                  ) : (
-                    "AI response will appear here..."
-                  )
-                }
-                
-                
+  <div className="w-full bg-slate-800 rounded-full h-3">
 
-              </div>
+    <div
+      className={`h-3 rounded-full transition-all duration-500 ${
+        aiStatus.includes("Understanding")
+          ? "bg-cyan-500"
+          : aiStatus.includes("Building")
+          ? "bg-indigo-500"
+          : "bg-emerald-500"
+      }`}
+      style={{
+        width:
+  aiStatus === "Idle"
+    ? "0%"
+    : aiStatus.includes("Understanding")
+    ? "10%"
+    : aiStatus.includes("Generating")
+    ? "40%"
+    : aiStatus.includes("Creating")
+    ? "70%"
+    : aiStatus.includes("Optimizing")
+    ? "90%"
+    : "100%"
+      }}
+    />
 
-            </div>
-
-          </div>
+  </div>
 
 </div>
+
+</div>
+</div>
+
 <div className="max-w-5xl mx-auto mb-16">
 
   <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6">
@@ -318,33 +419,111 @@ function App() {
     <h2 className="text-2xl font-bold mb-6 text-indigo-400">
       Project History
     </h2>
+    <input
+  type="text"
+  placeholder="Search projects..."
+  value={searchTerm}
+  onChange={(e) => setSearchTerm(e.target.value)}
+  className="w-full mb-4 p-3 rounded-xl bg-slate-900 border border-slate-700 text-white"
+/>
 
     <div className="space-y-3">
 
-      {projects.map((project) => (
+  {projects.length === 0 ? (
 
-        <div
-          key={project.id}
-          onClick={() => setGeneratedHtml(project.html)}
-          className="p-4 rounded-xl border border-slate-700 hover:border-indigo-500 cursor-pointer transition"
-        >
+    <div className="text-center text-slate-500 py-8">
+      No projects generated yet.
+    </div>
 
-          <div className="font-semibold text-white">
-            {project.prompt}
+  ) : (
+
+    projects
+.filter((project) =>
+  project.prompt
+    .toLowerCase()
+    .includes(searchTerm.toLowerCase())
+)
+.map((project) => (
+
+      <div
+        key={project.id}
+        className="p-4 rounded-xl border border-slate-700 hover:border-indigo-500 transition"
+      >
+
+        <div className="flex items-center justify-between">
+
+          <div>
+
+            <div className="font-semibold text-white capitalize">
+              {project.prompt}
+            </div>
+
+            <div className="text-sm text-slate-400">
+              {new Date(project.created_at).toLocaleString()}
+            </div>
+
           </div>
 
-          <div className="text-sm text-slate-400">
-            {project.created_at}
+          <div className="flex gap-2">
+
+            <button
+              onClick={() => {
+  setGeneratedHtml(project.html);
+  setStreamData(project.html);
+  setActiveTab("preview");
+}}
+              className="px-3 py-1 bg-indigo-600 rounded-lg text-white hover:bg-indigo-500"
+            >
+              Open
+            </button>
+            <button
+              onClick={() => {
+
+                const blob = new Blob(
+                  [project.html],
+                  {
+                    type: "text/html"
+                  }
+                );
+
+                const url = URL.createObjectURL(blob);
+
+                const a = document.createElement("a");
+
+                a.href = url;
+
+                a.download = `project-${project.id}.html`;
+
+                a.click();
+
+                URL.revokeObjectURL(url);
+
+              }}
+              className="px-3 py-1 bg-emerald-600 rounded-lg text-white hover:bg-emerald-500"
+            >
+              Download
+            </button>
+            <button
+              onClick={() => deleteProject(project.id)}
+              className="px-3 py-1 bg-red-600 rounded-lg text-white hover:bg-red-500"
+            >
+              Delete
+            </button>
+
           </div>
 
         </div>
 
-      ))}
+      </div>
 
-    </div>
+    ))
 
+  )}
+
+</div>
   </div>
 
+</div>
 </div>
         {/* Features / Status Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">

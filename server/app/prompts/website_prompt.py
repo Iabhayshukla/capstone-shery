@@ -1,218 +1,296 @@
-
 def build_website_prompt(user_prompt: str):
     return f"""
-    Generate a complete production-ready website.
+    USER REQUEST:
+    {user_prompt}
 
-                        USER REQUEST:
-                        {user_prompt}
+    ROLE:
 
-                        ROLE:
-                        You are a world-class Senior UI/UX Designer, Frontend Architect, and Product Designer.
+    You are an elite Senior Product Designer, UI/UX Architect, Frontend Engineer, and Creative Director.
 
-                        Your goal is to generate a website that looks comparable to modern startup websites built using:
+    Your work quality should be comparable to websites built by:
 
-                        * Stripe
-                        * Linear
-                        * Vercel
-                        * Framer
-                        * Webflow
-                        * Notion
-                        
+    * Stripe
+    * Linear
+    * Notion
+    * Framer
+    * Vercel
+    * Webflow
+    * Ramp
+    * Raycast
+    * Arc Browser
 
-                        DESIGN REQUIREMENTS:
+    Your task is to generate a visually stunning, production-ready website that looks like a real commercial product.
 
-                        * Premium modern UI
-                        * Beautiful gradients
-                        * Modern typography
-                        * Strong visual hierarchy
-                        * Excellent spacing
-                        * Clean layouts
-                        * Professional color palette
-                        * Rounded corners
-                        * Subtle shadows
-                        * Hover effects
-                        * Smooth transitions
-                        * Responsive design
-                        * Mobile-first approach
-                        * High-end SaaS appearance
+    ==================================================
+    DESIGN OBJECTIVES
+    =================
 
-                        MANDATORY SECTIONS:
+    Create a premium website with:
 
-                        1. Navigation Bar
-                        2. Hero Section
-                        3. Features Section
-                        4. Benefits Section
-                        5. Testimonials Section
-                        6. FAQ Section
-                        7. Contact Section
-                        8. Footer
+    * Exceptional visual hierarchy
+    * Modern SaaS aesthetics
+    * Beautiful gradients
+    * Premium typography
+    * Spacious layouts
+    * Glassmorphism where appropriate
+    * Smooth interactions
+    * Conversion-focused sections
+    * Professional color palette
+    * High-end startup appearance
 
-                        UI REQUIREMENTS:
+    The design should feel modern, elegant, and trustworthy.
 
-                        * Use CSS Grid and Flexbox
-                        * Create attractive cards
-                        * Create CTA buttons
-                        * Use gradient hero background
-                        * Add modern section spacing
-                        * Use responsive breakpoints
-                        * Make the page visually impressive
-                        * Avoid plain HTML layouts
+    Avoid anything that looks like:
 
-                        STRICT RULES:
+    * Student projects
+    * Basic HTML templates
+    * Generic landing pages
+    * Outdated web design
 
-                        * Return ONLY raw HTML
-                        * No markdown
-                        * No explanations
-                        * No code fences
-                        * No external images
-                        * No local image files
-                        * No hero.jpg
-                        * No banner.jpg
-                        * No logo.png
-                        * No placeholder image paths
-                        * No external CSS files
-                        * No external JS files
-                        * All CSS must be embedded in <style>
-                        * All code must be self-contained
+    ==================================================
+    MANDATORY SECTIONS
+    ==================
 
-                        OUTPUT QUALITY:
+    Include ALL sections:
 
-                        The generated website should be portfolio-worthy and look like a modern commercial product landing page rather than a beginner HTML assignment.
+    1. Sticky Navigation Bar
+    2. Hero Section
+    3. Features Section
+    4. Benefits Section
+    5. Statistics Section
+    6. Testimonials Section
+    7. Pricing Section
+    8. FAQ Section
+    9. Contact Section
+    10. Footer
 
-                        For every section, generate meaningful content.
+    ==================================================
+    SECTION REQUIREMENTS
+    ====================
 
-                        Features section:
-                        - Minimum 6 feature cards
+    Navigation:
 
-                        Benefits section:
-                        - Minimum 4 benefit cards
+    * Sticky navbar
+    * Logo
+    * Navigation links
+    * CTA button
 
-                        Testimonials section:
-                        - Minimum 3 testimonials
+    Hero:
 
-                        FAQ section:
-                        - Minimum 5 FAQ items
+    * Large headline
+    * Supporting text
+    * Primary CTA
+    * Secondary CTA
+    * Trust indicators
+    * Strong visual impact
 
-                        Do not leave any section empty.
-                        Every section must contain visible content.
-                        ADVANCED DESIGN SYSTEM:
+    Features:
 
-Create a visually stunning website that looks like it was designed by a senior product designer.
+    * Minimum 6 feature cards
+    * Icons using Unicode or CSS
+    * Professional descriptions
 
-VISUAL STYLE:
+    Benefits:
 
-* Premium SaaS aesthetic
-* Modern startup landing page
-* Elegant gradients
-* Glassmorphism where appropriate
-* Soft shadows
-* Smooth hover interactions
-* Large typography
-* Spacious layouts
-* High visual appeal
-* Conversion-focused design
+    * Minimum 4 benefit cards
 
-LAYOUT REQUIREMENTS:
+    Statistics:
 
-* Full-width hero section
-* Large headline and supporting text
-* Primary CTA button
-* Secondary CTA button
-* Feature cards in responsive grid
-* Benefit cards with icons/placeholders
-* Testimonial cards
-* FAQ accordion-style layout
-* Modern footer with multiple columns
+    * 4 statistics cards
+    * Impressive metrics
 
-CONTENT QUALITY:
+    Testimonials:
 
-* Write realistic marketing copy
-* Use persuasive headlines
-* Use professional subheadings
-* Use meaningful feature descriptions
-* Avoid lorem ipsum
-* Avoid generic filler text
+    * Minimum 3 testimonials
+    * Realistic names and roles
 
-SPACING REQUIREMENTS:
+    Pricing:
 
-* Use generous whitespace
-* Maintain strong visual hierarchy
-* Ensure every section feels balanced
-* Avoid cramped layouts
+    * 3 pricing tiers
+    * Highlight recommended plan
 
-RESPONSIVENESS:
+    FAQ:
 
-* Mobile responsive
-* Tablet responsive
-* Desktop responsive
+    * Minimum 5 FAQ items
 
-HTML REQUIREMENTS:
+    Contact:
 
-* Use modern semantic HTML5
-* Use CSS custom properties where appropriate
-* Use CSS Grid and Flexbox
-* Use smooth transitions
-* Use modern button styles
-* Use modern card styles
+    * Modern contact form
+    * Contact information
 
-IMPORTANT:
+    Footer:
 
-Every navigation link must point to an existing section.
+    * Multiple columns
+    * Useful links
+    * Social links placeholders
 
-Every section must contain visible content.
+    ==================================================
+    DESIGN SYSTEM
+    =============
 
-Avoid empty sections.
+    Create a complete design system using:
 
-Avoid excessive blank space.
+    :root {{
+    --primary:
+    --secondary:
+    --accent:
+    --background:
+    --surface:
+    --text:
+    --radius:
+    --shadow:
+    }}
 
-Generate a website that looks suitable for a real startup launch.
+    Requirements:
 
+    * Consistent spacing scale
+    * Consistent typography scale
+    * Consistent shadows
+    * Consistent border radius
+    * Modern design tokens
 
-DESIGN TOKENS:
+    ==================================================
+    RESPONSIVENESS
+    ==============
 
-- Use a modern color system
-- Define CSS variables in :root
-- Use consistent spacing scale
-- Use consistent border radius
-- Use consistent shadows
-- Use consistent typography scale
+    The website MUST be:
 
-Use CSS variables defined in :root for colors, spacing and typography.
+    * Mobile responsive
+    * Tablet responsive
+    * Desktop responsive
 
-HERO SECTION REQUIREMENTS:
+    Use:
 
-- Large bold headline
-- Supporting description
-- Primary CTA button
-- Secondary CTA button
-- Trust indicators
-- Modern gradient background
-- Strong visual impact above the fold
+    * CSS Grid
+    * Flexbox
+    * Media queries
 
-CARD DESIGN REQUIREMENTS:
+    No horizontal scrolling.
 
-- Glassmorphism or elevated card style
-- Rounded corners
-- Hover effects
-- Soft shadows
-- Consistent spacing
-- Modern SaaS appearance
+    ==================================================
+    MICRO INTERACTIONS
+    ==================
 
+    Add:
 
-NAVIGATION REQUIREMENTS:
+    * Button hover effects
+    * Card hover effects
+    * Smooth transitions
+    * Subtle animations
+    * Section reveal effects
+    * Modern interactions
 
-- Sticky navigation bar
-- Smooth scrolling
-- Active hover states
-- CTA button in navbar
+    ==================================================
+    CONTENT QUALITY
+    ===============
 
-MICRO INTERACTIONS:
+    Generate realistic business content.
 
-- Smooth hover transitions
-- Button hover effects
-- Card hover effects
-- Section fade-in styling using CSS
+    Use:
 
+    * Persuasive headlines
+    * Professional subheadings
+    * Strong CTAs
+    * Real marketing copy
 
-                        Return only valid HTML
+    Never use:
+
+    * Lorem Ipsum
+    * Placeholder text
+    * Empty sections
+
+    ==================================================
+    TECHNICAL REQUIREMENTS
+    ======================
+
+    Use:
+
+    * Semantic HTML5
+    * Embedded CSS
+    * CSS Variables
+    * Modern Layout Techniques
+
+    Do NOT use:
+
+    * React
+    * Vue
+    * Angular
+    * Tailwind CDN
+    * Bootstrap
+    * External CSS
+    * External JS
+    * External Fonts
+    * External Images
+    * Local image paths
+
+    Everything must be self-contained.
+
+        
+    IMPORTANT CSS RULES:
+
+    1. Always use valid CSS selectors.
+
+    Correct:
+    .features .card
+    .hero .cta
+    .pricing .tier
+
+    Wrong:
+    .features.card
+    .hero.cta
+    .pricing.tier
+
+    2. Every generated website must be fully responsive.
+
+    3. Use CSS Grid and Flexbox correctly.
+
+    4. Cards must have proper spacing and hover effects.
+
+    5. Do not generate malformed CSS.
+
+    6. Generate production-quality HTML/CSS only.
+    ==================================================
+    CRITICAL OUTPUT RULES
+    =====================
+
+    Return ONLY a complete HTML document.
+
+    The response MUST start with:
+
+    <!DOCTYPE html>
+
+    <html lang="en">
+
+    The response MUST end with:
+
+    </html>
+
+    Include:
+
+    <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generated Website</title>
+    <style>
+    ...
+    </style>
+    </head>
+
+    <body>
+    ...
+    </body>
+
+    Do NOT return:
+
+    * Markdown
+    * ```html
+    ```
+    * Triple backticks
+    * Explanations
+    * Notes
+    * Comments
+    * JSON
+    * Escaped HTML
+
+    Return ONLY valid HTML.
     """
