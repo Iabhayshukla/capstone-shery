@@ -293,4 +293,18 @@ def build_website_prompt(user_prompt: str):
     * Escaped HTML
 
     Return ONLY valid HTML.
+
+
+    IMPORTANT:
+The very first character of the response must be "<".
+
+Do not output:
+html
+HTML
+Here is your website
+Explanation
+Markdown
+Backticks
+
+Output ONLY raw HTML.
     """

@@ -22,6 +22,8 @@
 #     )
 
 
+import json
+
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from app.services.nova_service import NovaService
@@ -43,7 +45,11 @@ async def stream(prompt: str):
 
             full_html += chunk
 
-            yield f"data: {chunk}\n\n"
+            import json
+
+            yield f"data: {json.dumps(chunk)}\n\n"
+        
+        yield "data: [DONE]\n\n"
 
         save_project(
             prompt,

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Layers, Server, Sparkles, Activity, ArrowRight, Github } from 'lucide-react';
-
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 
 function App() {
   const [prompt, setPrompt] = useState("");
@@ -110,7 +111,36 @@ let fullHtml = "";
 
 eventSource.onmessage = (event) => {
 
-  fullHtml += event.data;
+  if (event.data === "[DONE]") {
+
+    const cleanHtml = fullHtml
+      .replace(/```html/g, "")
+      .replace(/```/g, "")
+      .replace(/^html\s*/i, "")
+      .trim();
+
+    console.log("HTML LENGTH FRONTEND =", cleanHtml.length);
+
+    setGeneratedHtml(cleanHtml);
+
+    const endTime = Date.now();
+
+    setGenerationTime(
+      Number(
+        ((endTime - startTime) / 1000).toFixed(1)
+      )
+    );
+
+    setAiStatus("✅ Website Ready");
+    setActiveTab("preview");
+    setLoading(false);
+
+    eventSource.close();
+
+    return;
+  }
+
+  fullHtml += JSON.parse(event.data);
 
   setStreamData(fullHtml);
 
@@ -132,13 +162,17 @@ eventSource.onmessage = (event) => {
 eventSource.onerror = () => {
 
   const cleanHtml = fullHtml
-    .replace(/```html/g, "")
-    .replace(/```/g, "")
-    .trim();
+  .replace(/```html/g, "")
+  .replace(/```/g, "")
+  .replace(/^html\s*/i, "")
+  .trim();
+  console.log(cleanHtml);
 //   console.log("FULL HTML START");
 // console.log(fullHtml);
 // console.log("FULL HTML END");
 // console.log(cleanHtml.substring(0,500));
+console.log("HTML LENGTH FRONTEND =", cleanHtml.length);
+console.log(cleanHtml.substring(0,500));
   setGeneratedHtml(cleanHtml);
   setActiveTab("preview");
   
@@ -261,6 +295,14 @@ setGenerationTime(
     >
       {loading ? "Generating..." : "Generate Website"}
     </button>
+    {generatedHtml && (
+  <button
+    onClick={startStreaming}
+    className="ml-3 px-6 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white"
+  >
+    🔄 Regenerate Website
+  </button>
+)}
 
   </div>
 
@@ -341,22 +383,43 @@ setGenerationTime(
   Copy Code
 </button>
 </div>
-    {activeTab === "preview" ? (
+  {activeTab === "preview" ? (
 
   <iframe
-  title="Website Preview"
-  srcDoc={generatedHtml}
-  className="w-full h-[1200px] rounded-2xl border border-slate-700 bg-white shadow-2xl"
-  sandbox="allow-scripts allow-same-origin"
-/>
+    title="Website Preview"
+    srcDoc={generatedHtml}
+    className="w-full h-[1200px] rounded-2xl border border-slate-700 bg-white shadow-2xl"
+    sandbox="allow-scripts"
+  />
 
 ) : (
 
-  <pre className="w-full h-[900px] overflow-auto whitespace-pre-wrap break-words rounded-2xl border border-slate-700 bg-slate-950 text-emerald-400 p-6 text-sm">
-  <code>
-    {generatedHtml}
-  </code>
-</pre>
+  <>
+    <div className="flex justify-between items-center mb-4">
+      <h3 className="text-lg font-semibold text-white">
+        Generated Source Code
+      </h3>
+
+      <span className="text-sm text-slate-400">
+        HTML + CSS
+      </span>
+    </div>
+<SyntaxHighlighter
+  language="html"
+  style={vscDarkPlus}
+  wrapLongLines={true}
+  showLineNumbers={true}
+  customStyle={{
+    height: "1200px",
+    borderRadius: "16px",
+    fontSize: "14px",
+    padding: "20px",
+    background: "#020617",
+  }}
+>
+  {generatedHtml}
+</SyntaxHighlighter>
+  </>
 
 )}
 
@@ -385,7 +448,7 @@ setGenerationTime(
       className={`h-3 rounded-full transition-all duration-500 ${
         aiStatus.includes("Understanding")
           ? "bg-cyan-500"
-          : aiStatus.includes("Building")
+          : aiStatus.includes("Generating")
           ? "bg-indigo-500"
           : "bg-emerald-500"
       }`}
@@ -443,10 +506,10 @@ setGenerationTime(
     .toLowerCase()
     .includes(searchTerm.toLowerCase())
 )
-.map((project) => (
+.map((project, index) => (
 
       <div
-        key={project.id}
+        key={`${project.id}-${index}`}
         className="p-4 rounded-xl border border-slate-700 hover:border-indigo-500 transition"
       >
 
