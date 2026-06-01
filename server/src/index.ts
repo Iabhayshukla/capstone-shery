@@ -3,37 +3,61 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 
-// Load environment variables from root directory or current directory
+// Load environment variables — root .env takes priority
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 dotenv.config();
 
+import { errorHandler } from './middleware/errorHandler';
+import authRouter from './features/auth/auth.router';
+import projectsRouter from './features/projects/projects.router';
+
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT ?? 5000;
 
-// Middleware
-app.use(cors());
-app.use(express.json());
+// ─── Global Middleware ─────────────────────────────────────────────────────────
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production'
+    ? process.env.CLIENT_ORIGIN ?? false
+    : true,
+  credentials: true,
+}));
+app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ extended: true }));
 
-// Sample Health Check endpoint
-app.get('/api/health', (req: Request, res: Response) => {
+// ─── Routes ───────────────────────────────────────────────────────────────────
+app.get('/', (_req: Request, res: Response) => {
+  res.json({ message: 'AI Website Builder API is running.' });
+});
+
+app.get('/api/health', (_req: Request, res: Response) => {
   res.json({
     status: 'ok',
-    message: 'Capstone API server is healthy and responding',
+    message: 'API server is healthy',
     timestamp: new Date().toISOString(),
-    database: 'SQLite/Postgres connection configured successfully',
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV ?? 'development',
   });
 });
 
-// Default root endpoint
-app.get('/', (req: Request, res: Response) => {
-  res.send('Capstone Server API is running. Access endpoints via /api/...');
+// Auth routes (signup, login, logout, refresh, Google OAuth)
+app.use('/api/auth', authRouter);
+
+// Project CRUD routes (protected — require valid JWT)
+app.use('/api/projects', projectsRouter);
+
+// ─── 404 Handler ──────────────────────────────────────────────────────────────
+app.use((_req: Request, res: Response) => {
+  res.status(404).json({ error: 'Not Found', message: 'The requested endpoint does not exist.' });
 });
 
-// Start Server
+// ─── Central Error Handler (must be last) ─────────────────────────────────────
+app.use(errorHandler);
+
+// ─── Start Server ─────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
-  console.log(`=========================================`);
-  console.log(`🚀 Server is running on port ${PORT}`);
-  console.log(`👉 Health check: http://localhost:${PORT}/api/health`);
-  console.log(`=========================================`);
+  console.log('=========================================');
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`👉 Health: http://localhost:${PORT}/api/health`);
+  console.log(`🔐 Auth:   http://localhost:${PORT}/api/auth`);
+  console.log(`📁 Projects: http://localhost:${PORT}/api/projects`);
+  console.log('=========================================');
 });
