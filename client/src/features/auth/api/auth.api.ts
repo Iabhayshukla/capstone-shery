@@ -28,6 +28,18 @@ export async function login(credentials: LoginCredentials) {
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message ?? 'Login failed.');
+
+  // Set the Supabase session in the browser to sync the client-side library
+  if (data.accessToken && data.refreshToken) {
+    const { error } = await supabase.auth.setSession({
+      access_token: data.accessToken,
+      refresh_token: data.refreshToken,
+    });
+    if (error) {
+      console.error('[auth.api] failed to set browser Supabase session:', error.message);
+    }
+  }
+
   return data; // { accessToken, refreshToken, user }
 }
 
@@ -60,8 +72,9 @@ export async function getGoogleOAuthUrl(redirectTo?: string): Promise<string> {
 /**
  * Send a password reset email.
  */
-export async function sendPasswordReset(email: string) {
-  const res = await fetch(`${API_BASE}/auth/password-reset`, {
+export async function sendPasswordReset(email: string, redirectTo?: string) {
+  const params = redirectTo ? `?redirectTo=${encodeURIComponent(redirectTo)}` : '';
+  const res = await fetch(`${API_BASE}/auth/password-reset${params}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email }),

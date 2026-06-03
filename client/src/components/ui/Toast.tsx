@@ -5,6 +5,7 @@ import {
   useState,
   useCallback,
   ReactNode,
+  forwardRef,
 } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -73,17 +74,18 @@ const toastConfig: Record<
 };
 
 
-const ToastItem = ({
-  toast,
-  onRemove,
-}: {
-  toast: Toast;
-  onRemove: (id: string) => void;
-}) => {
+const ToastItem = forwardRef<
+  HTMLDivElement,
+  {
+    toast: Toast;
+    onRemove: (id: string) => void;
+  }
+>(({ toast, onRemove }, ref) => {
   const config = toastConfig[toast.type];
 
   return (
     <motion.div
+      ref={ref}
       layout
       initial={{ opacity: 0, x: 80, scale: 0.95 }}
       animate={{ opacity: 1, x: 0, scale: 1 }}
@@ -106,7 +108,9 @@ const ToastItem = ({
       </button>
     </motion.div>
   );
-};
+});
+
+ToastItem.displayName = "ToastItem";
 
 
 export const ToastProvider = ({ children }: { children: ReactNode }) => {

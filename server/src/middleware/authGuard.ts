@@ -5,6 +5,7 @@ export interface AuthenticatedRequest extends Request {
   userId: string;
   userEmail: string;
   accessToken: string;
+  userName?: string;
 }
 
 /**
@@ -45,6 +46,7 @@ export async function authGuard(
     authReq.userId = data.user.id;
     authReq.userEmail = data.user.email ?? '';
     authReq.accessToken = token;
+    authReq.userName = data.user.user_metadata?.full_name;
 
     next();
   } catch (err) {

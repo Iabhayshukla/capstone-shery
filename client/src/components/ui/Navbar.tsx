@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -6,17 +6,36 @@ import ThemeToggle from "./ThemeToggle";
 import Avatar from "./Avatar";
 import { Sparkles, Menu, X, LayoutDashboard, User, LogOut } from "lucide-react";
 
-// Mock auth state — replace with real auth later
-const useMockAuth = () => ({
-  isLoggedIn: false, // Change to true to test logged-in state
-  user: { name: "Abhay Shukla", email: "abhay@novabuild.ai" },
-});
+import { useAuth } from "@/features/auth";
 
 const Navbar = () => {
+  const { isAuthenticated, user, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const { isLoggedIn, user } = useMockAuth();
+  const [isScrolled, setIsScrolled] = useState(false);
+  const isLoggedIn = isAuthenticated;
   const location = useLocation();
+
+  const userName = user?.name || user?.email?.split("@")[0] || "User";
+  const userEmail = user?.email || "";
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 10);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const handleLogout = async () => {
+    setIsProfileOpen(false);
+    setIsMobileMenuOpen(false);
+    try {
+      await logout();
+    } catch (err) {
+      console.error("Logout failed:", err);
+    }
+  };
 
 
   if (location.pathname.startsWith("/editor")) return null;
@@ -26,7 +45,11 @@ const Navbar = () => {
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.5 }}
-      className="w-full px-6 md:px-8 py-3.5 flex items-center justify-between glass fixed top-0 left-0 right-0 z-50"
+      className={`w-full px-6 md:px-8 py-3.5 flex items-center justify-between fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        isScrolled
+          ? "glass border-b border-[var(--brand-border)] shadow-md shadow-black/5"
+          : "bg-transparent border-transparent"
+      }`}
       role="navigation"
       aria-label="Main navigation"
     >
@@ -52,9 +75,9 @@ const Navbar = () => {
               className="flex items-center gap-2 px-3 py-1.5 rounded-xl hover:bg-[var(--brand-glass-hover)] transition-colors"
               aria-label="User menu"
             >
-              <Avatar name={user.name} size="sm" showStatus status="online" />
+              <Avatar name={userName} size="sm" showStatus status="online" />
               <span className="text-sm text-[var(--text-secondary)] font-medium">
-                {user.name.split(" ")[0]}
+                {userName.split(" ")[0]}
               </span>
             </button>
 
@@ -69,8 +92,8 @@ const Navbar = () => {
                   className="absolute right-0 top-full mt-2 w-56 py-2 rounded-xl bg-[var(--dropdown-bg)] backdrop-blur-xl border border-[var(--brand-border)] shadow-xl"
                 >
                   <div className="px-4 py-3 border-b border-[var(--brand-border)]">
-                    <p className="text-sm font-medium text-[var(--text-primary)]">{user.name}</p>
-                    <p className="text-xs text-[var(--text-muted)]">{user.email}</p>
+                    <p className="text-sm font-medium text-[var(--text-primary)]">{userName}</p>
+                    <p className="text-xs text-[var(--text-muted)]">{userEmail}</p>
                   </div>
                   <Link
                     to="/dashboard"
@@ -91,7 +114,7 @@ const Navbar = () => {
                   <div className="border-t border-[var(--brand-border)] mt-1 pt-1">
                     <button
                       className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-400/70 hover:text-red-400 hover:bg-red-500/5 transition-colors w-full text-left"
-                      onClick={() => setIsProfileOpen(false)}
+                      onClick={handleLogout}
                     >
                       <LogOut size={15} />
                       Logout
@@ -160,7 +183,10 @@ const Navbar = () => {
                     <User size={18} />
                     Account
                   </Link>
-                  <button className="flex items-center gap-3 px-4 py-3 rounded-xl text-red-400/70 hover:text-red-400 hover:bg-red-500/5 transition-colors w-full text-left">
+                  <button
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-red-400/70 hover:text-red-400 hover:bg-red-500/5 transition-colors w-full text-left"
+                    onClick={handleLogout}
+                  >
                     <LogOut size={18} />
                     Logout
                   </button>

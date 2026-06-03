@@ -1,11 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/ui/Navbar";
 import Avatar from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/Toast";
 import { useTheme } from "@/lib/ThemeContext";
 import { pageTransition, fadeUp } from "@/lib/animations";
+import { useAuth } from "@/features/auth";
+import { supabase } from "@/lib/supabase";
 import {
   User,
   Mail,
@@ -21,18 +24,45 @@ import {
 } from "lucide-react";
 
 const AccountPage = () => {
-  const [name, setName] = useState("Abhay Shukla");
-  const [email] = useState("abhay@novabuild.ai");
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [showDangerZone, setShowDangerZone] = useState(false);
   const { theme, toggleTheme } = useTheme();
   const { addToast } = useToast();
 
+  useEffect(() => {
+    if (user) {
+      setName(user.name || user.email.split("@")[0] || "");
+      setEmail(user.email);
+    }
+  }, [user]);
+
   const handleSave = async () => {
     setIsSaving(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setIsSaving(false);
-    addToast("Profile updated successfully!", "success");
+    try {
+      const { error } = await supabase.auth.updateUser({
+        data: { full_name: name },
+      });
+      if (error) throw error;
+      addToast("Profile updated successfully!", "success");
+    } catch (err: any) {
+      addToast(err.message || "Failed to update profile.", "error");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      addToast("Logged out successfully", "info");
+      navigate("/login");
+    } catch (err: any) {
+      addToast(err.message || "Failed to log out", "error");
+    }
   };
 
   return (
@@ -220,7 +250,7 @@ const AccountPage = () => {
             <Button
               variant="ghost"
               className="text-red-400/60 hover:text-red-400 hover:bg-red-500/10 gap-2"
-              onClick={() => addToast("Logged out successfully", "info")}
+              onClick={handleLogout}
             >
               <LogOut size={15} />
               Logout

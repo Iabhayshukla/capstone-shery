@@ -23,7 +23,7 @@ router.use(sanitise);
  */
 router.post('/signup', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { email, password } = req.body as SignUpBody;
+    const { email, password, name } = req.body as SignUpBody;
 
     if (!email || !password) {
       return next(createError('Email and password are required.', 400));
@@ -35,7 +35,7 @@ router.post('/signup', async (req: Request, res: Response, next: NextFunction) =
       return next(createError('Please enter a valid email address.', 400));
     }
 
-    const result = await signUpWithEmail(email, password);
+    const result = await signUpWithEmail(email, password, name);
     res.status(201).json({ message: 'Account created successfully.', user: result });
   } catch (err) {
     next(err);
@@ -121,7 +121,8 @@ router.post('/password-reset', async (req: Request, res: Response, next: NextFun
       return next(createError('Email is required.', 400));
     }
 
-    const { error } = await supabaseAdmin.auth.resetPasswordForEmail(email);
+    const redirectTo = (req.query.redirectTo as string) || `${req.protocol}://${req.get('host')}/reset-password`;
+    const { error } = await supabaseAdmin.auth.resetPasswordForEmail(email, { redirectTo });
 
     if (error) {
       throw createError('Failed to send password reset email.', 500);
@@ -143,6 +144,7 @@ router.get('/me', authGuard, (req: Request, res: Response) => {
   res.json({
     id: authReq.userId,
     email: authReq.userEmail,
+    name: authReq.userName,
   });
 });
 

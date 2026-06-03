@@ -29,5 +29,20 @@ export function useEditHistory(initialHtml: string = '') {
     setPresent(next);
   }, [future, present]);
 
-  return { html: present, push, undo, redo, canUndo: past.length > 0, canRedo: future.length > 0, historySize: past.length };
+  const reset = useCallback((newHtml: string) => {
+    setPast([]);
+    setPresent(newHtml);
+    setFuture([]);
+  }, []);
+
+  return {
+    html: present,
+    push,
+    undo,
+    redo,
+    reset,
+    canUndo: past.length > 0,
+    canRedo: future.length > 0,
+    historySize: past.length
+  };
 }

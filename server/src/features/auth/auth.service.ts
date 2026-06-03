@@ -1,11 +1,12 @@
 import { supabaseAdmin } from '../../lib/supabase';
 import { createError } from '../../middleware/errorHandler';
 
-export async function signUpWithEmail(email: string, password: string) {
+export async function signUpWithEmail(email: string, password: string, name?: string) {
   const { data, error } = await supabaseAdmin.auth.admin.createUser({
     email,
     password,
     email_confirm: true, // auto-confirm for dev; set to false + enable email confirmations in prod
+    user_metadata: name ? { full_name: name } : undefined,
   });
 
   if (error) {
@@ -15,7 +16,11 @@ export async function signUpWithEmail(email: string, password: string) {
     throw createError('Failed to create account. Please try again.', 500);
   }
 
-  return { userId: data.user.id, email: data.user.email };
+  return {
+    userId: data.user.id,
+    email: data.user.email,
+    name: data.user.user_metadata?.full_name,
+  };
 }
 
 export async function loginWithEmail(email: string, password: string) {
@@ -35,6 +40,7 @@ export async function loginWithEmail(email: string, password: string) {
     user: {
       id: data.user.id,
       email: data.user.email,
+      name: data.user.user_metadata?.full_name,
     },
   };
 }

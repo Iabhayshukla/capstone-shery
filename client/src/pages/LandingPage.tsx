@@ -3,22 +3,47 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import Navbar from "../components/ui/Navbar";
 import { Sparkles, Zap, Download, ArrowRight } from "lucide-react";
+import { useAuth } from "@/features/auth";
+import Particles from "../components/Particles";
+import { useTheme } from "@/lib/ThemeContext";
 
 const fadeUp = {
-  hidden: { opacity: 0, y: 30 },
+  hidden: { opacity: 0, y: 40 },
   show: (i = 0) => ({
     opacity: 1,
     y: 0,
-    transition: { duration: 0.6, delay: i * 0.15 },
+    transition: { type: "spring", stiffness: 80, damping: 14, delay: i * 0.12 },
   }),
 };
 
 const LandingPage = () => {
+  const { isAuthenticated } = useAuth();
+  const { theme } = useTheme();
+
+  const particleColors = theme === "dark"
+    ? ["#ffffff", "#6C63FF", "#FF6584"]
+    : ["#1A1A2E", "#6C63FF", "#FF6584"];
+
   return (
-    <div className="min-h-screen bg-brand-dark text-[var(--text-primary)] overflow-hidden">
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-[-100px] left-[-100px] w-[500px] h-[500px] rounded-full bg-[#6C63FF]/20 blur-[120px]" />
-        <div className="absolute bottom-[-100px] right-[-100px] w-[500px] h-[500px] rounded-full bg-[#FF6584]/20 blur-[120px]" />
+    <div className="min-h-screen bg-brand-dark text-[var(--text-primary)] overflow-hidden relative bg-dot-pattern">
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        <div className="absolute top-[-100px] left-[-100px] w-[500px] h-[500px] rounded-full bg-[#6C63FF]/20 blur-[120px] animate-float-orb-1" />
+        <div className="absolute bottom-[-100px] right-[-100px] w-[500px] h-[500px] rounded-full bg-[#FF6584]/20 blur-[120px] animate-float-orb-2" />
+        
+        {/* Full screen background particles */}
+        <div className="absolute inset-0 w-full h-full opacity-35">
+          <Particles
+            particleColors={particleColors}
+            particleCount={120}
+            particleSpread={10}
+            speed={0.15}
+            particleBaseSize={100}
+            moveParticlesOnHover
+            alphaParticles={false}
+            disableRotation={false}
+            pixelRatio={1}
+          />
+        </div>
       </div>
 
       <Navbar />
@@ -69,23 +94,42 @@ const LandingPage = () => {
           custom={3}
           className="flex items-center gap-4"
         >
-          <Link to="/signup">
-            <Button
-              size="lg"
-              className="bg-[#6C63FF] hover:bg-[#5A52E0] text-white px-8 gap-2 glow"
-            >
-              Start Building Free <ArrowRight size={16} />
-            </Button>
-          </Link>
-          <Link to="/login">
-            <Button
-              size="lg"
-              variant="outline"
-              className="border-[var(--brand-border)] text-[var(--text-secondary)] hover:bg-[var(--brand-glass-hover)] px-8"
-            >
-              Login
-            </Button>
-          </Link>
+          {isAuthenticated ? (
+            <motion.div whileHover={{ scale: 1.04, y: -2 }} whileTap={{ scale: 0.98 }} className="inline-block">
+              <Link to="/dashboard">
+                <Button
+                  size="lg"
+                  className="bg-[#6C63FF] hover:bg-[#5A52E0] text-white px-8 gap-2 glow"
+                >
+                  Go to Dashboard <ArrowRight size={16} />
+                </Button>
+              </Link>
+            </motion.div>
+          ) : (
+            <>
+              <motion.div whileHover={{ scale: 1.04, y: -2 }} whileTap={{ scale: 0.98 }} className="inline-block">
+                <Link to="/signup">
+                  <Button
+                    size="lg"
+                    className="bg-[#6C63FF] hover:bg-[#5A52E0] text-white px-8 gap-2 glow"
+                  >
+                    Start Building Free <ArrowRight size={16} />
+                  </Button>
+                </Link>
+              </motion.div>
+              <motion.div whileHover={{ scale: 1.04, y: -2 }} whileTap={{ scale: 0.98 }} className="inline-block">
+                <Link to="/login">
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="border-[var(--brand-border)] text-[var(--text-secondary)] hover:bg-[var(--brand-glass-hover)] px-8"
+                  >
+                    Login
+                  </Button>
+                </Link>
+              </motion.div>
+            </>
+          )}
         </motion.div>
 
   
@@ -111,7 +155,7 @@ const LandingPage = () => {
             variants={fadeUp}
             initial="hidden"
             whileInView="show"
-            viewport={{ once: true }}
+            viewport={{ once: true, margin: "-80px" }}
             className="text-4xl font-bold text-center mb-16 text-[var(--text-primary)]"
           >
             How It <span className="gradient-text">Works</span>
@@ -143,7 +187,7 @@ const LandingPage = () => {
                 variants={fadeUp}
                 initial="hidden"
                 whileInView="show"
-                viewport={{ once: true }}
+                viewport={{ once: true, margin: "-80px" }}
                 custom={i}
                 whileHover={{ y: -5, transition: { duration: 0.2 } }}
                 className="glass rounded-2xl p-6 flex flex-col gap-4 cursor-default"
@@ -172,7 +216,7 @@ const LandingPage = () => {
           variants={fadeUp}
           initial="hidden"
           whileInView="show"
-          viewport={{ once: true }}
+          viewport={{ once: true, margin: "-80px" }}
           className="max-w-3xl mx-auto glass rounded-3xl p-12 text-center flex flex-col items-center gap-6 glow"
         >
           <h2 className="text-4xl font-bold text-[var(--text-primary)]">
@@ -181,12 +225,12 @@ const LandingPage = () => {
           <p className="text-[var(--text-muted)]">
             Join thousands of creators building websites with AI.
           </p>
-          <Link to="/signup">
+          <Link to={isAuthenticated ? "/dashboard" : "/signup"}>
             <Button
               size="lg"
               className="bg-[#6C63FF] hover:bg-[#5A52E0] text-white px-10 gap-2"
             >
-              Get Started Free <ArrowRight size={16} />
+              {isAuthenticated ? "Go to Dashboard" : "Get Started Free"} <ArrowRight size={16} />
             </Button>
           </Link>
         </motion.div>
