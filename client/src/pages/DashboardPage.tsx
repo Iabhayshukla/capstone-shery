@@ -22,6 +22,7 @@ import {
   FolderOpen,
   Clock,
   TrendingUp,
+  Activity,
 } from "lucide-react";
 
 const formatTimeAgo = (dateStr: string): string => {
@@ -47,7 +48,6 @@ const DashboardPage = () => {
 
   useEffect(() => {
     if (!accessToken) return;
-
     const loadProjects = async () => {
       setIsLoading(true);
       try {
@@ -59,11 +59,9 @@ const DashboardPage = () => {
         setIsLoading(false);
       }
     };
-
     loadProjects();
   }, [accessToken]);
 
-  // Handlers
   const handleCreate = async (name: string, template: string) => {
     if (!accessToken) return;
     setIsLoading(true);
@@ -134,31 +132,42 @@ const DashboardPage = () => {
 
   const totalProjects = projects.length;
   const activeProjects = projects.filter((p) => p.status === "active").length;
-  const lastUpdated = projects.length > 0 
-    ? formatTimeAgo(projects[0].updatedAt) 
-    : "Never";
+  const lastUpdated = projects.length > 0 ? formatTimeAgo(projects[0].updatedAt) : "Never";
 
   const dynamicStats = [
     {
       label: "Total Projects",
       value: String(totalProjects),
-      icon: <FolderOpen size={18} />,
-      color: "text-brand-primary",
-      bg: "bg-brand-primary/10",
+      icon: <FolderOpen size={16} />,
+      // accent color classes — tweak to match your brand tokens
+      iconBg: "bg-brand-primary/10",
+      iconColor: "text-brand-primary",
+      glowColor: "shadow-brand-primary/20",
+      topBorder: "from-brand-primary/40 via-brand-primary/10 to-transparent",
+      delta: totalProjects > 0 ? `${totalProjects} total` : null,
     },
     {
       label: "Active",
       value: String(activeProjects),
-      icon: <TrendingUp size={18} />,
-      color: "text-emerald-400",
-      bg: "bg-emerald-500/10",
+      icon: <TrendingUp size={16} />,
+      iconBg: "bg-emerald-500/10",
+      iconColor: "text-emerald-400",
+      glowColor: "shadow-emerald-500/20",
+      topBorder: "from-emerald-400/40 via-emerald-400/10 to-transparent",
+      delta:
+        totalProjects > 0
+          ? `${Math.round((activeProjects / totalProjects) * 100)}% active`
+          : null,
     },
     {
       label: "Last Updated",
       value: lastUpdated,
-      icon: <Clock size={18} />,
-      color: "text-amber-400",
-      bg: "bg-amber-500/10",
+      icon: <Clock size={16} />,
+      iconBg: "bg-amber-500/10",
+      iconColor: "text-amber-400",
+      glowColor: "shadow-amber-500/20",
+      topBorder: "from-amber-400/40 via-amber-400/10 to-transparent",
+      delta: null,
     },
   ];
 
@@ -166,10 +175,11 @@ const DashboardPage = () => {
     <div className="min-h-screen bg-brand-dark relative bg-dot-pattern">
       <Navbar />
 
-      {/* Background Orbs */}
+      {/* Background Orbs — boosted opacity so they're actually visible */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-[10%] left-[5%] w-[400px] h-[400px] rounded-full bg-brand-primary/[0.04] blur-[100px] animate-float-orb-1" />
-        <div className="absolute bottom-[10%] right-[10%] w-[350px] h-[350px] rounded-full bg-brand-accent/[0.03] blur-[100px] animate-float-orb-2" />
+        <div className="absolute top-[8%] left-[3%] w-[500px] h-[500px] rounded-full bg-brand-primary/[0.07] blur-[120px] animate-float-orb-1" />
+        <div className="absolute bottom-[8%] right-[5%] w-[420px] h-[420px] rounded-full bg-brand-accent/[0.06] blur-[120px] animate-float-orb-2" />
+        <div className="absolute top-[40%] left-[50%] w-[300px] h-[300px] rounded-full bg-brand-primary/[0.03] blur-[80px]" />
       </div>
 
       <motion.main
@@ -178,25 +188,35 @@ const DashboardPage = () => {
         animate="animate"
         className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-12"
       >
-        {/* Header */}
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8">
+        {/* ── Header ── */}
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-10">
           <div>
-            <motion.h1
+            <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-3xl font-bold text-[var(--text-primary)]"
+              className="flex items-center gap-3 mb-1"
             >
-              Dashboard
-            </motion.h1>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-[var(--text-primary)] via-[var(--text-primary)] to-brand-primary/70 bg-clip-text text-transparent">
+                Dashboard
+              </h1>
+              {/* Live sync indicator */}
+              {!isLoading && (
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2.5 py-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  {totalProjects} synced
+                </span>
+              )}
+            </motion.div>
             <motion.p
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="text-[var(--text-muted)] mt-1"
+              className="text-[var(--text-muted)] text-sm"
             >
               Manage your AI-generated websites
             </motion.p>
           </div>
+
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -204,21 +224,21 @@ const DashboardPage = () => {
           >
             <Button
               onClick={() => setIsNewModalOpen(true)}
-              className="bg-brand-primary hover:bg-brand-primary-hover text-white px-6 gap-2 shadow-lg shadow-brand-primary/25 hover:shadow-brand-primary/40 transition-all"
+              className="bg-brand-primary hover:bg-brand-primary-hover text-white px-6 gap-2 shadow-lg shadow-brand-primary/30 hover:shadow-brand-primary/50 hover:-translate-y-0.5 transition-all duration-200"
               id="new-project-btn"
             >
-              <Plus size={18} />
+              <Plus size={16} />
               New Project
             </Button>
           </motion.div>
         </div>
 
-        {/* Stats Row */}
+        {/* ── Stats Row ── */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15 }}
-          className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8"
+          className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10"
         >
           {dynamicStats.map((stat, i) => (
             <motion.div
@@ -226,36 +246,55 @@ const DashboardPage = () => {
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 + i * 0.08 }}
-              className="glass-card p-4 flex items-center gap-4"
+              className={`glass-card p-5 relative overflow-hidden group hover:-translate-y-0.5 transition-transform duration-200 shadow-lg ${stat.glowColor}`}
             >
+              {/* top shimmer line */}
               <div
-                className={`w-10 h-10 rounded-xl ${stat.bg} flex items-center justify-center ${stat.color}`}
-              >
-                {stat.icon}
+                className={`absolute top-0 left-0 right-0 h-px bg-gradient-to-r ${stat.topBorder}`}
+              />
+
+              <div className="flex items-start justify-between mb-3">
+                <div
+                  className={`w-8 h-8 rounded-lg ${stat.iconBg} flex items-center justify-center ${stat.iconColor}`}
+                >
+                  {stat.icon}
+                </div>
+                {stat.delta && (
+                  <span className="text-[10px] font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/15 rounded-full px-2 py-0.5">
+                    {stat.delta}
+                  </span>
+                )}
               </div>
-              <div>
-                <p className="text-2xl font-bold text-[var(--text-primary)]">{stat.value}</p>
-                <p className="text-xs text-[var(--text-muted)]">{stat.label}</p>
-              </div>
+
+              <p className="text-2xl font-bold tracking-tight text-[var(--text-primary)] leading-none mb-1">
+                {stat.value}
+              </p>
+              <p className="text-xs text-[var(--text-faint)] uppercase tracking-widest font-medium">
+                {stat.label}
+              </p>
             </motion.div>
           ))}
         </motion.div>
 
-        {/* Section Title */}
+        {/* ── Section Title ── */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3 }}
-          className="flex items-center gap-2 mb-6"
+          className="flex items-center gap-2.5 mb-6"
         >
-          <Sparkles size={16} className="text-brand-primary" />
-          <h2 className="text-lg font-semibold text-[var(--text-secondary)]">Your Projects</h2>
-          <span className="text-xs text-[var(--text-faint)] ml-1">
-            ({projects.length})
+          <div className="w-5 h-5 rounded-md bg-brand-primary/15 flex items-center justify-center">
+            <Sparkles size={12} className="text-brand-primary" />
+          </div>
+          <h2 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
+            Your Projects
+          </h2>
+          <span className="text-xs font-mono text-[var(--text-faint)] bg-[var(--brand-glass)] border border-[var(--brand-border)] rounded-full px-2 py-0.5">
+            {projects.length}
           </span>
         </motion.div>
 
-        {/* Project Grid */}
+        {/* ── Project Grid ── */}
         <ProjectGrid
           projects={projects}
           isLoading={isLoading}
