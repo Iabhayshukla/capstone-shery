@@ -14,7 +14,7 @@ export default function MonacoEditor({ value, onChange }: MonacoEditorProps) {
         defaultLanguage="html"
         theme="vs-dark"
         value={value}
-        onChange={(val) => onChange(val || '')}
+        onChange={(val?: string) => onChange(val || '')}
         options={{
           fontSize: 12,
           minimap: { enabled: false },

@@ -9,6 +9,13 @@ import { useToast } from "@/components/ui/Toast";
 import type { Project } from "@/features/dashboard/components/ProjectCard";
 import { Button } from "@/components/ui/button";
 import { pageTransition } from "@/lib/animations";
+import { useAuth } from "@/features/auth";
+import {
+  fetchProjects,
+  createProject as apiCreateProject,
+  updateProject as apiUpdateProject,
+  deleteProject as apiDeleteProject,
+} from "@/features/dashboard/api/projects.api";
 import {
   Plus,
   Sparkles,
@@ -17,67 +24,20 @@ import {
   TrendingUp,
 } from "lucide-react";
 
-// Mock data
-const MOCK_PROJECTS: Project[] = [
-  {
-    id: "1",
-    name: "Portfolio Website",
-    description: "My personal developer portfolio",
-    status: "active",
-    updatedAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(),
-  },
-  {
-    id: "2",
-    name: "Startup Landing Page",
-    description: "SaaS product landing page",
-    status: "active",
-    updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(),
-  },
-  {
-    id: "3",
-    name: "Restaurant Menu",
-    description: "Online menu for local restaurant",
-    status: "draft",
-    updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7).toISOString(),
-  },
-  {
-    id: "4",
-    name: "Event Invitation",
-    description: "Wedding invitation website",
-    status: "archived",
-    updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 10).toISOString(),
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 30).toISOString(),
-  },
-];
-
-const stats = [
-  {
-    label: "Total Projects",
-    value: "4",
-    icon: <FolderOpen size={18} />,
-    color: "text-brand-primary",
-    bg: "bg-brand-primary/10",
-  },
-  {
-    label: "Active",
-    value: "2",
-    icon: <TrendingUp size={18} />,
-    color: "text-emerald-400",
-    bg: "bg-emerald-500/10",
-  },
-  {
-    label: "Last Updated",
-    value: "30m ago",
-    icon: <Clock size={18} />,
-    color: "text-amber-400",
-    bg: "bg-amber-500/10",
-  },
-];
+const formatTimeAgo = (dateStr: string): string => {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString();
+};
 
 const DashboardPage = () => {
+  const { accessToken } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
@@ -85,68 +45,131 @@ const DashboardPage = () => {
   const [renameTarget, setRenameTarget] = useState<Project | null>(null);
   const { addToast } = useToast();
 
-  // Simulate loading
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setProjects(MOCK_PROJECTS);
-      setIsLoading(false);
-    }, 1200);
-    return () => clearTimeout(timer);
-  }, []);
+    if (!accessToken) return;
+
+    const loadProjects = async () => {
+      setIsLoading(true);
+      try {
+        const projs = await fetchProjects(accessToken);
+        setProjects(projs);
+      } catch (err: any) {
+        addToast(err.message || "Failed to load projects.", "error");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadProjects();
+  }, [accessToken]);
 
   // Handlers
-  const handleCreate = (name: string, template: string) => {
-    const newProject: Project = {
-      id: `${Date.now()}`,
-      name,
-      description: `${template} template`,
-      status: "draft",
-      updatedAt: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-    };
-    setProjects((prev) => [newProject, ...prev]);
-    addToast(`"${name}" created successfully!`, "success");
+  const handleCreate = async (name: string, template: string) => {
+    if (!accessToken) return;
+    setIsLoading(true);
+    try {
+      const proj = await apiCreateProject(accessToken, name);
+      let finalProj = proj;
+      if (template && template !== "blank") {
+        const defaultCode = `<!-- ${template} template -->\n<div class="p-8 text-center">\n  <h1 class="text-3xl font-bold">${name}</h1>\n  <p class="text-gray-600">Generated from the ${template} template.</p>\n</div>`;
+        finalProj = await apiUpdateProject(accessToken, proj.id, { currentCode: defaultCode });
+      }
+      setProjects((prev) => [finalProj, ...prev]);
+      addToast(`"${name}" created successfully!`, "success");
+      setIsNewModalOpen(false);
+    } catch (err: any) {
+      addToast(err.message || "Failed to create project.", "error");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleDelete = () => {
-    if (!deleteTarget) return;
-    setProjects((prev) => prev.filter((p) => p.id !== deleteTarget.id));
-    addToast(`"${deleteTarget.name}" deleted`, "info");
-    setDeleteTarget(null);
+  const handleDelete = async () => {
+    if (!deleteTarget || !accessToken) return;
+    try {
+      await apiDeleteProject(accessToken, deleteTarget.id);
+      setProjects((prev) => prev.filter((p) => p.id !== deleteTarget.id));
+      addToast(`"${deleteTarget.name}" deleted`, "info");
+    } catch (err: any) {
+      addToast(err.message || "Failed to delete project.", "error");
+    } finally {
+      setDeleteTarget(null);
+    }
   };
 
-  const handleRename = (newName: string) => {
-    if (!renameTarget) return;
-    setProjects((prev) =>
-      prev.map((p) =>
-        p.id === renameTarget.id ? { ...p, name: newName } : p
-      )
-    );
-    addToast(`Renamed to "${newName}"`, "success");
-    setRenameTarget(null);
+  const handleRename = async (newName: string) => {
+    if (!renameTarget || !accessToken) return;
+    try {
+      const updated = await apiUpdateProject(accessToken, renameTarget.id, { name: newName });
+      setProjects((prev) =>
+        prev.map((p) => (p.id === renameTarget.id ? updated : p))
+      );
+      addToast(`Renamed to "${newName}"`, "success");
+    } catch (err: any) {
+      addToast(err.message || "Failed to rename project.", "error");
+    } finally {
+      setRenameTarget(null);
+    }
   };
 
-  const handleDuplicate = (project: Project) => {
-    const duplicate: Project = {
-      ...project,
-      id: `${Date.now()}`,
-      name: `${project.name} (Copy)`,
-      status: "draft",
-      updatedAt: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-    };
-    setProjects((prev) => [duplicate, ...prev]);
-    addToast(`"${project.name}" duplicated`, "success");
+  const handleDuplicate = async (project: Project) => {
+    if (!accessToken) return;
+    setIsLoading(true);
+    try {
+      const duplicate = await apiCreateProject(accessToken, `${project.name} (Copy)`);
+      let finalDuplicate = duplicate;
+      if (project.currentCode) {
+        finalDuplicate = await apiUpdateProject(accessToken, duplicate.id, {
+          currentCode: project.currentCode,
+        });
+      }
+      setProjects((prev) => [finalDuplicate, ...prev]);
+      addToast(`"${project.name}" duplicated`, "success");
+    } catch (err: any) {
+      addToast(err.message || "Failed to duplicate project.", "error");
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  const totalProjects = projects.length;
+  const activeProjects = projects.filter((p) => p.status === "active").length;
+  const lastUpdated = projects.length > 0 
+    ? formatTimeAgo(projects[0].updatedAt) 
+    : "Never";
+
+  const dynamicStats = [
+    {
+      label: "Total Projects",
+      value: String(totalProjects),
+      icon: <FolderOpen size={18} />,
+      color: "text-brand-primary",
+      bg: "bg-brand-primary/10",
+    },
+    {
+      label: "Active",
+      value: String(activeProjects),
+      icon: <TrendingUp size={18} />,
+      color: "text-emerald-400",
+      bg: "bg-emerald-500/10",
+    },
+    {
+      label: "Last Updated",
+      value: lastUpdated,
+      icon: <Clock size={18} />,
+      color: "text-amber-400",
+      bg: "bg-amber-500/10",
+    },
+  ];
 
   return (
-    <div className="min-h-screen bg-brand-dark">
+    <div className="min-h-screen bg-brand-dark relative bg-dot-pattern">
       <Navbar />
 
       {/* Background Orbs */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-[10%] left-[5%] w-[400px] h-[400px] rounded-full bg-brand-primary/[0.04] blur-[100px]" />
-        <div className="absolute bottom-[10%] right-[10%] w-[350px] h-[350px] rounded-full bg-brand-accent/[0.03] blur-[100px]" />
+        <div className="absolute top-[10%] left-[5%] w-[400px] h-[400px] rounded-full bg-brand-primary/[0.04] blur-[100px] animate-float-orb-1" />
+        <div className="absolute bottom-[10%] right-[10%] w-[350px] h-[350px] rounded-full bg-brand-accent/[0.03] blur-[100px] animate-float-orb-2" />
       </div>
 
       <motion.main
@@ -197,7 +220,7 @@ const DashboardPage = () => {
           transition={{ delay: 0.15 }}
           className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8"
         >
-          {stats.map((stat, i) => (
+          {dynamicStats.map((stat, i) => (
             <motion.div
               key={stat.label}
               initial={{ opacity: 0, y: 15 }}

@@ -182,7 +182,7 @@ const INDEX_HTML = `<!DOCTYPE html>
         if (target) target.classList.add('section-selected');
       }
     });
-  <\/script>
+  </script>
 </body>
 </html>`;
 
@@ -192,7 +192,7 @@ let bootPromise: Promise<WebContainer> | null = null;
 async function getWebContainer(): Promise<WebContainer> {
   if (globalInstance) return globalInstance;
   if (bootPromise) return bootPromise;
-  bootPromise = WebContainer.boot().then((wc) => {
+  bootPromise = WebContainer.boot().then((wc: WebContainer) => {
     globalInstance = wc;
     return wc;
   });
@@ -237,7 +237,7 @@ export function useWebContainer() {
           write(data) { console.log('[WC]', data); },
         }));
 
-        wc.on('server-ready', (port, url) => {
+        wc.on('server-ready', (_port: number, url: string) => {
           if (cancelled) return;
           setPreviewUrl(url);
           setStatus({ status: 'ready' });

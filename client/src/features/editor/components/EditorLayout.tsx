@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { pageTransition } from '@/lib/animations';
 import { PreviewPane, ViewportToggle } from '@/features/preview';
@@ -10,15 +11,25 @@ import ConsoleErrorPanel from '@/features/preview/components/ConsoleErrorPanel';
 import PromptPanel from './PromptPanel';
 import MonacoEditor from './MonacoEditor';
 import EditorToolbar from './EditorToolbar';
+import { useAuth } from '@/features/auth';
+import {
+  fetchProjectById,
+  updateProject as apiUpdateProject,
+} from '@/features/dashboard/api/projects.api';
+import type { Project } from '@/features/dashboard/components/ProjectCard';
 
-// Load previously generated HTML from localStorage if available
+// Load previously generated HTML from localStorage if available as fallback
 const savedHtml = localStorage.getItem('generatedHtml') || '';
 
 export default function EditorLayout() {
-  const { html, push, undo, redo, canUndo, canRedo } = useEditHistory(savedHtml);
+  const { projectId } = useParams<{ projectId: string }>();
+  const { accessToken } = useAuth();
+  
+  const { html, push, undo, redo, reset, canUndo, canRedo } = useEditHistory(savedHtml);
   const { isGenerating, generate } = useGenerate();
   const { status } = useWebContainer();
 
+  const [project, setProject] = useState<Project | null>(null);
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
   const [consoleErrors, setConsoleErrors] = useState<string[]>([]);
   const [viewport, setViewport] = useState<ViewportSize>('desktop');
@@ -28,6 +39,45 @@ export default function EditorLayout() {
   const [leftWidth, setLeftWidth] = useState(258); // sidebar default ~258px
   const [isResizing, setIsResizing] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Fetch project on mount
+  useEffect(() => {
+    if (!accessToken || !projectId) return;
+
+    const loadProject = async () => {
+      try {
+        const proj = await fetchProjectById(accessToken, projectId);
+        setProject(proj);
+        if (proj.currentCode !== undefined && proj.currentCode !== null) {
+          reset(proj.currentCode);
+        }
+      } catch (err) {
+        console.error('Failed to load project details:', err);
+      }
+    };
+
+    loadProject();
+  }, [accessToken, projectId, reset]);
+
+  // Debounced auto-save to database when HTML changes
+  useEffect(() => {
+    if (!accessToken || !projectId || html === undefined) return;
+    
+    // Avoid saving if the HTML matches the currently loaded project code
+    if (project && project.currentCode === html) return;
+
+    const delayDebounceFn = setTimeout(async () => {
+      try {
+        const updated = await apiUpdateProject(accessToken, projectId, { currentCode: html });
+        setProject(updated);
+        localStorage.setItem('generatedHtml', html);
+      } catch (err) {
+        console.error('Auto-save to database failed:', err);
+      }
+    }, 1000);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [html, accessToken, projectId, project]);
 
   const handleMouseDown = useCallback(() => {
     setIsResizing(true);
@@ -78,7 +128,7 @@ export default function EditorLayout() {
           ))}
         </div>
         <span style={{ fontSize: '11px', color: '#ccc', margin: '0 auto', opacity: 0.7 }}>
-          PageCraft — editor/my-project
+          PageCraft — {project ? project.name : 'Loading project...'}
         </span>
         <div style={{
           display: 'flex', alignItems: 'center', gap: '5px',
