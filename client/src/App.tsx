@@ -110,6 +110,11 @@ function App() {
   useEffect(() => {
   fetchProjects();
 }, []);
+
+  const handleOpenEditor = () => {
+    localStorage.setItem('generatedHtml', generatedHtml);
+    window.location.href = '/editor/my-project';
+  };
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-indigo-500 selection:text-white relative overflow-hidden">
       {/* Background Gradients */}
@@ -179,7 +184,10 @@ function App() {
            
           
             <button
-              onClick={generateWebsite}
+              onClick={() => {
+                generateWebsite();
+                handleOpenEditor();
+              }}
               disabled={loading}
               className={`mt-4 px-6 py-3 rounded-xl text-white transition-all ${
                 loading
