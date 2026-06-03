@@ -2,7 +2,15 @@
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './styles/index.css';
+import { ThemeProvider } from "./lib/ThemeContext";
+import { ToastProvider } from "./components/ui/Toast";
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
-  <App/>
+  <React.StrictMode>
+    <ThemeProvider>
+      <ToastProvider>
+        <App />
+      </ToastProvider>
+    </ThemeProvider>
+  </React.StrictMode>,
 );
