@@ -1,9 +1,11 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useState } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { EditorSkeleton } from "@/components/ui/Skeleton";
 import { AuthProvider } from "@/features/auth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { GuestRoute } from "@/components/auth/GuestRoute";
+import LoadingScreen from "@/components/ui/LoadingScreen";
+
 
 const LandingPage = lazy(() => import("./pages/LandingPage"));
 const DashboardPage = lazy(() => import("./pages/DashboardPage"));
@@ -34,12 +36,16 @@ const EditorLoader = () => (
 );
 
 function App() {
+  const [showLoading, setShowLoading] = useState(true);
+
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <Suspense fallback={<PageLoader />}>
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
+    <>
+      {showLoading && <LoadingScreen onComplete={() => setShowLoading(false)} />}
+      <BrowserRouter>
+        <AuthProvider>
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              <Route path="/" element={<LandingPage isAppLoading={showLoading} />} />
             
             <Route
               path="/dashboard"
@@ -95,7 +101,9 @@ function App() {
         </Suspense>
       </AuthProvider>
     </BrowserRouter>
+    </>
   );
+  
 } 
 
 export default App;

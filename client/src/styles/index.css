@@ -649,3 +649,9 @@ body {
 .animate-float-orb-2 {
   animation: float-orb-2 22s ease-in-out infinite;
 }
+@media (pointer: coarse) {
+  /* Touch devices pe default cursor wapas */
+  body {
+    cursor: auto !important;
+  }
+}
