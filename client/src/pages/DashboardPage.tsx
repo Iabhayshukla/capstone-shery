@@ -22,7 +22,6 @@ import {
   FolderOpen,
   Clock,
   TrendingUp,
-  Activity,
 } from "lucide-react";
 
 const formatTimeAgo = (dateStr: string): string => {
