@@ -1,0 +1,9 @@
+[33mf4831cd[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/feature/webcontainer[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mfeature/webcontainer[m[33m)[m HEAD@{0}: checkout: moving from main to main
+[33mf4831cd[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/feature/webcontainer[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mfeature/webcontainer[m[33m)[m HEAD@{1}: pull --tags origin main: Fast-forward
+[33med0bb76[m[33m ([m[1;31morigin/feature/my-change[m[33m, [m[1;32mfeature/my-change[m[33m)[m HEAD@{2}: checkout: moving from feature/webcontainer to main
+[33mf4831cd[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/feature/webcontainer[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mfeature/webcontainer[m[33m)[m HEAD@{3}: reset: moving to origin/main
+[33m5fd9ae2[m HEAD@{4}: reset: moving to HEAD
+[33m5fd9ae2[m HEAD@{5}: commit: web container perview and editor
+[33med0bb76[m[33m ([m[1;31morigin/feature/my-change[m[33m, [m[1;32mfeature/my-change[m[33m)[m HEAD@{6}: checkout: moving from feature/my-change to feature/webcontainer
+[33med0bb76[m[33m ([m[1;31morigin/feature/my-change[m[33m, [m[1;32mfeature/my-change[m[33m)[m HEAD@{7}: checkout: moving from main to feature/my-change
+[33med0bb76[m[33m ([m[1;31morigin/feature/my-change[m[33m, [m[1;32mfeature/my-change[m[33m)[m HEAD@{8}: clone: from https://github.com/Iabhayshukla/capstone-shery.git

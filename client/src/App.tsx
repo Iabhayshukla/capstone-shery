@@ -1,667 +1,109 @@
-import { useState, useEffect } from 'react';
-import { Layers, Server, Sparkles, Activity, ArrowRight, Github } from 'lucide-react';
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { lazy, Suspense, useState } from "react";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { EditorSkeleton } from "@/components/ui/Skeleton";
+import { AuthProvider } from "@/features/auth";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { GuestRoute } from "@/components/auth/GuestRoute";
+import LoadingScreen from "@/components/ui/LoadingScreen";
+
+
+const LandingPage = lazy(() => import("./pages/LandingPage"));
+const DashboardPage = lazy(() => import("./pages/DashboardPage"));
+const EditorPage = lazy(() => import("./pages/EditorPage"));
+const AccountPage = lazy(
+  () => import("./features/account/components/AccountPage")
+);
+const LoginPage = lazy(() => import("./pages/LoginPage"));
+const SignupPage = lazy(() => import("./pages/SignupPage"));
+const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
+const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
+
+const PageLoader = () => (
+  <div className="min-h-screen bg-brand-dark flex items-center justify-center">
+    <div className="flex flex-col items-center gap-4">
+      <div className="w-10 h-10 rounded-xl bg-brand-primary/20 flex items-center justify-center animate-glow-pulse">
+        <div className="w-4 h-4 rounded-md bg-brand-primary animate-spin-slow" />
+      </div>
+      <p className="text-sm text-[var(--text-faint)] animate-pulse">Loading...</p>
+    </div>
+  </div>
+); 
+
+const EditorLoader = () => (
+  <div className="h-screen bg-brand-dark">
+    <EditorSkeleton />
+  </div>
+);
 
 function App() {
-  const [prompt, setPrompt] = useState("");
-  const [generatedHtml, setGeneratedHtml] = useState("");
-  const [healthStatus, setHealthStatus] = useState<'checking' | 'connected' | 'error'>('checking');
-  const [dbStatus, setDbStatus] = useState<string>('Initializing...');
-  const [streamData, setStreamData] = useState("");
-  const [aiStatus, setAiStatus] = useState("Idle");
-  const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<"preview" | "code">("preview");
-  const [projects, setProjects] = useState<any[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  
-  const [generationTime, setGenerationTime] = useState(0);
-  // const [startTime, setStartTime] = useState(0);
- 
-  const generateWebsite = async () => {
-    if (!prompt.trim()) {
-    alert("Please enter a prompt");
-    return;
-  }
+  const [showLoading, setShowLoading] = useState(true);
 
-    setLoading(true);
-
-    try {
-
-      const response = await fetch(
-        "http://127.0.0.1:8000/generate",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            prompt
-          }),
-        }
-      );
-
-      const data = await response.json();
-
-      setGeneratedHtml(data.html);
-      fetchProjects();
-    } 
-    catch (error) {
-      alert("Failed to generate website");
-      console.error(error);
-    }
-    finally {
-
-      setLoading(false);
-
-    }
-  };
-  const fetchProjects = async () => {
-    try {
-      const response = await fetch(
-        "http://127.0.0.1:8000/projects"
-      );
-
-      const data = await response.json();
-
-      setProjects(data);
-    }
-    catch (error) {
-      console.error(error);
-    }
-};
-  const deleteProject = async (projectId: number) => {
-
-  try {
-
-    await fetch(
-      `http://127.0.0.1:8000/projects/${projectId}`,
-      {
-        method: "DELETE",
-      }
-    );
-
-    fetchProjects();
-
-  } catch (error) {
-
-    console.error(error);
-
-  }
-};
-  
-
-  const startStreaming = () => {
-
-    if (!prompt.trim()) {
-      alert("Please enter a prompt");
-      return;
-    }
-    const startTime = Date.now();
-    setLoading(true);
-    setGeneratedHtml("");
-    setStreamData("");
-    setAiStatus("🧠 Understanding Prompt...");
-
-    const eventSource = new EventSource(
-  `http://127.0.0.1:8000/stream?prompt=${encodeURIComponent(prompt)}`
-);
-
-let fullHtml = "";
-
-eventSource.onmessage = (event) => {
-
-  if (event.data === "[DONE]") {
-
-    const cleanHtml = fullHtml
-      .replace(/```html/g, "")
-      .replace(/```/g, "")
-      .replace(/^html\s*/i, "")
-      .trim();
-
-    console.log("HTML LENGTH FRONTEND =", cleanHtml.length);
-
-    setGeneratedHtml(cleanHtml);
-
-    const endTime = Date.now();
-
-    setGenerationTime(
-      Number(
-        ((endTime - startTime) / 1000).toFixed(1)
-      )
-    );
-
-    setAiStatus("✅ Website Ready");
-    setActiveTab("preview");
-    setLoading(false);
-
-    eventSource.close();
-
-    return;
-  }
-
-  fullHtml += JSON.parse(event.data);
-
-  setStreamData(fullHtml);
-
-  if (fullHtml.length < 500) {
-    setAiStatus("🧠 Understanding Requirements...");
-  }
-  else if (fullHtml.length < 2000) {
-    setAiStatus("⚡ Generating Layout...");
-  }
-  else if (fullHtml.length < 5000) {
-    setAiStatus("🎨 Creating UI Components...");
-  }
-  else {
-    setAiStatus("🔧 Optimizing Structure...");
-  }
-
-};
-
-eventSource.onerror = () => {
-
-  const cleanHtml = fullHtml
-  .replace(/```html/g, "")
-  .replace(/```/g, "")
-  .replace(/^html\s*/i, "")
-  .trim();
-  console.log(cleanHtml);
-//   console.log("FULL HTML START");
-// console.log(fullHtml);
-// console.log("FULL HTML END");
-// console.log(cleanHtml.substring(0,500));
-console.log("HTML LENGTH FRONTEND =", cleanHtml.length);
-console.log(cleanHtml.substring(0,500));
-  setGeneratedHtml(cleanHtml);
-  setActiveTab("preview");
-  
-  const endTime = Date.now();
-
-setGenerationTime(
-  Number(
-    ((endTime - startTime) / 1000).toFixed(1)
-  )
-);
-
-  setAiStatus("✅ Website Ready");
-
-  setActiveTab("preview");
-  setLoading(false);
-  eventSource.close();
-};
-  };
-  useEffect(() => {
-    // Attempt to contact server health endpoint
-    fetch('http://127.0.0.1:8000/')
-      .then((res) => {
-        if (res.ok) return res.json();
-        throw new Error('Server returned error status');
-      })
-      .then((data) => {
-        if (data.message) {
-          setHealthStatus('connected');
-          setDbStatus(data.database || 'Connected');
-        } else {
-          setHealthStatus('error');
-          setDbStatus('Failed health check values');
-        }
-      })
-      .catch(() => {
-        setHealthStatus('error');
-        setDbStatus('Server offline');
-      });
-  }, []);
-  useEffect(() => {
-  fetchProjects();
-}, []);
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-indigo-500 selection:text-white relative overflow-hidden">
-      {/* Background Gradients */}
-      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-900/20 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-purple-900/20 blur-[120px] pointer-events-none" />
-
-      {/* Navbar */}
-      <header className="sticky top-0 z-50 backdrop-blur-md bg-slate-950/70 border-b border-slate-800/80 transition-all duration-300">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 shadow-lg shadow-indigo-500/25">
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
-            <span className="font-extrabold text-xl tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent">
-              Capstone <span className="text-indigo-400 font-medium">Shery</span>
-            </span>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <a
-              href="https://github.com"
-              target="_blank"
-              rel="noreferrer"
-              className="p-2 rounded-full hover:bg-slate-800/60 text-slate-400 hover:text-white transition-colors duration-200"
-            >
-              <Github className="w-5 h-5" />
-            </a>
-            <span className="text-xs font-semibold px-3 py-1.5 rounded-full border border-slate-800 bg-slate-900/60 text-slate-400 flex items-center gap-2">
-              <span className={`w-2.5 h-2.5 rounded-full ${
-                healthStatus === 'connected' ? 'bg-emerald-500 animate-pulse' :
-                healthStatus === 'checking' ? 'bg-amber-500 animate-pulse' : 'bg-rose-500'
-              }`} />
-              API: {healthStatus.toUpperCase()}
-            </span>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="flex-1 max-w-7xl mx-auto px-6 py-12 w-full flex flex-col justify-center relative z-10">
-        {/* Hero Section */}
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold mb-6 animate-fade-in">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>React + Vite + FastAPI + Nova Pro</span>
-          </div>
-          <h1 className="text-5xl md:text-6xl font-extrabold tracking-tight mb-6 bg-gradient-to-b from-white to-slate-300 bg-clip-text text-transparent">
-            AI Website Builder <br />
-            Generate Production-Ready Websites with Amazon Nova Pro
-          </h1>
-          <div className="text-lg text-slate-400 leading-relaxed mb-8">
-
-  <div className="max-w-2xl mx-auto mt-6">
-
-    <textarea
-      value={prompt}
-      onChange={(e) => setPrompt(e.target.value)}
-      placeholder="Describe the website you want to generate..."
-      className="w-full p-4 rounded-xl bg-slate-900 border border-slate-700 text-white"
-    />
-
-    <div className="mt-3 text-sm text-slate-500 text-left">
-      <p>Try:</p>
-      <p>• SaaS Landing Page</p>
-      <p>• Restaurant Website</p>
-      <p>• AI Startup Homepage</p>
-      <p>• Personal Portfolio Website</p>
-    </div>
-
-    <button
-      onClick={startStreaming}
-      disabled={loading}
-      className={`mt-4 px-6 py-3 rounded-xl text-white transition-all ${
-        loading
-          ? "bg-slate-600 cursor-not-allowed"
-          : "bg-indigo-600 hover:bg-indigo-500"
-      }`}
-    >
-      {loading ? "Generating..." : "Generate Website"}
-    </button>
-    {generatedHtml && (
-  <button
-    onClick={startStreaming}
-    className="ml-3 px-6 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white"
-  >
-    🔄 Regenerate Website
-  </button>
-)}
-
-  </div>
-
-  <p className="mt-6">
-    The platform is powered by React, Vite, FastAPI,
-    AWS Bedrock and Amazon Nova Pro.
-  </p>
-
-</div>
-          <div className="flex flex-col md:flex-row items-center justify-center gap-8">
-
-            <button className="px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 font-semibold text-white shadow-lg shadow-indigo-600/30 transition-all duration-300 cursor-pointer flex items-center gap-2 group">
-              Explore Project
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </button>
-
-        
-          </div>
-          {generatedHtml.length > 500 && (
-  <div className="max-w-7xl mx-auto mb-16">
-
-    <h2 className="text-3xl font-bold mb-6 text-center">
-      Website Preview
-    </h2>
-    <div className="flex justify-center gap-3 mb-6">
-
-      <button
-        onClick={() => setActiveTab("preview")}
-        className={`px-4 py-2 rounded-lg ${
-          activeTab === "preview"
-            ? "bg-indigo-600 text-white"
-            : "bg-slate-800 text-slate-300"
-        }`}
-      >
-        Preview
-      </button>
-
-  <button
-    onClick={() => setActiveTab("code")}
-    className={`px-4 py-2 rounded-lg ${
-      activeTab === "code"
-        ? "bg-indigo-600 text-white"
-        : "bg-slate-800 text-slate-300"
-    }`}
-  >
-    Code
-  </button>
-
-</div>
-    <div className="flex justify-center mb-4">
-  <button
-    onClick={() => {
-      const blob = new Blob([generatedHtml], {
-        type: "text/html",
-      });
-
-      const url = URL.createObjectURL(blob);
-
-      const a = document.createElement("a");
-
-      a.href = url;
-      a.download = "website.html";
-      a.click();
-
-      URL.revokeObjectURL(url);
-    }}
-    className="px-5 py-2 bg-emerald-600 rounded-xl text-white hover:bg-emerald-500"
-  >
-    Download HTML
-  </button>
-  <button
-  onClick={() => {
-    navigator.clipboard.writeText(generatedHtml);
-    alert("Code Copied!");
-  }}
-  className="ml-3 px-5 py-2 bg-cyan-600 rounded-xl text-white hover:bg-cyan-500"
->
-  Copy Code
-</button>
-</div>
-  {activeTab === "preview" ? (
-
-  <iframe
-    title="Website Preview"
-    srcDoc={generatedHtml}
-    className="w-full h-[1200px] rounded-2xl border border-slate-700 bg-white shadow-2xl"
-    sandbox="allow-scripts"
-  />
-
-) : (
-
-  <>
-    <div className="flex justify-between items-center mb-4">
-      <h3 className="text-lg font-semibold text-white">
-        Generated Source Code
-      </h3>
-
-      <span className="text-sm text-slate-400">
-        HTML + CSS
-      </span>
-    </div>
-<SyntaxHighlighter
-  language="html"
-  style={vscDarkPlus}
-  wrapLongLines={true}
-  showLineNumbers={true}
-  customStyle={{
-    height: "1200px",
-    borderRadius: "16px",
-    fontSize: "14px",
-    padding: "20px",
-    background: "#020617",
-  }}
->
-  {generatedHtml}
-</SyntaxHighlighter>
-  </>
-
-)}
-
-  </div>
-)}
-
-          <div className="max-w-5xl mx-auto mb-16">
-
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 backdrop-blur-sm">
-
-              <h2 className="text-xl font-bold mb-2 text-cyan-400">
-  AI Generation Status
-</h2>
-
-<div className="mb-4 text-emerald-400 font-semibold">
-  {aiStatus}
-</div>
-<div className="text-slate-400 text-sm mb-4">
-  Generation Time: {generationTime}s
-</div>
-<div className="min-h-[120px]">
-
-  <div className="w-full bg-slate-800 rounded-full h-3">
-
-    <div
-      className={`h-3 rounded-full transition-all duration-500 ${
-        aiStatus.includes("Understanding")
-          ? "bg-cyan-500"
-          : aiStatus.includes("Generating")
-          ? "bg-indigo-500"
-          : "bg-emerald-500"
-      }`}
-      style={{
-        width:
-  aiStatus === "Idle"
-    ? "0%"
-    : aiStatus.includes("Understanding")
-    ? "10%"
-    : aiStatus.includes("Generating")
-    ? "40%"
-    : aiStatus.includes("Creating")
-    ? "70%"
-    : aiStatus.includes("Optimizing")
-    ? "90%"
-    : "100%"
-      }}
-    />
-
-  </div>
-
-</div>
-
-</div>
-</div>
-
-<div className="max-w-5xl mx-auto mb-16">
-
-  <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6">
-
-    <h2 className="text-2xl font-bold mb-6 text-indigo-400">
-      Project History
-    </h2>
-    <input
-  type="text"
-  placeholder="Search projects..."
-  value={searchTerm}
-  onChange={(e) => setSearchTerm(e.target.value)}
-  className="w-full mb-4 p-3 rounded-xl bg-slate-900 border border-slate-700 text-white"
-/>
-
-    <div className="space-y-3">
-
-  {projects.length === 0 ? (
-
-    <div className="text-center text-slate-500 py-8">
-      No projects generated yet.
-    </div>
-
-  ) : (
-
-    projects
-.filter((project) =>
-  project.prompt
-    .toLowerCase()
-    .includes(searchTerm.toLowerCase())
-)
-.map((project, index) => (
-
-      <div
-        key={`${project.id}-${index}`}
-        className="p-4 rounded-xl border border-slate-700 hover:border-indigo-500 transition"
-      >
-
-        <div className="flex items-center justify-between">
-
-          <div>
-
-            <div className="font-semibold text-white capitalize">
-              {project.prompt}
-            </div>
-
-            <div className="text-sm text-slate-400">
-              {new Date(project.created_at).toLocaleString()}
-            </div>
-
-          </div>
-
-          <div className="flex gap-2">
-
-            <button
-              onClick={() => {
-  setGeneratedHtml(project.html);
-  setStreamData(project.html);
-  setActiveTab("preview");
-}}
-              className="px-3 py-1 bg-indigo-600 rounded-lg text-white hover:bg-indigo-500"
-            >
-              Open
-            </button>
-            <button
-              onClick={() => {
-
-                const blob = new Blob(
-                  [project.html],
-                  {
-                    type: "text/html"
-                  }
-                );
-
-                const url = URL.createObjectURL(blob);
-
-                const a = document.createElement("a");
-
-                a.href = url;
-
-                a.download = `project-${project.id}.html`;
-
-                a.click();
-
-                URL.revokeObjectURL(url);
-
-              }}
-              className="px-3 py-1 bg-emerald-600 rounded-lg text-white hover:bg-emerald-500"
-            >
-              Download
-            </button>
-            <button
-              onClick={() => deleteProject(project.id)}
-              className="px-3 py-1 bg-red-600 rounded-lg text-white hover:bg-red-500"
-            >
-              Delete
-            </button>
-
-          </div>
-
-        </div>
-
-      </div>
-
-    ))
-
-  )}
-
-</div>
-  </div>
-
-</div>
-</div>
-        {/* Features / Status Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
-          {/* Card 1: React Client */}
-          <div className="p-6 rounded-2xl border border-slate-800/80 bg-slate-900/40 backdrop-blur-sm relative overflow-hidden group hover:border-slate-700/80 transition-all duration-300">
-            <div className="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 w-fit mb-5">
-              <Layers className="w-6 h-6" />
-            </div>
-            <h3 className="text-lg font-bold text-white mb-2">React Client</h3>
-            <p className="text-sm text-slate-400 leading-relaxed mb-4">
-              Vite dev server running on port 3000. Optimized for sub-second hot module replacement.
-            </p>
-            <div className="text-xs font-mono text-indigo-400/90 bg-indigo-950/40 px-3 py-2 rounded-lg border border-indigo-900/30">
-              cd client && npm run dev
-            </div>
-          </div>
-
-          {/* Card 2: Express Server */}
-          <div className="p-6 rounded-2xl border border-slate-800/80 bg-slate-900/40 backdrop-blur-sm relative overflow-hidden group hover:border-slate-700/80 transition-all duration-300">
-            <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 w-fit mb-5">
-              <Server className="w-6 h-6" />
-            </div>
-            <h3 className="text-lg font-bold text-white mb-2">FastAPI Backend</h3>
-            <p className="text-sm text-slate-400 leading-relaxed mb-4">
-              FastAPI backend integrated with AWS Bedrock and Amazon Nova Pro.
-            </p>
-            <div className="text-xs font-mono text-purple-400/90 bg-purple-950/40 px-3 py-2 rounded-lg border border-purple-900/30">
-              cd server && npm run dev
-            </div>
-          </div>
-
-          {/* Card 3: Live Health Check */}
-          <div className="p-6 rounded-2xl border border-slate-800/80 bg-slate-900/40 backdrop-blur-sm relative overflow-hidden group hover:border-slate-700/80 transition-all duration-300">
-            <div className="p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 w-fit mb-5">
-              <Activity className="w-6 h-6" />
-            </div>
-            <h3 className="text-lg font-bold text-white mb-2">System Status</h3>
-            <div className="space-y-2.5">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-400">API Gateway:</span>
-                <span className={`font-semibold px-2 py-0.5 rounded text-xs ${
-                  healthStatus === 'connected' ? 'bg-emerald-500/15 text-emerald-400' :
-                  healthStatus === 'checking' ? 'bg-amber-500/15 text-amber-400' : 'bg-rose-500/15 text-rose-400'
-                }`}>
-                  {healthStatus.toUpperCase()}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-400">API URL:</span>
-                <span className="font-mono text-xs text-slate-300">http://127.0.0.1:8000</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-400">Message:</span>
-                <span className="text-xs text-slate-300 truncate max-w-[120px]">{dbStatus}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </main>
-
-      {/* Footer */}
-      <footer className="border-t border-slate-900 bg-slate-950/40 py-8 relative z-10">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-slate-500">
-            &copy; {new Date().getFullYear()} Capstone Shery. All rights reserved.
-          </p>
-          <div className="flex items-center gap-6 text-xs text-slate-500">
-            <span className="hover:text-slate-300 cursor-pointer transition-colors">Documentation</span>
-            <span className="hover:text-slate-300 cursor-pointer transition-colors">Privacy Policy</span>
-            <span className="hover:text-slate-300 cursor-pointer transition-colors">Terms of Service</span>
-          </div>
-        </div>
-      </footer>
-    </div>
+    <>
+      {showLoading && <LoadingScreen onComplete={() => setShowLoading(false)} />}
+      <BrowserRouter>
+        <AuthProvider>
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              <Route path="/" element={<LandingPage isAppLoading={showLoading} />} />
+            
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <DashboardPage />
+                </ProtectedRoute>
+              }
+            />
+            
+            <Route
+              path="/editor/:projectId"
+              element={
+                <ProtectedRoute>
+                  <Suspense fallback={<EditorLoader />}>
+                    <EditorPage />
+                  </Suspense>
+                </ProtectedRoute>
+              }
+            />
+            
+            <Route
+              path="/account"
+              element={
+                <ProtectedRoute>
+                  <AccountPage />
+                </ProtectedRoute>
+              }
+            />
+            
+            <Route
+              path="/login"
+              element={
+                <GuestRoute>
+                  <LoginPage />
+                </GuestRoute>
+              }
+            />
+            
+            <Route
+              path="/signup"
+              element={
+                <GuestRoute>
+                  <SignupPage />
+                </GuestRoute>
+              }
+            />
+
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
+
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </Suspense>
+      </AuthProvider>
+    </BrowserRouter>
+    </>
   );
-}
+  
+} 
 
 export default App;
