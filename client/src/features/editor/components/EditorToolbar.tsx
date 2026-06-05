@@ -1,14 +1,19 @@
-import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Undo2,
   Redo2,
   Download,
   Eye,
   Code2,
+  Sun,
+  Moon,
+  Monitor,
+  Smartphone,
+  Tablet,
+  ChevronDown,
 } from "lucide-react";
-
 import { exportHtml } from "../api/export.api";
-import ViewportToggle from "@/features/preview/components/ViewportToggle";
 import { ViewportSize } from "@/features/preview/types/preview.types";
 
 interface EditorToolbarProps {
@@ -24,6 +29,120 @@ interface EditorToolbarProps {
   html: string;
 }
 
+// ─── Theme Hook (local to toolbar, no extra file needed) ─────────────────────
+function useTheme() {
+  const [isDark, setIsDark] = useState(() => {
+    const saved = localStorage.getItem("theme");
+    if (saved) return saved === "dark";
+    return document.documentElement.classList.contains("dark");
+  });
+
+  useEffect(() => {
+    if (isDark) {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+  }, [isDark]);
+
+  return { isDark, toggle: () => setIsDark(v => !v) };
+}
+
+// ─── Viewport options ─────────────────────────────────────────────────────────
+const VIEWPORT_OPTIONS: { value: ViewportSize; icon: typeof Monitor; label: string; width: string }[] = [
+  { value: "desktop", icon: Monitor,    label: "Desktop", width: "1280px" },
+  { value: "tablet",  icon: Tablet,     label: "Tablet",  width: "768px"  },
+  { value: "mobile",  icon: Smartphone, label: "Mobile",  width: "375px"  },
+];
+
+// ─── Toolbar Button ───────────────────────────────────────────────────────────
+function ToolbarBtn({
+  onClick,
+  disabled,
+  active,
+  title,
+  children,
+  variant = "ghost",
+}: {
+  onClick?: () => void;
+  disabled?: boolean;
+  active?: boolean;
+  title?: string;
+  children: React.ReactNode;
+  variant?: "ghost" | "primary" | "success" | "code";
+}) {
+  const base: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
+    padding: "6px 10px",
+    borderRadius: "8px",
+    fontSize: "12px",
+    fontWeight: 500,
+    cursor: disabled ? "not-allowed" : "pointer",
+    opacity: disabled ? 0.38 : 1,
+    border: "1px solid transparent",
+    transition: "all 0.15s ease",
+    whiteSpace: "nowrap" as const,
+    outline: "none",
+    background: "transparent",
+  };
+
+  const variants: Record<string, React.CSSProperties> = {
+    ghost: {
+      color: active ? "var(--text-primary)" : "var(--text-muted)",
+      background: active ? "var(--brand-glass-hover)" : "transparent",
+      borderColor: active ? "var(--brand-border-hover)" : "transparent",
+    },
+    primary: {
+      color: "#fff",
+      background: "var(--brand-primary)",
+      borderColor: "rgba(108,99,255,0.4)",
+      boxShadow: "0 0 12px rgba(108,99,255,0.25)",
+    },
+    success: {
+      color: "#22c55e",
+      background: "rgba(34,197,94,0.1)",
+      borderColor: "rgba(34,197,94,0.25)",
+    },
+    code: {
+      color: active ? "#fff" : "var(--text-muted)",
+      background: active ? "#0078d4" : "transparent",
+      borderColor: active ? "#0078d4" : "var(--brand-border)",
+    },
+  };
+
+  return (
+    <motion.button
+      whileHover={!disabled ? { scale: 1.03 } : undefined}
+      whileTap={!disabled ? { scale: 0.96 } : undefined}
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      style={{ ...base, ...variants[variant] }}
+    >
+      {children}
+    </motion.button>
+  );
+}
+
+// ─── Divider ─────────────────────────────────────────────────────────────────
+function Divider() {
+  return (
+    <div
+      style={{
+        width: "1px",
+        height: "20px",
+        background: "var(--brand-border)",
+        flexShrink: 0,
+      }}
+    />
+  );
+}
+
+// ─── Main Toolbar ─────────────────────────────────────────────────────────────
 export default function EditorToolbar({
   canUndo,
   canRedo,
@@ -36,136 +155,235 @@ export default function EditorToolbar({
   onToggleCode,
   html,
 }: EditorToolbarProps) {
+  const { isDark, toggle: toggleTheme } = useTheme();
+  const [viewportOpen, setViewportOpen] = useState(false);
+
+  const currentViewport = VIEWPORT_OPTIONS.find(v => v.value === viewport)!;
+  const ViewportIcon = currentViewport.icon;
+
   return (
     <motion.div
-      initial={{ y: -10, opacity: 0 }}
+      initial={{ y: -8, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      className="
-        flex items-center justify-between
-        px-4 py-2.5
-        border-b border-[#2f2f2f]
-        bg-[#1e1e1e]/95
-        backdrop-blur-xl
-        z-40
-      "
+      transition={{ duration: 0.25 }}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "4px",
+        padding: "6px 12px",
+        borderBottom: "1px solid var(--brand-border)",
+        background: "var(--brand-surface)",
+        backdropFilter: "blur(12px)",
+        flexShrink: 0,
+        zIndex: 50,
+        minHeight: "48px",
+      }}
     >
-      {/* Left */}
-      <div className="flex items-center gap-2">
+      {/* ── Left: Undo / Redo ── */}
+      <div style={{ display: "flex", alignItems: "center", gap: "2px" }}>
+        <ToolbarBtn onClick={onUndo} disabled={!canUndo} title="Undo (Ctrl+Z)">
+          <Undo2 size={15} />
+        </ToolbarBtn>
+        <ToolbarBtn onClick={onRedo} disabled={!canRedo} title="Redo (Ctrl+Y)">
+          <Redo2 size={15} />
+        </ToolbarBtn>
+      </div>
 
-        {/* Undo */}
-        <button
-          onClick={onUndo}
-          disabled={!canUndo}
-          className="
-            p-2 rounded-lg
-            text-gray-400
-            hover:text-white
-            hover:bg-white/5
-            transition-colors
-            disabled:opacity-40
-            disabled:cursor-not-allowed
-          "
-        >
-          <Undo2 size={16} />
-        </button>
+      <Divider />
 
-        {/* Redo */}
-        <button
-          onClick={onRedo}
-          disabled={!canRedo}
-          className="
-            p-2 rounded-lg
-            text-gray-400
-            hover:text-white
-            hover:bg-white/5
-            transition-colors
-            disabled:opacity-40
-            disabled:cursor-not-allowed
-          "
-        >
-          <Redo2 size={16} />
-        </button>
+      {/* ── Export ── */}
+      <ToolbarBtn
+        onClick={() => exportHtml(html)}
+        variant="success"
+        title="Export HTML"
+      >
+        <Download size={14} />
+        <span>Export</span>
+      </ToolbarBtn>
 
-        <div className="w-px h-6 bg-[#333]" />
+      <Divider />
 
-        {/* Export */}
-        <button
-          onClick={() => exportHtml(html)}
-          className="
-            flex items-center gap-2
-            px-3 py-2
-            rounded-lg
-            bg-emerald-500/10
-            border border-emerald-500/20
-            text-emerald-400
-            hover:bg-emerald-500/20
-            transition-all
-          "
-        >
-          <Download size={14} />
-          <span className="text-sm">Export</span>
-        </button>
+      {/* ── Code toggle ── */}
+      <ToolbarBtn
+        onClick={onToggleCode}
+        variant="code"
+        active={showCode}
+        title={showCode ? "Hide Code" : "Show Code"}
+      >
+        {showCode ? <Eye size={14} /> : <Code2 size={14} />}
+        <span>{showCode ? "Preview" : "Code"}</span>
+      </ToolbarBtn>
 
-        {/* Selected Section */}
+      {/* ── Selected Section Badge ── */}
+      <AnimatePresence>
         {selectedSection && (
-          <>
-            <div className="w-px h-6 bg-[#333]" />
-
+          <motion.div
+            initial={{ opacity: 0, scale: 0.85, x: -6 }}
+            animate={{ opacity: 1, scale: 1, x: 0 }}
+            exit={{ opacity: 0, scale: 0.85, x: -6 }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "4px 10px",
+              borderRadius: "8px",
+              background: "rgba(59,130,246,0.1)",
+              border: "1px solid rgba(59,130,246,0.25)",
+              fontSize: "11px",
+              color: "#60a5fa",
+              fontWeight: 500,
+              whiteSpace: "nowrap",
+            }}
+          >
             <div
-              className="
-                px-3 py-1
-                rounded-lg
-                bg-blue-500/10
-                border border-blue-500/20
-                text-blue-400
-                text-xs
-                font-medium
-              "
-            >
-              ◈ {selectedSection}
-            </div>
-          </>
+              style={{
+                width: "6px",
+                height: "6px",
+                borderRadius: "50%",
+                background: "#3b82f6",
+              }}
+            />
+            ◈ {selectedSection}
+          </motion.div>
         )}
-      </div>
+      </AnimatePresence>
 
-      {/* Center */}
-      <div className="hidden md:flex">
-        <ViewportToggle
-          current={viewport}
-          onChange={onViewportChange}
-        />
-      </div>
+      {/* ── Spacer ── */}
+      <div style={{ flex: 1 }} />
 
-      {/* Right */}
-      <div className="flex items-center gap-2">
-
-        {/* Code Toggle */}
-        <button
-          onClick={onToggleCode}
-          className={`
-            flex items-center gap-2
-            px-3 py-2 rounded-lg
-            border transition-all
-            ${
-              showCode
-                ? "bg-blue-500 text-white border-blue-500"
-                : "bg-transparent text-gray-400 border-[#333] hover:bg-white/5"
-            }
-          `}
+      {/* ── Center: Viewport Switcher (dropdown) ── */}
+      <div style={{ position: "relative" }}>
+        <ToolbarBtn
+          onClick={() => setViewportOpen(v => !v)}
+          active={viewportOpen}
+          title="Change viewport"
         >
-          {showCode ? (
-            <>
-              <Eye size={14} />
-              Preview
-            </>
-          ) : (
-            <>
-              <Code2 size={14} />
-              Code
-            </>
+          <ViewportIcon size={14} />
+          <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>
+            {currentViewport.width}
+          </span>
+          <ChevronDown
+            size={12}
+            style={{
+              color: "var(--text-faint)",
+              transform: viewportOpen ? "rotate(180deg)" : "rotate(0deg)",
+              transition: "transform 0.2s",
+            }}
+          />
+        </ToolbarBtn>
+
+        <AnimatePresence>
+          {viewportOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: -6, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -6, scale: 0.96 }}
+              transition={{ duration: 0.15 }}
+              style={{
+                position: "absolute",
+                top: "calc(100% + 6px)",
+                left: "50%",
+                transform: "translateX(-50%)",
+                background: "var(--brand-surface)",
+                border: "1px solid var(--brand-border)",
+                borderRadius: "10px",
+                padding: "4px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "2px",
+                boxShadow: "var(--shadow-lg)",
+                zIndex: 100,
+                minWidth: "140px",
+              }}
+            >
+              {VIEWPORT_OPTIONS.map(opt => {
+                const Icon = opt.icon;
+                const isActive = viewport === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    onClick={() => {
+                      onViewportChange(opt.value);
+                      setViewportOpen(false);
+                    }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      padding: "7px 10px",
+                      borderRadius: "7px",
+                      fontSize: "12px",
+                      cursor: "pointer",
+                      border: "none",
+                      background: isActive ? "var(--brand-primary-light)" : "transparent",
+                      color: isActive ? "var(--brand-primary)" : "var(--text-muted)",
+                      fontWeight: isActive ? 600 : 400,
+                      width: "100%",
+                      textAlign: "left",
+                    }}
+                  >
+                    <Icon size={13} />
+                    <span style={{ flex: 1 }}>{opt.label}</span>
+                    <span style={{ fontSize: "10px", color: "var(--text-faint)" }}>
+                      {opt.width}
+                    </span>
+                  </button>
+                );
+              })}
+            </motion.div>
           )}
-        </button>
+        </AnimatePresence>
       </div>
+
+      <Divider />
+
+      {/* ── Theme Toggle ── */}
+      <motion.button
+        whileHover={{ scale: 1.06 }}
+        whileTap={{ scale: 0.93 }}
+        onClick={toggleTheme}
+        title={isDark ? "Switch to Light mode" : "Switch to Dark mode"}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: "32px",
+          height: "32px",
+          borderRadius: "8px",
+          border: "1px solid var(--brand-border)",
+          background: "var(--brand-glass)",
+          cursor: "pointer",
+          flexShrink: 0,
+          position: "relative",
+          overflow: "hidden",
+        }}
+      >
+        <AnimatePresence mode="wait">
+          {isDark ? (
+            <motion.div
+              key="sun"
+              initial={{ rotate: -90, opacity: 0, scale: 0.5 }}
+              animate={{ rotate: 0, opacity: 1, scale: 1 }}
+              exit={{ rotate: 90, opacity: 0, scale: 0.5 }}
+              transition={{ duration: 0.2 }}
+              style={{ position: "absolute" }}
+            >
+              <Sun size={15} style={{ color: "#f59e0b" }} />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="moon"
+              initial={{ rotate: 90, opacity: 0, scale: 0.5 }}
+              animate={{ rotate: 0, opacity: 1, scale: 1 }}
+              exit={{ rotate: -90, opacity: 0, scale: 0.5 }}
+              transition={{ duration: 0.2 }}
+              style={{ position: "absolute" }}
+            >
+              <Moon size={15} style={{ color: "var(--brand-primary)" }} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.button>
     </motion.div>
   );
 }

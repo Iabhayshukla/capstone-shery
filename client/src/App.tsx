@@ -2,7 +2,7 @@ import { lazy, Suspense, useState } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { EditorSkeleton } from "@/components/ui/Skeleton";
 import { AuthProvider } from "@/features/auth";
-import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+// import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { GuestRoute } from "@/components/auth/GuestRoute";
 import LoadingScreen from "@/components/ui/LoadingScreen";
 
@@ -50,29 +50,29 @@ function App() {
             <Route
               path="/dashboard"
               element={
-                <ProtectedRoute>
+                // <ProtectedRoute>
                   <DashboardPage />
-                </ProtectedRoute>
+                /* </ProtectedRoute> */
               }
             />
             
             <Route
               path="/editor/:projectId"
               element={
-                <ProtectedRoute>
+                // <ProtectedRoute>
                   <Suspense fallback={<EditorLoader />}>
                     <EditorPage />
                   </Suspense>
-                </ProtectedRoute>
+                /* </ProtectedRoute> */
               }
             />
             
             <Route
               path="/account"
               element={
-                <ProtectedRoute>
+                // <ProtectedRoute>
                   <AccountPage />
-                </ProtectedRoute>
+                /* </ProtectedRoute> */
               }
             />
             

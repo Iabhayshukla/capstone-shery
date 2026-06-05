@@ -1,11 +1,14 @@
-import { useState, useRef, useEffect, KeyboardEvent } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Send, Sparkles, User, Bot, Trash2, RotateCcw, Lightbulb } from "lucide-react";
+import { useState, useRef, useEffect, KeyboardEvent } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Send, Sparkles, User, Bot, Trash2, RotateCcw, Lightbulb, RefreshCw } from 'lucide-react';
 
 interface PromptPanelProps {
-  onGenerate: (prompt: string) => void;  // tera logic
-  isGenerating: boolean;                  // tera logic
-  isReady: boolean;                       // tera logic
+  onGenerate: (prompt: string) => void;
+  isGenerating: boolean;
+  isReady: boolean;
+  lastPrompt?: string;
+  onRegenerate?: () => void;
+  selectedSection?: string | null;
 }
 
 const SAMPLE_PROMPTS = [
@@ -21,18 +24,23 @@ interface Message {
   content: string;
 }
 
-export default function PromptPanel({ onGenerate, isGenerating, isReady }: PromptPanelProps) {
+export default function PromptPanel({
+  onGenerate,
+  isGenerating,
+  isReady,
+  lastPrompt,
+  onRegenerate,
+  selectedSection,
+}: PromptPanelProps) {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Auto scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Auto resize textarea
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -40,28 +48,34 @@ export default function PromptPanel({ onGenerate, isGenerating, isReady }: Promp
     }
   }, [input]);
 
-  // Tera logic — real API call
   const handleSubmit = () => {
     if (!input.trim() || isGenerating || !isReady) return;
 
     const userMsg: Message = {
       id: `msg-${Date.now()}`,
       role: 'user',
-      content: input.trim(),
+      content: selectedSection
+        ? `[${selectedSection}] ${input.trim()}`
+        : input.trim(),
     };
 
     setMessages(prev => [...prev, userMsg]);
-    onGenerate(input.trim()); // tera real API call
+    onGenerate(
+      selectedSection
+        ? `Edit only the "${selectedSection}" section: ${input.trim()}`
+        : input.trim()
+    );
     setInput('');
   };
 
-  // Jab generating complete ho — AI message add karo
   useEffect(() => {
     if (!isGenerating && messages.length > 0 && messages[messages.length - 1].role === 'user') {
       const aiMsg: Message = {
         id: `msg-${Date.now()}`,
         role: 'assistant',
-        content: "Website generated! Check the preview on the right. Click any section to select and edit it. Use the Code button to view HTML.",
+        content: selectedSection
+          ? `Updated the "${selectedSection}" section! Check the preview.`
+          : 'Website generated! Check the preview. Click any section to select and edit it.',
       };
       setMessages(prev => [...prev, aiMsg]);
     }
@@ -82,80 +96,158 @@ export default function PromptPanel({ onGenerate, isGenerating, isReady }: Promp
   const isDisabled = !input.trim() || isGenerating || !isReady;
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full" style={{ background: 'var(--brand-surface)' }}>
 
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-3.5 border-b border-[var(--brand-border)]">
+      <div
+        className="flex items-center justify-between px-4 py-3 flex-shrink-0"
+        style={{ borderBottom: '1px solid var(--brand-border)' }}
+      >
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-brand-primary/20 flex items-center justify-center">
-            <Sparkles size={14} className="text-brand-primary" />
+          <div
+            className="w-7 h-7 rounded-lg flex items-center justify-center"
+            style={{ background: 'var(--brand-primary-light)' }}
+          >
+            <Sparkles size={13} style={{ color: 'var(--brand-primary)' }} />
           </div>
-          <span className="text-sm font-semibold text-[var(--text-secondary)]">
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>
             AI Prompt
           </span>
         </div>
-        {messages.length > 0 && (
-          <button
-            onClick={handleClear}
-            className="p-1.5 rounded-lg text-[var(--text-faint)] hover:text-[var(--text-muted)] hover:bg-[var(--brand-glass-hover)] transition-colors"
-            title="Clear conversation"
-          >
-            <Trash2 size={14} />
-          </button>
-        )}
+
+        <div className="flex items-center gap-1">
+          {/* Regenerate button (shows when there's a last prompt) */}
+          <AnimatePresence>
+            {lastPrompt && !isGenerating && onRegenerate && (
+              <motion.button
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={onRegenerate}
+                title={`Regenerate: "${lastPrompt}"`}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
+                style={{
+                  background: 'rgba(108,99,255,0.12)',
+                  border: '1px solid rgba(108,99,255,0.25)',
+                  color: 'var(--brand-primary)',
+                }}
+              >
+                <RefreshCw size={11} />
+                Regenerate
+              </motion.button>
+            )}
+          </AnimatePresence>
+
+          {messages.length > 0 && (
+            <button
+              onClick={handleClear}
+              className="p-1.5 rounded-lg transition-colors"
+              style={{ color: 'var(--text-faint)' }}
+              title="Clear conversation"
+            >
+              <Trash2 size={13} />
+            </button>
+          )}
+        </div>
       </div>
 
+      {/* Selected Section Badge */}
+      <AnimatePresence>
+        {selectedSection && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="px-4 py-2 flex-shrink-0"
+            style={{ borderBottom: '1px solid var(--brand-border)' }}
+          >
+            <div
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg"
+              style={{
+                background: 'rgba(59,130,246,0.1)',
+                border: '1px solid rgba(59,130,246,0.2)',
+              }}
+            >
+              <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#3b82f6' }} />
+              <span style={{ fontSize: '11px', color: '#60a5fa', fontWeight: 500 }}>
+                Editing: {selectedSection}
+              </span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+      <div className="flex-1 overflow-y-auto px-4 py-4" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
 
         {/* Welcome State */}
         {messages.length === 0 && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col items-center justify-center h-full text-center py-8"
+            className="flex flex-col items-center justify-center h-full text-center py-6"
           >
-            <div className="w-14 h-14 rounded-2xl bg-brand-primary/10 flex items-center justify-center mb-4">
-              <Sparkles size={24} className="text-brand-primary" />
+            <div
+              className="w-12 h-12 rounded-2xl flex items-center justify-center mb-3"
+              style={{ background: 'var(--brand-primary-light)' }}
+            >
+              <Sparkles size={20} style={{ color: 'var(--brand-primary)' }} />
             </div>
-            <h3 className="text-base font-semibold text-[var(--text-secondary)] mb-1">
-              What would you like to build?
+            <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px' }}>
+              {selectedSection ? `Edit "${selectedSection}"` : 'What would you like to build?'}
             </h3>
-            <p className="text-xs text-[var(--text-faint)] max-w-[260px] mb-6">
-              Describe your website and AI will generate it instantly.
+            <p style={{ fontSize: '12px', color: 'var(--text-faint)', maxWidth: '220px', marginBottom: '20px' }}>
+              {selectedSection
+                ? 'Describe what you want to change in this section.'
+                : 'Describe your website and AI will generate it instantly.'}
             </p>
 
-            {/* Not ready warning */}
             {!isReady && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="w-full mb-4 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-400 flex items-center gap-2"
+                className="w-full mb-4 px-3 py-2 rounded-xl flex items-center gap-2"
+                style={{
+                  background: 'rgba(234,179,8,0.1)',
+                  border: '1px solid rgba(234,179,8,0.2)',
+                  fontSize: '11px',
+                  color: '#eab308',
+                }}
               >
-                <RotateCcw size={12} className="animate-spin" />
+                <RotateCcw size={11} className="animate-spin" />
                 Preview loading... please wait
               </motion.div>
             )}
 
             {/* Quick prompts */}
-            <div className="w-full space-y-2">
-              <div className="flex items-center gap-1.5 text-xs text-[var(--text-faint)] mb-2">
-                <Lightbulb size={12} />
-                <span>Try these</span>
+            {!selectedSection && (
+              <div className="w-full flex flex-col gap-2">
+                <div className="flex items-center gap-1.5 mb-1" style={{ fontSize: '11px', color: 'var(--text-faint)' }}>
+                  <Lightbulb size={11} />
+                  <span>Try these</span>
+                </div>
+                {SAMPLE_PROMPTS.map((p, i) => (
+                  <motion.button
+                    key={i}
+                    initial={{ opacity: 0, x: -8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.15 + i * 0.08 }}
+                    onClick={() => setInput(p)}
+                    className="w-full text-left px-3 py-2.5 rounded-xl transition-all"
+                    style={{
+                      background: 'var(--brand-glass)',
+                      border: '1px solid var(--brand-border)',
+                      fontSize: '12px',
+                      color: 'var(--text-muted)',
+                    }}
+                  >
+                    "{p}"
+                  </motion.button>
+                ))}
               </div>
-              {SAMPLE_PROMPTS.map((prompt, i) => (
-                <motion.button
-                  key={i}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.2 + i * 0.1 }}
-                  onClick={() => setInput(prompt)}
-                  className="w-full text-left px-3.5 py-2.5 rounded-xl text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] bg-[var(--brand-glass)] hover:bg-[var(--brand-glass-hover)] border border-[var(--brand-border)] hover:border-[var(--brand-border-hover)] transition-all"
-                >
-                  "{prompt}"
-                </motion.button>
-              ))}
-            </div>
+            )}
           </motion.div>
         )}
 
@@ -164,22 +256,35 @@ export default function PromptPanel({ onGenerate, isGenerating, isReady }: Promp
           {messages.map((msg) => (
             <motion.div
               key={msg.id}
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
+              className={`flex gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
             >
-              <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${msg.role === 'user' ? 'bg-brand-primary/20' : 'bg-emerald-500/20'}`}>
-                {msg.role === 'user' ? (
-                  <User size={13} className="text-brand-primary" />
-                ) : (
-                  <Bot size={13} className="text-emerald-400" />
-                )}
+              <div
+                className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
+                style={{
+                  background: msg.role === 'user'
+                    ? 'var(--brand-primary-light)'
+                    : 'rgba(34,197,94,0.15)',
+                }}
+              >
+                {msg.role === 'user'
+                  ? <User size={11} style={{ color: 'var(--brand-primary)' }} />
+                  : <Bot size={11} style={{ color: '#22c55e' }} />}
               </div>
-              <div className={`max-w-[85%] px-3.5 py-2.5 rounded-xl text-sm leading-relaxed ${
-                msg.role === 'user'
-                  ? 'bg-brand-primary/15 text-[var(--text-primary)] rounded-tr-sm'
-                  : 'bg-[var(--brand-glass)] text-[var(--text-secondary)] border border-[var(--brand-border)] rounded-tl-sm'
-              }`}>
+              <div
+                className="max-w-[85%] px-3 py-2 rounded-xl"
+                style={{
+                  fontSize: '12px',
+                  lineHeight: '1.6',
+                  background: msg.role === 'user'
+                    ? 'var(--brand-primary-light)'
+                    : 'var(--brand-glass)',
+                  border: msg.role === 'assistant' ? '1px solid var(--brand-border)' : 'none',
+                  color: msg.role === 'user' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  borderRadius: msg.role === 'user' ? '12px 12px 4px 12px' : '12px 12px 12px 4px',
+                }}
+              >
                 {msg.content}
               </div>
             </motion.div>
@@ -189,17 +294,30 @@ export default function PromptPanel({ onGenerate, isGenerating, isReady }: Promp
         {/* Typing Indicator */}
         {isGenerating && (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex gap-3"
+            className="flex gap-2"
           >
-            <div className="w-7 h-7 rounded-lg bg-emerald-500/20 flex items-center justify-center shrink-0">
-              <Bot size={13} className="text-emerald-400" />
+            <div
+              className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{ background: 'rgba(34,197,94,0.15)' }}
+            >
+              <Bot size={11} style={{ color: '#22c55e' }} />
             </div>
-            <div className="px-4 py-3 rounded-xl bg-[var(--brand-glass)] border border-[var(--brand-border)] rounded-tl-sm flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-faint)] animate-bounce" style={{ animationDelay: '0ms' }} />
-              <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-faint)] animate-bounce" style={{ animationDelay: '150ms' }} />
-              <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-faint)] animate-bounce" style={{ animationDelay: '300ms' }} />
+            <div
+              className="px-3 py-2.5 rounded-xl flex items-center gap-1"
+              style={{
+                background: 'var(--brand-glass)',
+                border: '1px solid var(--brand-border)',
+              }}
+            >
+              {[0, 150, 300].map((delay) => (
+                <span
+                  key={delay}
+                  className="typing-dot"
+                  style={{ animationDelay: `${delay}ms` }}
+                />
+              ))}
             </div>
           </motion.div>
         )}
@@ -208,38 +326,42 @@ export default function PromptPanel({ onGenerate, isGenerating, isReady }: Promp
       </div>
 
       {/* Input Area */}
-      <div className="px-4 py-3 border-t border-[var(--brand-border)]">
-        <div className="relative flex items-end gap-2">
-          <div className="flex-1 relative">
-            <textarea
-              ref={textareaRef}
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Describe your website..."
-              rows={1}
-              disabled={isGenerating || !isReady}
-              className="w-full px-4 py-3 pr-12 text-sm glass-input text-[var(--text-primary)] placeholder:text-[var(--text-faint)] resize-none disabled:opacity-50"
-            />
-            <button
-              onClick={handleSubmit}
-              disabled={isDisabled}
-              className={`absolute right-2 bottom-2 p-2 rounded-lg transition-all ${
-                !isDisabled
-                  ? 'bg-brand-primary text-white hover:bg-brand-primary-hover shadow-lg shadow-brand-primary/25'
-                  : 'text-[var(--text-faint)] cursor-not-allowed'
-              }`}
-            >
-              {isGenerating ? (
-                <RotateCcw size={16} className="animate-spin" />
-              ) : (
-                <Send size={16} />
-              )}
-            </button>
-          </div>
+      <div
+        className="px-3 py-3 flex-shrink-0"
+        style={{ borderTop: '1px solid var(--brand-border)' }}
+      >
+        <div className="relative">
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={
+              selectedSection
+                ? `Edit "${selectedSection}"...`
+                : 'Describe your website...'
+            }
+            rows={1}
+            disabled={isGenerating || !isReady}
+            className="glass-input w-full px-3 py-2.5 pr-10 text-sm resize-none disabled:opacity-50"
+            style={{ color: 'var(--text-primary)', fontSize: '13px' }}
+          />
+          <button
+            onClick={handleSubmit}
+            disabled={isDisabled}
+            className="absolute right-2 bottom-2 p-1.5 rounded-lg transition-all"
+            style={{
+              background: !isDisabled ? 'var(--brand-primary)' : 'transparent',
+              color: !isDisabled ? '#fff' : 'var(--text-faint)',
+            }}
+          >
+            {isGenerating
+              ? <RotateCcw size={13} className="animate-spin" />
+              : <Send size={13} />}
+          </button>
         </div>
-        <p className="text-[10px] text-[var(--text-faint)] mt-2 text-center">
-          Press Enter to send · Shift+Enter for new line
+        <p style={{ fontSize: '10px', color: 'var(--text-faint)', marginTop: '6px', textAlign: 'center' }}>
+          Enter to send · Shift+Enter for new line
         </p>
       </div>
     </div>

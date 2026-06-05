@@ -1,13 +1,48 @@
 export async function mockGenerateHTML(
   prompt: string,
   onChunk: (chunk: string) => void,
-  onDone: (fullHtml: string) => void
+  onDone: (fullHtml: string) => void,
+  options?: {
+    currentHtml?: string;
+    selectedSection?: string | null;
+  }
 ): Promise<void> {
   try {
+    // Build context-aware prompt
+    let finalPrompt = prompt;
+
+    if (options?.selectedSection && options?.currentHtml) {
+      finalPrompt = `
+You are editing an existing website. Here is the current HTML:
+
+\`\`\`html
+${options.currentHtml}
+\`\`\`
+
+The user wants to edit ONLY the "${options.selectedSection}" section.
+Do NOT change any other part of the page.
+User instruction: ${prompt}
+
+Return the complete updated HTML with only the "${options.selectedSection}" section modified.
+      `.trim();
+    } else if (options?.currentHtml) {
+      finalPrompt = `
+You are editing an existing website. Here is the current HTML:
+
+\`\`\`html
+${options.currentHtml}
+\`\`\`
+
+User instruction: ${prompt}
+
+Return the complete updated HTML.
+      `.trim();
+    }
+
     const response = await fetch(`${import.meta.env.VITE_API_URL}/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt }),
+      body: JSON.stringify({ prompt: finalPrompt }),
     });
 
     if (!response.ok) {
@@ -22,6 +57,7 @@ export async function mockGenerateHTML(
 
     const html = data.html;
 
+    // Fake streaming — chunk by chunk
     const chunkSize = 50;
     let accumulated = '';
     for (let i = 0; i < html.length; i += chunkSize) {
