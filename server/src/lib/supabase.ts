@@ -24,7 +24,8 @@ export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
     persistSession: false,
   },
   realtime: {
-    transport: ws,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    transport: ws as any,
   },
 });
 
@@ -44,7 +45,8 @@ export function createUserClient(jwt: string) {
       persistSession: false,
     },
     realtime: {
-      transport: ws,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      transport: ws as any,
     },
   });
 }

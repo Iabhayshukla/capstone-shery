@@ -13,6 +13,7 @@ interface StreamingViewProps {
   isStreaming: boolean;
   onPreview: () => void;
   projectName?: string;
+  error?: string | null;
 }
 
 const AI_MESSAGES = [
@@ -43,7 +44,7 @@ function useTypewriter(text: string, speed = 22) {
   return displayed;
 }
 
-export default function StreamingView({ files, isStreaming, onPreview }: StreamingViewProps) {
+export default function StreamingView({ files, isStreaming, onPreview, error }: StreamingViewProps) {
   const [copied, setCopied] = useState(false);
   const codeBodyRef = useRef<HTMLDivElement>(null);
   const activeFile = files[0];
@@ -53,6 +54,8 @@ export default function StreamingView({ files, isStreaming, onPreview }: Streami
   const msgIdx = Math.min(Math.floor(progress * AI_MESSAGES.length), AI_MESSAGES.length - 1);
   const currentAiMsg = isStreaming
     ? AI_MESSAGES[msgIdx]
+    : error
+    ? 'Generation failed. See the error below.'
     : lines.length > 0
     ? '✦ Your website is ready! Click Open Preview to see it live.'
     : AI_MESSAGES[0];
@@ -72,7 +75,7 @@ export default function StreamingView({ files, isStreaming, onPreview }: Streami
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const isDone = !isStreaming && lines.length > 0;
+  const isDone = !isStreaming && lines.length > 0 && !error;
 
   return (
     <motion.div
@@ -163,6 +166,25 @@ export default function StreamingView({ files, isStreaming, onPreview }: Streami
                 />
               )}
             </div>
+
+            {/* Error Banner */}
+            {error && !isStreaming && (
+              <div
+                style={{
+                  marginBottom: '16px',
+                  padding: '12px 16px',
+                  borderRadius: '8px',
+                  background: 'rgba(239,68,68,0.08)',
+                  border: '1px solid rgba(239,68,68,0.25)',
+                  color: '#f87171',
+                  fontSize: '13px',
+                  lineHeight: '1.6',
+                }}
+              >
+                <strong style={{ display: 'block', marginBottom: '4px' }}>Generation failed</strong>
+                {error}
+              </div>
+            )}
 
             {/* Code Block */}
             <AnimatePresence>

@@ -20,7 +20,7 @@ const LoadingScreen = ({ onComplete }: LoadingScreenProps) => {
   const particlesRef = useRef<HTMLDivElement>(null);
   const cornerRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  const BRAND = "CAPSTON-SHERY";
+  const BRAND = "CAPSTONE-SHERY";
   const STATUSES = [
     "Initializing runtime...",
     "Loading AI models...",

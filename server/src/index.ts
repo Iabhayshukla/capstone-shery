@@ -10,6 +10,7 @@ dotenv.config();
 import { errorHandler } from './middleware/errorHandler';
 import authRouter from './features/auth/auth.router';
 import projectsRouter from './features/projects/projects.router';
+import generateRouter from './features/generate/generate.router';
 
 const app = express();
 const PORT = process.env.PORT ?? 5000;
@@ -44,6 +45,9 @@ app.use('/api/auth', authRouter);
 // Project CRUD routes (protected — require valid JWT)
 app.use('/api/projects', projectsRouter);
 
+// LLM generation route — streams HTML via SSE (protected + rate-limited)
+app.use('/api/generate', generateRouter);
+
 // ─── 404 Handler ──────────────────────────────────────────────────────────────
 app.use((_req: Request, res: Response) => {
   res.status(404).json({ error: 'Not Found', message: 'The requested endpoint does not exist.' });
@@ -59,5 +63,6 @@ app.listen(PORT, () => {
   console.log(`👉 Health: http://localhost:${PORT}/api/health`);
   console.log(`🔐 Auth:   http://localhost:${PORT}/api/auth`);
   console.log(`📁 Projects: http://localhost:${PORT}/api/projects`);
+  console.log(`🤖 Generate: http://localhost:${PORT}/api/generate`);
   console.log('=========================================');
 });

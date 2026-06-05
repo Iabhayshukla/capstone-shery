@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/features/auth';
@@ -149,14 +149,42 @@ export default function EditorLayout() {
   const { accessToken } = useAuth();
 
   const { html, push, undo, redo, reset, canUndo, canRedo } = useEditHistory('');
-  const { isGenerating, generate } = useGenerate();
+  const [selectedSection, setSelectedSection] = useState<string | null>(null);
+
+  const {
+    isGenerating,
+    streamingHtml,
+    error: generateError,
+    generate,
+    cancel: cancelGenerate,
+  } = useGenerate({
+    projectId,
+    selectedSection,
+    currentHtml: html || null,
+  });
 
   const [project, setProject] = useState<Project | null>(null);
   const [phase, setPhase] = useState<EditorPhase>('welcome');
   const [streamingFiles, setStreamingFiles] = useState<StreamingFile[]>([]);
   const [lastPrompt, setLastPrompt] = useState('');
   const [hasGeneratedOnce, setHasGeneratedOnce] = useState(false);
-  const [selectedSection, setSelectedSection] = useState<string | null>(null);
+
+  // ─── Sync streamingHtml → preview files in real time ──────────────────────
+  useEffect(() => {
+    if (streamingHtml) {
+      setStreamingFiles(parseFilesFromHtml(streamingHtml));
+    }
+  }, [streamingHtml]);
+
+  // Push final HTML into edit history once generation is fully done
+  // We watch isGenerating going from true → false and streamingHtml being non-empty
+  const wasGenerating = useRef(false);
+  useEffect(() => {
+    if (wasGenerating.current && !isGenerating && streamingHtml) {
+      push(streamingHtml);
+    }
+    wasGenerating.current = isGenerating;
+  }, [isGenerating, streamingHtml, push]);
 
   // ─── Load project ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -203,36 +231,30 @@ export default function EditorLayout() {
     setStreamingFiles([]);
     setPhase('streaming');
 
-    await generate(prompt, (fullHtml: string) => {
-      push(fullHtml);
-      // Update streaming files live as content comes in
-      setStreamingFiles(parseFilesFromHtml(fullHtml));
-    }, {
-      currentHtml: html || null,
-      selectedSection,
-    });
+    await generate(prompt);
 
+    // Generation done — streaming phase stays visible.
+    // StreamingView shows a "View Preview" button the user clicks to transition.
     setHasGeneratedOnce(true);
     setSelectedSection(null);
-  }, [generate, push, html, selectedSection]);
+  }, [generate]);
 
   // ─── Regenerate (same last prompt, re-run) ─────────────────────────────────
-  
   const handleRegenerate = useCallback(async () => {
     if (!lastPrompt) return;
     setStreamingFiles([]);
     setPhase('streaming');
 
-    await generate(lastPrompt, (fullHtml: string) => {
-      push(fullHtml);
-      setStreamingFiles(parseFilesFromHtml(fullHtml));
-    }, {
-      currentHtml: html || null,
-      selectedSection,
-    });
+    await generate(lastPrompt);
 
     setSelectedSection(null);
-  }, [generate, push, lastPrompt, html, selectedSection]);
+  }, [generate, lastPrompt]);
+
+  // ─── Cancel in-flight generation ──────────────────────────────────────────
+  const handleCancel = useCallback(() => {
+    cancelGenerate();
+    setPhase(hasGeneratedOnce ? 'preview' : 'welcome');
+  }, [cancelGenerate, hasGeneratedOnce]);
 
   // ─── Go to preview after streaming ────────────────────────────────────────
   const handleGoToPreview = useCallback(() => {
@@ -280,6 +302,7 @@ export default function EditorLayout() {
               files={streamingFiles}
               isStreaming={isGenerating}
               onPreview={handleGoToPreview}
+              error={generateError}
             />
           </motion.div>
         )}
