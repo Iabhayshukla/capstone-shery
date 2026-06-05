@@ -280,12 +280,6 @@ All endpoints are prefixed with `/api`. Protected endpoints require a `Bearer <t
 
 ---
 
-## Contributors
-
-| Name | Role |
-|------|------|
-| Abdurrahman Shaikh | Backend, LLM integration, auth, database |
-| [Teammate Name] | Frontend, editor layout, UI/UX |
 
 ---
 
