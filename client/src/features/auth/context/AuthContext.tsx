@@ -1,23 +1,14 @@
-import { createContext, useState, useEffect, ReactNode } from 'react';
+import { useState, useEffect, ReactNode } from 'react';
 import { supabase } from '../../../lib/supabase';
-import { AuthUser, LoginCredentials, SignUpCredentials } from '../types/auth.types';
+import { LoginCredentials, SignUpCredentials } from '../types/auth.types';
 import { login as apiLogin, signUp as apiSignUp, logout as apiLogout } from '../api/auth.api';
+import { AuthContext } from './AuthContextDef';
 
-export interface AuthContextType {
-  user: AuthUser | null;
-  accessToken: string | null;
-  loading: boolean;
-  isAuthenticated: boolean;
-  login: (credentials: LoginCredentials) => Promise<void>;
-  signup: (credentials: SignUpCredentials) => Promise<void>;
-  logout: () => Promise<void>;
-  loginWithGoogle: (redirectTo?: string) => Promise<void>;
-}
-
-export const AuthContext = createContext<AuthContextType | undefined>(undefined);
+// Re-export the type for external consumers
+export type { AuthContextType } from './AuthContextDef';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const [user, setUser] = useState<import('../types/auth.types').AuthUser | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -88,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.location.href = url;
   };
 
-  const value: AuthContextType = {
+  const value = {
     user,
     accessToken,
     loading,

@@ -1,5 +1,5 @@
 import { useContext } from 'react';
-import { AuthContext } from '../context/AuthContext';
+import { AuthContext } from '../context/AuthContextDef';
 
 /**
  * Hook that consumes the AuthContext to access the current authentication state and actions.

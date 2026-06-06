@@ -5,6 +5,14 @@ interface LoadingScreenProps {
   onComplete?: () => void;
 }
 
+// Defined at module level so it is a stable reference and never a useEffect dep.
+const STATUSES = [
+  "Initializing runtime...",
+  "Loading AI models...",
+  "Warming up engine...",
+  "Almost ready...",
+];
+
 const LoadingScreen = ({ onComplete }: LoadingScreenProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const logoRef = useRef<HTMLDivElement>(null);
@@ -21,12 +29,11 @@ const LoadingScreen = ({ onComplete }: LoadingScreenProps) => {
   const cornerRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const BRAND = "CAPSTONE-SHERY";
-  const STATUSES = [
-    "Initializing runtime...",
-    "Loading AI models...",
-    "Warming up engine...",
-    "Almost ready...",
-  ];
+  // Keep a ref so the GSAP onComplete callback always calls the latest prop
+  // without being listed as a useEffect dependency (GSAP timelines are set up
+  // once on mount — re-running the effect on prop changes would reset animations).
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -38,7 +45,7 @@ const LoadingScreen = ({ onComplete }: LoadingScreenProps) => {
             duration: 0.8,
             ease: "power3.inOut",
             delay: 0.2,
-            onComplete: () => onComplete?.(),
+            onComplete: () => onCompleteRef.current?.(),
           });
         },
       });

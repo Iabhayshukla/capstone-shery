@@ -59,7 +59,7 @@ const DashboardPage = () => {
       }
     };
     loadProjects();
-  }, [accessToken]);
+  }, [accessToken, addToast]);
 
   const handleCreate = async (name: string, template: string) => {
     if (!accessToken) return;

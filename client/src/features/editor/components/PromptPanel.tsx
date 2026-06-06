@@ -36,6 +36,13 @@ export default function PromptPanel({
   const [messages, setMessages] = useState<Message[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // Refs holding the latest snapshot of messages and selectedSection so the
+  // isGenerating effect can read them without listing them as dependencies
+  // (adding them as deps would fire on every new message, causing duplicate AI responses).
+  const messagesRef = useRef(messages);
+  const selectedSectionRef = useRef(selectedSection);
+  messagesRef.current = messages;
+  selectedSectionRef.current = selectedSection;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -69,12 +76,14 @@ export default function PromptPanel({
   };
 
   useEffect(() => {
-    if (!isGenerating && messages.length > 0 && messages[messages.length - 1].role === 'user') {
+    const currentMessages = messagesRef.current;
+    const currentSection = selectedSectionRef.current;
+    if (!isGenerating && currentMessages.length > 0 && currentMessages[currentMessages.length - 1].role === 'user') {
       const aiMsg: Message = {
         id: `msg-${Date.now()}`,
         role: 'assistant',
-        content: selectedSection
-          ? `Updated the "${selectedSection}" section! Check the preview.`
+        content: currentSection
+          ? `Updated the "${currentSection}" section! Check the preview.`
           : 'Website generated! Check the preview. Click any section to select and edit it.',
       };
       setMessages(prev => [...prev, aiMsg]);

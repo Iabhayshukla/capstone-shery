@@ -124,7 +124,7 @@ const RevealTextLine = ({
         gsap.to(imgLayer, { opacity: 0, duration: 0.2 });
       });
     });
-  }, [isAppLoading]);
+  }, [isAppLoading, animationType, entranceDelay, letterDelay]);
 
   // Flatten words into letters, preserving spaces
   const fullText = words.join(" ");

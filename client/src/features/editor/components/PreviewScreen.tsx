@@ -34,7 +34,7 @@ interface PreviewScreenProps {
 type PanelSide = 'left' | 'right';
 
 export default function PreviewScreen({
-  files,
+  files: _files,
   html,
   canUndo,
   canRedo,
@@ -47,7 +47,7 @@ export default function PreviewScreen({
   onRegenerate,
   selectedSection,
   onSectionSelect,
-  projectId,
+  projectId: _projectId,
 }: PreviewScreenProps) {
   const { status } = useWebContainer();
 
@@ -218,7 +218,6 @@ export default function PreviewScreen({
         showCode={showMonaco}
         onToggleCode={() => setShowMonaco(v => !v)}
         html={html}
-        projectId={projectId}
       />
 
       {/* Body */}
@@ -369,7 +368,7 @@ export default function PreviewScreen({
                     <span style={{ marginLeft: 'auto', color: isDark ? '#555' : '#999', fontSize: '10px' }}>HTML Editor</span>
                   </div>
                   <div style={{ height: `${monacoHeight - 28}px` }}>
-                    <MonacoEditor value={html} onChange={onCodeChange} isDark={isDark} />
+                    <MonacoEditor value={html} onChange={onCodeChange} />
                   </div>
                 </motion.div>
               </>

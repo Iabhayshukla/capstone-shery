@@ -13,122 +13,16 @@ import WelcomeScreen from './WelcomeScreen';
 import StreamingView from './StreamingView';
 import PreviewScreen from './PreviewScreen';
 
-// ─── Types ──────────────────────────────────────────────────────────────────
-type EditorPhase = 'welcome' | 'streaming' | 'preview';
-
-type EditorLanguage =
-  | 'html'
-  | 'css'
-  | 'javascript'
-  | 'typescript'
-  | 'json'
-  | 'markdown'
-  | 'python'
-  | 'java'
-  | 'cpp'
-  | 'c'
-  | 'csharp'
-  | 'go'
-  | 'rust'
-  | 'php'
-  | 'ruby'
-  | 'swift'
-  | 'kotlin'
-  | 'sql'
-  | 'xml'
-  | 'yaml'
-  | 'shell'
-  | 'plaintext';
-
 interface StreamingFile {
   name: string;
   content: string;
-  language: EditorLanguage;
+  language: 'html' | 'css' | 'js' | 'jsx' | 'tsx';
 }
+
+// ─── Types ──────────────────────────────────────────────────────────────────
+type EditorPhase = 'welcome' | 'streaming' | 'preview';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-function detectLanguage(filename: string): EditorLanguage {
-  const ext = filename.split('.').pop()?.toLowerCase();
-
-  switch (ext) {
-    case 'html':
-      return 'html';
-
-    case 'css':
-      return 'css';
-
-    case 'js':
-    case 'mjs':
-    case 'cjs':
-      return 'javascript';
-
-    case 'ts':
-    case 'tsx':
-      return 'typescript';
-
-    case 'jsx':
-      return 'javascript';
-
-    case 'json':
-      return 'json';
-
-    case 'md':
-      return 'markdown';
-
-    case 'py':
-      return 'python';
-
-    case 'java':
-      return 'java';
-
-    case 'cpp':
-    case 'cc':
-    case 'cxx':
-      return 'cpp';
-
-    case 'c':
-      return 'c';
-
-    case 'cs':
-      return 'csharp';
-
-    case 'go':
-      return 'go';
-
-    case 'rs':
-      return 'rust';
-
-    case 'php':
-      return 'php';
-
-    case 'rb':
-      return 'ruby';
-
-    case 'swift':
-      return 'swift';
-
-    case 'kt':
-      return 'kotlin';
-
-    case 'sql':
-      return 'sql';
-
-    case 'xml':
-      return 'xml';
-
-    case 'yaml':
-    case 'yml':
-      return 'yaml';
-
-    case 'sh':
-    case 'bash':
-      return 'shell';
-
-    default:
-      return 'plaintext';
-  }
-}
-
 // Build StreamingFile list from generated HTML string
 // Backend sends full HTML; we split into logical files for display
 function parseFilesFromHtml(rawHtml: string): StreamingFile[] {
@@ -156,7 +50,6 @@ export default function EditorLayout() {
     streamingHtml,
     error: generateError,
     generate,
-    cancel: cancelGenerate,
   } = useGenerate({
     projectId,
     selectedSection,
@@ -167,7 +60,6 @@ export default function EditorLayout() {
   const [phase, setPhase] = useState<EditorPhase>('welcome');
   const [streamingFiles, setStreamingFiles] = useState<StreamingFile[]>([]);
   const [lastPrompt, setLastPrompt] = useState('');
-  const [hasGeneratedOnce, setHasGeneratedOnce] = useState(false);
 
   // ─── Sync streamingHtml → preview files in real time ──────────────────────
   useEffect(() => {
@@ -198,7 +90,6 @@ export default function EditorLayout() {
           // If project already has code, skip welcome and go straight to preview
           setStreamingFiles(parseFilesFromHtml(proj.currentCode));
           setPhase('preview');
-          setHasGeneratedOnce(true);
         }
       } catch (err) {
         console.error('Failed to load project:', err);
@@ -235,7 +126,6 @@ export default function EditorLayout() {
 
     // Generation done — streaming phase stays visible.
     // StreamingView shows a "View Preview" button the user clicks to transition.
-    setHasGeneratedOnce(true);
     setSelectedSection(null);
   }, [generate]);
 
@@ -249,12 +139,6 @@ export default function EditorLayout() {
 
     setSelectedSection(null);
   }, [generate, lastPrompt]);
-
-  // ─── Cancel in-flight generation ──────────────────────────────────────────
-  const handleCancel = useCallback(() => {
-    cancelGenerate();
-    setPhase(hasGeneratedOnce ? 'preview' : 'welcome');
-  }, [cancelGenerate, hasGeneratedOnce]);
 
   // ─── Go to preview after streaming ────────────────────────────────────────
   const handleGoToPreview = useCallback(() => {
