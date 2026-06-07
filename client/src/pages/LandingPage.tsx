@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useCursor } from "@/components/ui/useCursor";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -6,8 +7,7 @@ import Navbar from "../components/ui/Navbar";
 import BrowserMockup from "../components/ui/BrowserMockup";
 import { Sparkles, Zap, Download, ArrowRight } from "lucide-react";
 import { useAuth } from "@/features/auth";
-import Particles from "../components/Particles";
-import { useTheme } from "@/lib/ThemeContext";
+import DotField from "../components/DotField";
 import Marquee from "react-fast-marquee";
 import RevealText from "@/components/ui/RevealText";
 import gsap from "gsap";
@@ -15,7 +15,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 
 gsap.registerPlugin(ScrollTrigger);
 
-// ─── Framer variants (hero only) ───────────────────────────────────────────
+
 const fadeUp = {
   hidden: { opacity: 0, y: 40 },
   show: (i = 0) => ({
@@ -31,7 +31,7 @@ interface LandingPageProps {
 
 const LandingPage = ({ isAppLoading = false }: LandingPageProps) => {
   const { isAuthenticated } = useAuth();
-  const { theme } = useTheme();
+  useCursor();
 
   // ── Refs ──────────────────────────────────────────────────────────────────
   const pageRef           = useRef<HTMLDivElement>(null);
@@ -59,11 +59,6 @@ const LandingPage = ({ isAppLoading = false }: LandingPageProps) => {
   // Orbs
   const orb1Ref           = useRef<HTMLDivElement>(null);
   const orb2Ref           = useRef<HTMLDivElement>(null);
-
-  const particleColors =
-    theme === "dark"
-      ? ["#ffffff", "#6C63FF", "#FF6584"]
-      : ["#1A1A2E", "#6C63FF", "#FF6584"];
 
   // ── GSAP ──────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -277,8 +272,11 @@ const LandingPage = ({ isAppLoading = false }: LandingPageProps) => {
   return (
     <div
       ref={pageRef}
-      className="min-h-screen bg-brand-dark text-[var(--text-primary)] overflow-hidden relative bg-dot-pattern"
+      className="landing-page min-h-screen bg-brand-dark text-[var(--text-primary)] overflow-hidden relative"
     >
+      {/* Custom cursor elements */}
+      <div id="cur" />
+      <div id="curR" />
       {/* ─── Background ─────────────────────────────────────────────── */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
         <div
@@ -289,17 +287,20 @@ const LandingPage = ({ isAppLoading = false }: LandingPageProps) => {
           ref={orb2Ref}
           className="absolute bottom-[-100px] right-[-100px] w-[500px] h-[500px] rounded-full bg-[#FF6584]/20 blur-[120px] animate-float-orb-2"
         />
-        <div className="absolute inset-0 w-full h-full opacity-35">
-          <Particles
-            particleColors={particleColors}
-            particleCount={120}
-            particleSpread={10}
-            speed={0.15}
-            particleBaseSize={100}
-            moveParticlesOnHover
-            alphaParticles={false}
-            disableRotation={false}
-            pixelRatio={1}
+        <div className="absolute inset-0 w-full h-full opacity-80 pointer-events-none">
+          <DotField
+            dotRadius={1.8}
+            dotSpacing={14}
+            bulgeStrength={67}
+            glowRadius={160}
+            sparkle={false}
+            waveAmplitude={0}
+            cursorRadius={500}
+            cursorForce={0.1}
+            bulgeOnly
+            gradientFrom="#A855F7"
+            gradientTo="#B497CF"
+            glowColor="#120F17"
           />
         </div>
       </div>
@@ -323,7 +324,7 @@ const LandingPage = ({ isAppLoading = false }: LandingPageProps) => {
         <RevealText isAppLoading={isAppLoading} />
 
         {/* Subheading — key words highlighted */}
-        <p
+        {/* <p
           ref={heroSubRef}
           className="text-[var(--text-muted)] text-lg max-w-2xl leading-relaxed"
           style={{ opacity: 0 }}
@@ -332,7 +333,6 @@ const LandingPage = ({ isAppLoading = false }: LandingPageProps) => {
           <span
             className="hero-highlight text-[var(--text-primary)] font-medium relative"
             style={{
-              background: "linear-gradient(90deg, rgba(108,99,255,0.25), rgba(108,99,255,0.25))",
               backgroundRepeat: "no-repeat",
               backgroundPosition: "0 88%",
               backgroundSize: "0% 2px",
@@ -345,7 +345,6 @@ const LandingPage = ({ isAppLoading = false }: LandingPageProps) => {
           <span
             className="hero-highlight text-[var(--text-primary)] font-medium relative"
             style={{
-              background: "linear-gradient(90deg, rgba(255,101,132,0.25), rgba(255,101,132,0.25))",
               backgroundRepeat: "no-repeat",
               backgroundPosition: "0 88%",
               backgroundSize: "0% 2px",
@@ -355,7 +354,7 @@ const LandingPage = ({ isAppLoading = false }: LandingPageProps) => {
             live preview
           </span>
           , instant editing, and one-click export.
-        </p>
+        </p> */}
 
         {/* CTAs */}
         <div ref={heroCtaRef} className="flex items-center gap-4">
