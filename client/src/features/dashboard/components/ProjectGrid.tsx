@@ -1,80 +1,74 @@
-import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ProjectCard, { type Project } from "./ProjectCard";
 import EmptyState from "@/components/ui/EmptyState";
 import { ProjectCardSkeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/button";
 import { staggerContainer } from "@/lib/animations";
-import {
-  Plus,
-  LayoutGrid,
-  List,
-  Search,
-  SlidersHorizontal,
-  Sparkles,
-} from "lucide-react";
+import { Plus, Sparkles } from "lucide-react";
 
 interface ProjectGridProps {
   projects: Project[];
   isLoading: boolean;
+  viewMode: "grid" | "list";
+  favorites: string[];
+  onToggleFavorite: (id: string, e: React.MouseEvent) => void;
   onNewProject: () => void;
   onRename: (project: Project) => void;
   onDelete: (project: Project) => void;
   onDuplicate: (project: Project) => void;
 }
 
-type SortOption = "updated" | "name" | "created";
-type ViewMode = "grid" | "list";
-
 const ProjectGrid = ({
   projects,
   isLoading,
+  viewMode,
+  favorites,
+  onToggleFavorite,
   onNewProject,
   onRename,
   onDelete,
   onDuplicate,
 }: ProjectGridProps) => {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState<SortOption>("updated");
-  const [viewMode, setViewMode] = useState<ViewMode>("grid");
-
-
-  const filtered = projects
-    .filter((p) =>
-      p.name.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-    .sort((a, b) => {
-      if (sortBy === "name") return a.name.localeCompare(b.name);
-      if (sortBy === "created")
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-    });
-
- 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      <div className={
+        viewMode === "grid" 
+          ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" 
+          : "flex flex-col gap-3"
+      }>
         {Array.from({ length: 6 }).map((_, i) => (
-          <ProjectCardSkeleton key={i} />
+          viewMode === "grid" ? (
+            <ProjectCardSkeleton key={i} />
+          ) : (
+            <div key={i} className="p-4 bg-zinc-950/40 border border-zinc-900 rounded-xl flex items-center justify-between gap-4 animate-pulse">
+              <div className="flex items-center gap-4 flex-1">
+                <div className="w-9 h-9 rounded-lg bg-zinc-900" />
+                <div className="space-y-2 flex-1">
+                  <div className="h-4 bg-zinc-900 rounded w-1/4" />
+                  <div className="h-3 bg-zinc-900 rounded w-1/2" />
+                </div>
+              </div>
+              <div className="w-16 h-8 bg-zinc-900 rounded" />
+            </div>
+          )
         ))}
       </div>
     );
   }
 
- 
   if (projects.length === 0) {
     return (
       <EmptyState
-        icon={<Sparkles size={40} />}
-        title="No projects yet"
-        description="Create your first AI-powered website. Just describe what you want and let the magic happen!"
+        icon={<Sparkles size={40} className="text-zinc-650" />}
+        title="No projects found"
+        description="Create a new AI-powered website project to get started."
         action={
           <Button
             onClick={onNewProject}
-            className="bg-brand-primary hover:bg-brand-primary-hover text-white px-6 gap-2 shadow-lg shadow-brand-primary/25"
+            className="bg-brand-primary hover:bg-brand-primary-hover text-white px-6 gap-2 shadow-lg shadow-brand-primary/25 rounded-xl"
           >
             <Plus size={18} />
-            Create First Project
+            Create Project
           </Button>
         }
       />
@@ -83,87 +77,6 @@ const ProjectGrid = ({
 
   return (
     <div className="space-y-6">
-   
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-   
-        <div className="relative w-full sm:w-72">
-          <Search
-            size={16}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-faint)]"
-          />
-          <input
-            type="text"
-            placeholder="Search projects..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 text-sm glass-input text-[var(--text-primary)] placeholder:text-[var(--text-faint)]"
-            id="search-projects"
-          />
-        </div>
-
-        <div className="flex items-center gap-2">
-          
-          <div className="relative">
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as SortOption)}
-              className="appearance-none pl-8 pr-8 py-2 text-sm glass-input text-[var(--text-secondary)] cursor-pointer bg-transparent"
-              aria-label="Sort projects"
-            >
-              <option value="updated" className="bg-[var(--brand-dark)]">Last Modified</option>
-              <option value="name" className="bg-[var(--brand-dark)]">Name</option>
-              <option value="created" className="bg-[var(--brand-dark)]">Date Created</option>
-            </select>
-            <SlidersHorizontal
-              size={14}
-              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-faint)] pointer-events-none"
-            />
-          </div>
-
-      
-          <div className="flex rounded-lg overflow-hidden border border-[var(--brand-border)]">
-            <button
-              onClick={() => setViewMode("grid")}
-              className={`p-2 transition-colors ${
-                viewMode === "grid"
-                  ? "bg-brand-primary text-white"
-                  : "text-[var(--text-faint)] hover:text-[var(--text-muted)] hover:bg-[var(--brand-glass-hover)]"
-              }`}
-              aria-label="Grid view"
-            >
-              <LayoutGrid size={16} />
-            </button>
-            <button
-              onClick={() => setViewMode("list")}
-              className={`p-2 transition-colors ${
-                viewMode === "list"
-                  ? "bg-brand-primary text-white"
-                  : "text-[var(--text-faint)] hover:text-[var(--text-muted)] hover:bg-[var(--brand-glass-hover)]"
-              }`}
-              aria-label="List view"
-            >
-              <List size={16} />
-            </button>
-          </div>
-        </div>
-      </div>
-
-  
-      {filtered.length === 0 && searchQuery && (
-        <div className="text-center py-16">
-          <p className="text-[var(--text-muted)] text-sm">
-            No projects matching "{searchQuery}"
-          </p>
-          <button
-            onClick={() => setSearchQuery("")}
-            className="text-brand-primary text-sm mt-2 hover:underline"
-          >
-            Clear search
-          </button>
-        </div>
-      )}
-
-      {/* Grid */}
       <AnimatePresence mode="wait">
         <motion.div
           key={viewMode}
@@ -176,10 +89,13 @@ const ProjectGrid = ({
               : "flex flex-col gap-3"
           }
         >
-          {filtered.map((project, i) => (
+          {projects.map((project, i) => (
             <ProjectCard
               key={project.id}
               project={project}
+              layout={viewMode}
+              isFavorite={favorites.includes(project.id)}
+              onToggleFavorite={onToggleFavorite}
               index={i}
               onRename={onRename}
               onDelete={onDelete}
