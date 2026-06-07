@@ -16,6 +16,7 @@ const AccountPage = lazy(
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const SignupPage = lazy(() => import("./pages/SignupPage"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
+const PreviewPage = lazy(() => import("./pages/PreviewPage"));
 const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
 
 const PageLoader = () => (
@@ -36,7 +37,9 @@ const EditorLoader = () => (
 );
 
 function App() {
-  const [showLoading, setShowLoading] = useState(true);
+  const [showLoading, setShowLoading] = useState(() => {
+    return !window.location.pathname.startsWith("/preview/");
+  });
 
   return (
     <>
@@ -72,6 +75,15 @@ function App() {
               element={
                 <ProtectedRoute>
                   <AccountPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/preview/:projectId"
+              element={
+                <ProtectedRoute>
+                  <PreviewPage />
                 </ProtectedRoute>
               }
             />
