@@ -12,15 +12,17 @@ import type { Project } from '@/features/dashboard/components/ProjectCard';
 import WelcomeScreen from './WelcomeScreen';
 import StreamingView from './StreamingView';
 import PreviewScreen from './PreviewScreen';
+import { Sparkles } from 'lucide-react';
+import type { Message } from './PromptPanel';
 
 interface StreamingFile {
   name: string;
   content: string;
-  language: 'html' | 'css' | 'js' | 'jsx' | 'tsx';
+  language: string;
 }
 
 // ─── Types ──────────────────────────────────────────────────────────────────
-type EditorPhase = 'welcome' | 'streaming' | 'preview';
+type EditorPhase = 'loading' | 'welcome' | 'streaming' | 'preview';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 // Build StreamingFile list from generated HTML string
@@ -57,9 +59,19 @@ export default function EditorLayout() {
   });
 
   const [project, setProject] = useState<Project | null>(null);
-  const [phase, setPhase] = useState<EditorPhase>('welcome');
+  const [phase, setPhase] = useState<EditorPhase>('loading');
   const [streamingFiles, setStreamingFiles] = useState<StreamingFile[]>([]);
   const [lastPrompt, setLastPrompt] = useState('');
+  const initialCodeRef = useRef<string | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const generatingSectionRef = useRef<string | null>(null);
+
+  // Reset session state when projectId changes
+  useEffect(() => {
+    initialCodeRef.current = null;
+    setLastPrompt('');
+    setMessages([]);
+  }, [projectId]);
 
   // ─── Sync streamingHtml → preview files in real time ──────────────────────
   useEffect(() => {
@@ -74,6 +86,18 @@ export default function EditorLayout() {
   useEffect(() => {
     if (wasGenerating.current && !isGenerating && streamingHtml) {
       push(streamingHtml);
+      initialCodeRef.current = streamingHtml;
+
+      const targetSec = generatingSectionRef.current;
+      const aiMsg: Message = {
+        id: `msg-${Date.now()}`,
+        role: 'assistant',
+        content: targetSec
+          ? `Updated the "${targetSec}" section! Check the preview.`
+          : 'Website generated! Check the preview. Click any section to select and edit it.',
+      };
+      setMessages(prev => [...prev, aiMsg]);
+      generatingSectionRef.current = null;
     }
     wasGenerating.current = isGenerating;
   }, [isGenerating, streamingHtml, push]);
@@ -86,13 +110,22 @@ export default function EditorLayout() {
         const proj = await fetchProjectById(accessToken, projectId);
         setProject(proj);
         if (proj.currentCode) {
+          if (initialCodeRef.current === null) {
+            initialCodeRef.current = proj.currentCode;
+          }
           reset(proj.currentCode);
           // If project already has code, skip welcome and go straight to preview
           setStreamingFiles(parseFilesFromHtml(proj.currentCode));
           setPhase('preview');
+        } else {
+          if (initialCodeRef.current === null) {
+            initialCodeRef.current = '';
+          }
+          setPhase('welcome');
         }
       } catch (err) {
         console.error('Failed to load project:', err);
+        setPhase('welcome');
       }
     };
     load();
@@ -100,8 +133,10 @@ export default function EditorLayout() {
 
   // ─── Auto-save ────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!accessToken || !projectId || !html) return;
-    if (project?.currentCode === html) return;
+    if (!accessToken || !projectId || phase === 'loading') return;
+
+    const dbCode = project?.currentCode || '';
+    if (dbCode === html) return;
 
     const timer = setTimeout(async () => {
       try {
@@ -114,26 +149,37 @@ export default function EditorLayout() {
     }, 1000);
 
     return () => clearTimeout(timer);
-  }, [html, accessToken, projectId, project]);
+  }, [html, accessToken, projectId, project, phase]);
 
   // ─── Generate ──────────────────────────────────────────────────────────────
   const handleGenerate = useCallback(async (prompt: string) => {
     setLastPrompt(prompt);
     setStreamingFiles([]);
     setPhase('streaming');
+    generatingSectionRef.current = selectedSection;
 
     await generate(prompt);
 
     // Generation done — streaming phase stays visible.
     // StreamingView shows a "View Preview" button the user clicks to transition.
     setSelectedSection(null);
-  }, [generate]);
+  }, [generate, selectedSection]);
 
   // ─── Regenerate (same last prompt, re-run) ─────────────────────────────────
   const handleRegenerate = useCallback(async () => {
     if (!lastPrompt) return;
     setStreamingFiles([]);
     setPhase('streaming');
+    generatingSectionRef.current = null;
+
+    setMessages(prev => [
+      ...prev,
+      {
+        id: `msg-${Date.now()}`,
+        role: 'user',
+        content: 'Regenerate',
+      },
+    ]);
 
     await generate(lastPrompt);
 
@@ -151,9 +197,88 @@ export default function EditorLayout() {
     setStreamingFiles(parseFilesFromHtml(newHtml));
   }, [push]);
 
+  // ─── Reset code to initial fetched code ────────────────────────────────────
+  const handleReset = useCallback(() => {
+    if (window.confirm("Are you sure you want to reset the code? All your unsaved changes will be lost.")) {
+      const targetCode = initialCodeRef.current ?? '';
+      reset(targetCode);
+      if (targetCode) {
+        setStreamingFiles(parseFilesFromHtml(targetCode));
+        setPhase('preview');
+      } else {
+        setStreamingFiles([]);
+        setPhase('welcome');
+      }
+    }
+  }, [reset]);
+
   return (
     <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: 'var(--brand-dark)' }}>
       <AnimatePresence mode="wait">
+
+        {/* ── LOADING ── */}
+        {phase === 'loading' && (
+          <motion.div
+            key="loading"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            style={{
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 16,
+              background: 'var(--brand-dark)',
+            }}
+          >
+            <div style={{ position: 'relative', width: 50, height: 50 }}>
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ repeat: Infinity, duration: 1.2, ease: "linear" }}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  borderRadius: '50%',
+                  border: '3px solid rgba(255, 255, 255, 0.05)',
+                  borderTopColor: '#D4FF57',
+                  position: 'absolute',
+                }}
+              />
+              <motion.div
+                animate={{ scale: [0.85, 1.05, 0.85] }}
+                transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#D4FF57',
+                }}
+              >
+                <Sparkles size={18} />
+              </motion.div>
+            </div>
+            <motion.p
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              style={{
+                fontFamily: 'DM Sans, sans-serif',
+                fontSize: 11,
+                letterSpacing: 2,
+                textTransform: 'uppercase',
+                color: 'rgba(240, 237, 230, 0.6)',
+              }}
+            >
+              Loading workspace...
+            </motion.p>
+          </motion.div>
+        )}
 
         {/* ── WELCOME ── */}
         {phase === 'welcome' && (
@@ -161,8 +286,8 @@ export default function EditorLayout() {
             key="welcome"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0, scale: 0.98 }}
-            transition={{ duration: 0.3 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.35 }}
             style={{ width: '100%', height: '100%' }}
           >
             <WelcomeScreen
@@ -215,6 +340,10 @@ export default function EditorLayout() {
               onRegenerate={handleRegenerate}
               selectedSection={selectedSection}
               onSectionSelect={setSelectedSection}
+              projectId={projectId}
+              onReset={handleReset}
+              messages={messages}
+              setMessages={setMessages}
             />
           </motion.div>
         )}

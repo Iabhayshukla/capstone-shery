@@ -53,7 +53,7 @@ const SignupPage = () => {
     setIsLoading(true);
     try {
       await signup({ email, password, name });
-      addToast("Account created! Welcome to NovaBuild AI 🎉", "success");
+      addToast("Account created! Welcome to Capstone-Shery 🎉", "success");
       setTimeout(() => navigate("/dashboard"), 600);
     } catch (err: any) {
       addToast(err.message || "Failed to create account. Please try again.", "error");
@@ -83,7 +83,7 @@ const SignupPage = () => {
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-primary to-brand-accent flex items-center justify-center shadow-lg shadow-brand-primary/20">
               <Sparkles size={18} className="text-white" />
             </div>
-            <span className="text-2xl font-bold gradient-text">NovaBuild AI</span>
+            <span className="text-2xl font-bold gradient-text">Capstone-Shery</span>
           </Link>
         </motion.div>
 

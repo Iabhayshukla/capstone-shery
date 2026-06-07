@@ -117,7 +117,7 @@ const ResetPasswordPage = () => {
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-primary to-brand-accent flex items-center justify-center shadow-lg shadow-brand-primary/20">
               <Sparkles size={18} className="text-white" />
             </div>
-            <span className="text-2xl font-bold gradient-text">NovaBuild AI</span>
+            <span className="text-2xl font-bold gradient-text">Capstone-Shery</span>
           </Link>
         </motion.div>
 

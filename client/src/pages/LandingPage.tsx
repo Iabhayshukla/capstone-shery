@@ -524,7 +524,7 @@ const LandingPage = ({ isAppLoading = false }: LandingPageProps) => {
 
       {/* ─── FOOTER ─────────────────────────────────────────────────── */}
       <footer className="py-6 text-center text-[var(--text-faint)] text-sm border-t border-[var(--brand-border)]">
-        © 2025 NovaBuild AI · CAPSTONE-SHERY
+        © 2025 Capstone-Shery · CAPSTONE-SHERY
       </footer>
     </div>
   );

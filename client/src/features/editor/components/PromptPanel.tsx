@@ -1,15 +1,6 @@
 import { useState, useRef, useEffect, KeyboardEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Sparkles, User, Bot, Trash2, RotateCcw, Lightbulb, RefreshCw } from 'lucide-react';
-
-interface PromptPanelProps {
-  onGenerate: (prompt: string) => void;
-  isGenerating: boolean;
-  isReady: boolean;
-  lastPrompt?: string;
-  onRegenerate?: () => void;
-  selectedSection?: string | null;
-}
+import { ArrowRight, Trash2, RefreshCw, RotateCcw } from 'lucide-react';
 
 const SAMPLE_PROMPTS = [
   'Coffee shop landing page',
@@ -18,10 +9,21 @@ const SAMPLE_PROMPTS = [
   'Restaurant landing page',
 ];
 
-interface Message {
+export interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+}
+
+interface PromptPanelProps {
+  onGenerate: (prompt: string) => void;
+  isGenerating: boolean;
+  isReady: boolean;
+  lastPrompt?: string;
+  onRegenerate?: () => void;
+  selectedSection?: string | null;
+  messages: Message[];
+  setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
 }
 
 export default function PromptPanel({
@@ -31,18 +33,12 @@ export default function PromptPanel({
   lastPrompt,
   onRegenerate,
   selectedSection,
+  messages,
+  setMessages,
 }: PromptPanelProps) {
   const [input, setInput] = useState('');
-  const [messages, setMessages] = useState<Message[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  // Refs holding the latest snapshot of messages and selectedSection so the
-  // isGenerating effect can read them without listing them as dependencies
-  // (adding them as deps would fire on every new message, causing duplicate AI responses).
-  const messagesRef = useRef(messages);
-  const selectedSectionRef = useRef(selectedSection);
-  messagesRef.current = messages;
-  selectedSectionRef.current = selectedSection;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -57,38 +53,15 @@ export default function PromptPanel({
 
   const handleSubmit = () => {
     if (!input.trim() || isGenerating || !isReady) return;
-
     const userMsg: Message = {
       id: `msg-${Date.now()}`,
       role: 'user',
-      content: selectedSection
-        ? `[${selectedSection}] ${input.trim()}`
-        : input.trim(),
+      content: selectedSection ? `[${selectedSection}] ${input.trim()}` : input.trim(),
     };
-
     setMessages(prev => [...prev, userMsg]);
-    onGenerate(
-      selectedSection
-        ? `Edit only the "${selectedSection}" section: ${input.trim()}`
-        : input.trim()
-    );
+    onGenerate(selectedSection ? `Edit only the "${selectedSection}" section: ${input.trim()}` : input.trim());
     setInput('');
   };
-
-  useEffect(() => {
-    const currentMessages = messagesRef.current;
-    const currentSection = selectedSectionRef.current;
-    if (!isGenerating && currentMessages.length > 0 && currentMessages[currentMessages.length - 1].role === 'user') {
-      const aiMsg: Message = {
-        id: `msg-${Date.now()}`,
-        role: 'assistant',
-        content: currentSection
-          ? `Updated the "${currentSection}" section! Check the preview.`
-          : 'Website generated! Check the preview. Click any section to select and edit it.',
-      };
-      setMessages(prev => [...prev, aiMsg]);
-    }
-  }, [isGenerating]);
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -105,46 +78,35 @@ export default function PromptPanel({
   const isDisabled = !input.trim() || isGenerating || !isReady;
 
   return (
-    <div className="flex flex-col h-full" style={{ background: 'var(--brand-surface)' }}>
-
-      {/* Header */}
-      <div
-        className="flex items-center justify-between px-4 py-3 flex-shrink-0"
-        style={{ borderBottom: '1px solid var(--brand-border)' }}
-      >
-        <div className="flex items-center gap-2">
-          <div
-            className="w-7 h-7 rounded-lg flex items-center justify-center"
-            style={{ background: 'var(--brand-primary-light)' }}
-          >
-            <Sparkles size={13} style={{ color: 'var(--brand-primary)' }} />
-          </div>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>
-            AI Prompt
+    <div className="h-full bg-[var(--brand-surface)] font-[DM Sans] flex flex-col">
+      {/* HEADER */}
+      <div className="p-3 border-b border-white/5 flex items-center justify-between flex-shrink-0 bg-black/15">
+        {/* <div className="flex items-center gap-2">
+          <span
+            className="w-1.5 h-1.5 rounded-full bg-[#D4FF57] inline-block shadow-[0_0_6px_#D4FF57]"
+            style={{ animation: 'blink 1.4s step-end infinite' }}
+          />
+          <span className="font-[Bebas Neue] text-sm tracking-widest text-[#f0ede6]">
+            CAPSTONE<span className="text-[#D4FF57]">.</span>SHERY
           </span>
-        </div>
+        </div> */}
 
-        <div className="flex items-center gap-1">
-          {/* Regenerate button (shows when there's a last prompt) */}
+        <div className="flex items-center gap-1.5">
           <AnimatePresence>
             {lastPrompt && !isGenerating && onRegenerate && (
               <motion.button
-                initial={{ opacity: 0, scale: 0.8 }}
+                initial={{ opacity: 0, scale: 0.85 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+                exit={{ opacity: 0, scale: 0.85 }}
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.96 }}
                 onClick={onRegenerate}
                 title={`Regenerate: "${lastPrompt}"`}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
-                style={{
-                  background: 'rgba(108,99,255,0.12)',
-                  border: '1px solid rgba(108,99,255,0.25)',
-                  color: 'var(--brand-primary)',
-                }}
+                className="flex items-center gap-1 text-xs tracking-wider uppercase text-white/50 bg-transparent border border-white/7 px-2.5 py-1 cursor-pointer transition-all duration-200 hover:text-white/70 hover:border-white/15"
+                style={{ fontSize: 10, letterSpacing: 1.5 }}
               >
-                <RefreshCw size={11} />
-                Regenerate
+                <RefreshCw size={10} />
+                Redo
               </motion.button>
             )}
           </AnimatePresence>
@@ -152,107 +114,99 @@ export default function PromptPanel({
           {messages.length > 0 && (
             <button
               onClick={handleClear}
-              className="p-1.5 rounded-lg transition-colors"
-              style={{ color: 'var(--text-faint)' }}
               title="Clear conversation"
+              className="flex items-center justify-center w-6.5 h-6.5 bg-transparent border border-white/7 text-white/35 cursor-pointer transition-all duration-200 hover:text-red-500 hover:border-red-500/30"
             >
-              <Trash2 size={13} />
+              <Trash2 size={11} />
             </button>
           )}
         </div>
       </div>
 
-      {/* Selected Section Badge */}
+      {/* SELECTED SECTION BADGE */}
       <AnimatePresence>
         {selectedSection && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="px-4 py-2 flex-shrink-0"
-            style={{ borderBottom: '1px solid var(--brand-border)' }}
+            className="p-2 border-b border-white/5 flex-shrink-0"
           >
             <div
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg"
-              style={{
-                background: 'rgba(59,130,246,0.1)',
-                border: '1px solid rgba(59,130,246,0.2)',
-              }}
+              className="flex items-center gap-2 p-1.5 bg-[#D4FF57]/6 border-[#D4FF57]/15 text-xs tracking-wider uppercase text-[#D4FF57]"
+              style={{ fontSize: 10, letterSpacing: 1.5 }}
             >
-              <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#3b82f6' }} />
-              <span style={{ fontSize: '11px', color: '#60a5fa', fontWeight: 500 }}>
-                Editing: {selectedSection}
-              </span>
+              <span className="w-1 h-1 rounded-full bg-[#D4FF57] inline-block" />
+              Editing: {selectedSection}
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto px-4 py-4" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-
-        {/* Welcome State */}
+      {/* MESSAGES AREA */}
+      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
+        {/* Empty state */}
         {messages.length === 0 && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col items-center justify-center h-full text-center py-6"
+            className="flex flex-col items-center justify-center h-full text-center gap-0"
           >
             <div
-              className="w-12 h-12 rounded-2xl flex items-center justify-center mb-3"
-              style={{ background: 'var(--brand-primary-light)' }}
+              className="font-[Bebas Neue] leading-[0.95] tracking-[1] text-[#f0ede6] mb-3"
+              style={{ fontSize: 'clamp(32px, 4vw, 48px)' }}
             >
-              <Sparkles size={20} style={{ color: 'var(--brand-primary)' }} />
+              {selectedSection ? (
+                <>
+                  Edit<br /><span className="text-[#D4FF57]">{selectedSection}</span>
+                </>
+              ) : (
+                <>
+                  What to<br /><span className="text-[#D4FF57]">build?</span>
+                </>
+              )}
             </div>
-            <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px' }}>
-              {selectedSection ? `Edit "${selectedSection}"` : 'What would you like to build?'}
-            </h3>
-            <p style={{ fontSize: '12px', color: 'var(--text-faint)', maxWidth: '220px', marginBottom: '20px' }}>
+
+            <p
+              className="text-[11px] font-light tracking-[0.3] text-white/35 max-w-[200px] leading-[1.7] mb-6"
+            >
               {selectedSection
-                ? 'Describe what you want to change in this section.'
-                : 'Describe your website and AI will generate it instantly.'}
+                ? 'Describe what to change in this section.'
+                : 'Describe your website — AI builds it instantly.'}
             </p>
 
             {!isReady && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="w-full mb-4 px-3 py-2 rounded-xl flex items-center gap-2"
-                style={{
-                  background: 'rgba(234,179,8,0.1)',
-                  border: '1px solid rgba(234,179,8,0.2)',
-                  fontSize: '11px',
-                  color: '#eab308',
-                }}
+                className="w-full mb-4 p-2 bg-yellow-500/8 border-yellow-500/20 flex items-center gap-2 text-xs tracking-wider uppercase text-yellow-500"
+                style={{ fontSize: 10, letterSpacing: 1 }}
               >
-                <RotateCcw size={11} className="animate-spin" />
-                Preview loading... please wait
+                <RotateCcw
+                  size={10}
+                  className="inline-block"
+                  style={{ animation: 'spin 1s linear infinite' }}
+                />
+                Preview loading...
               </motion.div>
             )}
 
-            {/* Quick prompts */}
             {!selectedSection && (
-              <div className="w-full flex flex-col gap-2">
-                <div className="flex items-center gap-1.5 mb-1" style={{ fontSize: '11px', color: 'var(--text-faint)' }}>
-                  <Lightbulb size={11} />
-                  <span>Try these</span>
+              <div className="w-full flex flex-col gap-1.5">
+                <div className="text-[9px] tracking-[2] uppercase text-white/25 mb-1">
+                  Try these
                 </div>
                 {SAMPLE_PROMPTS.map((p, i) => (
                   <motion.button
                     key={i}
                     initial={{ opacity: 0, x: -8 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.15 + i * 0.08 }}
+                    transition={{ delay: 0.1 + i * 0.07 }}
                     onClick={() => setInput(p)}
-                    className="w-full text-left px-3 py-2.5 rounded-xl transition-all"
-                    style={{
-                      background: 'var(--brand-glass)',
-                      border: '1px solid var(--brand-border)',
-                      fontSize: '12px',
-                      color: 'var(--text-muted)',
-                    }}
+                    className="w-full text-left p-2 bg-transparent border border-white/6 text-white/45 cursor-pointer transition-all duration-200 font-[DM Sans] font-light text-[12px] tracking-[0.3] hover:border-[#D4FF57]/25 hover:text-white/80 hover:bg-[#D4FF57]/3 flex items-center justify-between"
                   >
-                    "{p}"
+                    <span>{p}</span>
+                    <ArrowRight size={11} className="opacity-40 flex-shrink-0" />
                   </motion.button>
                 ))}
               </div>
@@ -260,38 +214,37 @@ export default function PromptPanel({
           </motion.div>
         )}
 
-        {/* Chat Messages */}
+        {/* Chat messages */}
         <AnimatePresence>
           {messages.map((msg) => (
             <motion.div
               key={msg.id}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              className={`flex gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
+              className="flex gap-2.5 items-start flex-shrink-0"
+              style={{ flexDirection: msg.role === 'user' ? 'row-reverse' : 'row' }}
             >
               <div
-                className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
+                className="w-6.5 h-6.5 flex-shrink-0 rounded-full border flex items-center justify-center text-[9px] font-bold text-white tracking-[0.5] mt-0.5"
                 style={{
                   background: msg.role === 'user'
-                    ? 'var(--brand-primary-light)'
-                    : 'rgba(34,197,94,0.15)',
+                    ? 'rgba(108,99,255,0.2)'
+                    : 'linear-gradient(135deg, #6C63FF, #ff6584)',
+                  border: `1px solid ${msg.role === 'user' ? 'rgba(108,99,255,0.3)' : 'transparent'}`,
                 }}
               >
-                {msg.role === 'user'
-                  ? <User size={11} style={{ color: 'var(--brand-primary)' }} />
-                  : <Bot size={11} style={{ color: '#22c55e' }} />}
+                {msg.role === 'user' ? 'U' : 'CS'}
               </div>
+
               <div
-                className="max-w-[85%] px-3 py-2 rounded-xl"
+                className="max-w-[78%] p-2.5 text-[12.5px] font-light leading-[1.65] rounded-[12px_12px_2px_12px]"
                 style={{
-                  fontSize: '12px',
-                  lineHeight: '1.6',
                   background: msg.role === 'user'
-                    ? 'var(--brand-primary-light)'
-                    : 'var(--brand-glass)',
-                  border: msg.role === 'assistant' ? '1px solid var(--brand-border)' : 'none',
-                  color: msg.role === 'user' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                  borderRadius: msg.role === 'user' ? '12px 12px 4px 12px' : '12px 12px 12px 4px',
+                    ? 'rgba(108,99,255,0.1)'
+                    : 'rgba(255,255,255,0.03)',
+                  border: `1px solid ${msg.role === 'user' ? 'rgba(108,99,255,0.2)' : 'rgba(255,255,255,0.06)'}`,
+                  color: msg.role === 'user' ? '#f0ede6' : 'rgba(240,237,230,0.8)',
+                  borderRadius: msg.role === 'user' ? '12px 12px 2px 12px' : '12px 12px 12px 2px',
                 }}
               >
                 {msg.content}
@@ -300,31 +253,30 @@ export default function PromptPanel({
           ))}
         </AnimatePresence>
 
-        {/* Typing Indicator */}
+        {/* Typing indicator */}
         {isGenerating && (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex gap-2"
+            className="flex gap-2.5 items-start"
           >
             <div
-              className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0"
-              style={{ background: 'rgba(34,197,94,0.15)' }}
-            >
-              <Bot size={11} style={{ color: '#22c55e' }} />
-            </div>
-            <div
-              className="px-3 py-2.5 rounded-xl flex items-center gap-1"
+              className="w-6.5 h-6.5 flex-shrink-0 rounded-full flex items-center justify-center text-[9px] font-bold text-white"
               style={{
-                background: 'var(--brand-glass)',
-                border: '1px solid var(--brand-border)',
+                background: 'linear-gradient(135deg, #6C63FF, #ff6584)',
               }}
             >
-              {[0, 150, 300].map((delay) => (
-                <span
-                  key={delay}
-                  className="typing-dot"
-                  style={{ animationDelay: `${delay}ms` }}
+              CS
+            </div>
+            <div
+              className="p-2.5 bg-white/3 border-white/6 rounded-[12px_12px_12px_2px] flex items-center gap-1.25"
+            >
+              {[0, 1, 2].map(i => (
+                <motion.span
+                  key={i}
+                  animate={{ y: [0, -5, 0] }}
+                  transition={{ duration: 0.7, repeat: Infinity, delay: i * 0.15 }}
+                  className="w-1.25 h-1.25 rounded-full bg-[#D4FF57] opacity-70 inline-block"
                 />
               ))}
             </div>
@@ -334,45 +286,56 @@ export default function PromptPanel({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
-      <div
-        className="px-3 py-3 flex-shrink-0"
-        style={{ borderTop: '1px solid var(--brand-border)' }}
-      >
-        <div className="relative">
+      {/* INPUT AREA */}
+      <div className="p-3 border-t border-white/5 flex-shrink-0 bg-black/15">
+        <div
+          className="relative border transition-colors duration-200 bg-white/2"
+          style={{
+            border: `1px solid ${input.trim() ? 'rgba(212,255,87,0.35)' : 'rgba(255,255,255,0.07)'}`,
+          }}
+        >
           <textarea
             ref={textareaRef}
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={
-              selectedSection
-                ? `Edit "${selectedSection}"...`
-                : 'Describe your website...'
-            }
+            placeholder={selectedSection ? `Edit "${selectedSection}"...` : 'Describe your website...'}
             rows={1}
             disabled={isGenerating || !isReady}
-            className="glass-input w-full px-3 py-2.5 pr-10 text-sm resize-none disabled:opacity-50"
-            style={{ color: 'var(--text-primary)', fontSize: '13px' }}
+            className="w-full bg-transparent resize-none outline-none border-none padding-[10px_42px_10px_12px] text-[13px] font-light leading-[1.6] text-[#f0ede6] font-[DM Sans] tracking-[0.2]"
           />
           <button
             onClick={handleSubmit}
             disabled={isDisabled}
-            className="absolute right-2 bottom-2 p-1.5 rounded-lg transition-all"
+            className="absolute right-2 bottom-2 w-7 h-7 flex items-center justify-center transition-all duration-200"
             style={{
-              background: !isDisabled ? 'var(--brand-primary)' : 'transparent',
-              color: !isDisabled ? '#fff' : 'var(--text-faint)',
+              background: isDisabled ? 'transparent' : '#D4FF57',
+              border: isDisabled ? '1px solid rgba(255,255,255,0.08)' : 'none',
+              color: isDisabled ? 'rgba(255,255,255,0.2)' : '#080808',
+              cursor: isDisabled ? 'not-allowed' : 'pointer',
             }}
           >
             {isGenerating
-              ? <RotateCcw size={13} className="animate-spin" />
-              : <Send size={13} />}
+              ? <RotateCcw size={12} className="inline-block" style={{ animation: 'spin 1s linear infinite' }} />
+              : <ArrowRight size={12} />
+            }
           </button>
         </div>
-        <p style={{ fontSize: '10px', color: 'var(--text-faint)', marginTop: '6px', textAlign: 'center' }}>
-          Enter to send · Shift+Enter for new line
+        <p className="text-[9px] tracking-[1.5] uppercase text-white/2 mt-1.5 text-center">
+          Enter to send · Shift+Enter new line
         </p>
       </div>
+
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap');
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.15} }
+        @keyframes spin { to{transform:rotate(360deg)} }
+        textarea::placeholder { color: rgba(240,237,230,0.2) !important; }
+        textarea:disabled { opacity: 0.4; }
+        ::-webkit-scrollbar { width: 3px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
+      `}</style>
     </div>
   );
 }
