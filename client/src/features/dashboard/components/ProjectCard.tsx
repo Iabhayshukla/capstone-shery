@@ -53,6 +53,46 @@ const formatTimeAgo = (dateStr: string): string => {
   return new Date(dateStr).toLocaleDateString();
 };
 
+const getProjectGradient = (id: string) => {
+  const gradients = [
+    "bg-gradient-to-br from-blue-500 to-indigo-650 dark:from-blue-500/25 dark:to-indigo-500/25",
+    "bg-gradient-to-br from-violet-500 to-purple-650 dark:from-violet-500/25 dark:to-purple-500/25",
+    "bg-gradient-to-br from-rose-500 to-pink-650 dark:from-rose-500/25 dark:to-pink-500/25",
+    "bg-gradient-to-br from-amber-500 to-orange-600 dark:from-amber-500/25 dark:to-orange-600/25",
+    "bg-gradient-to-br from-emerald-500 to-teal-650 dark:from-emerald-500/25 dark:to-emerald-500/25",
+    "bg-gradient-to-br from-cyan-500 to-blue-600 dark:from-cyan-500/25 dark:to-blue-600/25",
+    "bg-gradient-to-br from-fuchsia-500 to-pink-600 dark:from-fuchsia-500/25 dark:to-pink-500/25",
+    "bg-gradient-to-br from-red-500 to-rose-600 dark:from-red-500/25 dark:to-rose-600/25",
+  ];
+  
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = id.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % gradients.length;
+  return gradients[index];
+};
+
+const getProjectListIconBg = (id: string) => {
+  const bgStyles = [
+    "bg-blue-50 dark:bg-blue-950/35 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-900/40",
+    "bg-violet-50 dark:bg-violet-950/35 text-violet-600 dark:text-violet-400 border-violet-100 dark:border-violet-900/40",
+    "bg-rose-50 dark:bg-rose-950/35 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-900/40",
+    "bg-orange-50 dark:bg-orange-950/35 text-orange-600 dark:text-orange-400 border-orange-100 dark:border-orange-900/40",
+    "bg-emerald-50 dark:bg-emerald-950/35 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/40",
+    "bg-cyan-50 dark:bg-cyan-950/35 text-cyan-600 dark:text-cyan-400 border-cyan-100 dark:border-cyan-900/40",
+    "bg-fuchsia-50 dark:bg-fuchsia-950/35 text-fuchsia-600 dark:text-fuchsia-400 border-fuchsia-100 dark:border-fuchsia-900/40",
+    "bg-red-50 dark:bg-red-950/35 text-red-600 dark:text-red-400 border-red-100 dark:border-red-900/40",
+  ];
+  
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = id.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % bgStyles.length;
+  return bgStyles[index];
+};
+
 const ProjectCard = ({
   project,
   layout = "grid",
@@ -157,7 +197,7 @@ const ProjectCard = ({
         aria-label={`Project: ${project.name}`}
       >
         <div className="flex items-center gap-4 min-w-0">
-          <div className="w-9 h-9 rounded-lg bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-850 shrink-0">
+          <div className={`w-9 h-9 rounded-lg flex items-center justify-center border shrink-0 transition-colors duration-200 ${getProjectListIconBg(project.id)}`}>
             <Code2 size={16} />
           </div>
           <div className="min-w-0">
@@ -250,11 +290,11 @@ const ProjectCard = ({
       />
 
       {/* Card visual header (with rounded-t-xl overflow-hidden) */}
-      <div className="relative h-32 bg-zinc-50 dark:bg-zinc-900/20 border-b border-zinc-200 dark:border-zinc-900/60 flex items-center justify-center overflow-hidden rounded-t-xl shrink-0">
+      <div className={`relative h-32 border-b border-zinc-200 dark:border-zinc-900/60 flex items-center justify-center overflow-hidden rounded-t-xl shrink-0 transition-colors duration-300 ${getProjectGradient(project.id)}`}>
         {/* Subtle grid pattern */}
-        <div className="absolute inset-0 bg-dot-pattern opacity-[0.15] pointer-events-none" />
+        <div className="absolute inset-0 bg-dot-pattern opacity-[0.2] dark:opacity-[0.1] pointer-events-none mix-blend-overlay" />
 
-        <Code2 size={24} className="text-zinc-400 dark:text-zinc-600 group-hover:scale-110 transition-transform duration-300 z-10" />
+        <Code2 size={24} className="text-white/80 dark:text-zinc-400 group-hover:text-white dark:group-hover:text-zinc-200 group-hover:scale-110 transition-all duration-300 z-10" />
 
         {/* Favorite Star button */}
         <button
