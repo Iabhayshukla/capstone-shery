@@ -123,10 +123,10 @@
   }
   .dark {
     /* ══ Theme-Aware Semantic Tokens (DARK) ══ */
-    --brand-dark: #0F0F1A;
-    --brand-darker: #080810;
-    --brand-surface: #1A1A2E;
-    --brand-surface-hover: #242445;
+    --brand-dark: #070709;
+    --brand-darker: #050507;
+    --brand-surface: #0f0f13;
+    --brand-surface-hover: #17171d;
     --brand-border: rgba(255, 255, 255, 0.08);
     --brand-border-hover: rgba(255, 255, 255, 0.15);
     --brand-glass: rgba(255, 255, 255, 0.04);

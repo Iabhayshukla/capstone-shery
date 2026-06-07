@@ -18,6 +18,8 @@ interface PreviewPaneProps {
   onConsoleError?: (message: string) => void;
   viewport?: ViewportSize;
   selectedSectionId?: string | null;
+  hideHeader?: boolean;
+  refreshTrigger?: number;
 }
 
 const VIEWPORT_WIDTHS: Record<ViewportSize, number> = {
@@ -43,6 +45,8 @@ export default function PreviewPane({
   onConsoleError,
   viewport = "desktop",
   selectedSectionId = null,
+  hideHeader = false,
+  refreshTrigger = 0,
 }: PreviewPaneProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
@@ -69,6 +73,12 @@ export default function PreviewPane({
 
     run();
   }, [html, status.status, updateHtml]);
+
+  useEffect(() => {
+    if (refreshTrigger > 0) {
+      handleRefresh();
+    }
+  }, [refreshTrigger]);
 
   useSectionClick({
     iframeRef,
@@ -122,10 +132,10 @@ export default function PreviewPane({
   }
 
   return (
-    <div className="h-full w-full flex flex-col rounded-xl overflow-hidden border border-[#404040] bg-[#1f1f1f]">
+    <div className={hideHeader ? "h-full w-full flex flex-col overflow-hidden bg-transparent" : "h-full w-full flex flex-col rounded-xl overflow-hidden border border-[#404040] bg-[#1f1f1f]"}>
 
       {/* Status Bar */}
-      {status.status !== "ready" && (
+      {!hideHeader && status.status !== "ready" && (
         <div className="flex items-center justify-center gap-2 px-3 py-2 bg-yellow-500/10 border-b border-yellow-500/20 text-yellow-400 text-xs">
           <Loader2 size={14} className="animate-spin" />
 
@@ -144,40 +154,42 @@ export default function PreviewPane({
       )}
 
       {/* Browser Chrome */}
-      <div className="flex items-center justify-between px-4 py-2.5 bg-[#252526] border-b border-[#404040]">
+      {!hideHeader && (
+        <div className="flex items-center justify-between px-4 py-2.5 bg-[#252526] border-b border-[#404040]">
 
-        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
 
-          <div className="flex gap-1.5">
-            <div className="w-3 h-3 rounded-full bg-red-400" />
-            <div className="w-3 h-3 rounded-full bg-yellow-400" />
-            <div className="w-3 h-3 rounded-full bg-green-400" />
+            <div className="flex gap-1.5">
+              <div className="w-3 h-3 rounded-full bg-red-400" />
+              <div className="w-3 h-3 rounded-full bg-yellow-400" />
+              <div className="w-3 h-3 rounded-full bg-green-400" />
+            </div>
+
+            <div className="ml-3 flex items-center gap-2 px-3 py-1 rounded-md bg-[#1a1a1a] border border-[#404040] text-[11px] text-gray-500 font-mono">
+              <Globe size={10} />
+              <span>
+                {previewUrl
+                  ? "localhost:3001/index.html"
+                  : "starting-preview"}
+              </span>
+            </div>
           </div>
 
-          <div className="ml-3 flex items-center gap-2 px-3 py-1 rounded-md bg-[#1a1a1a] border border-[#404040] text-[11px] text-gray-500 font-mono">
-            <Globe size={10} />
-            <span>
-              {previewUrl
-                ? "localhost:3001/index.html"
-                : "starting-preview"}
-            </span>
-          </div>
+          <button
+            onClick={handleRefresh}
+            disabled={status.status !== "ready"}
+            className="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-40"
+          >
+            <RefreshCw
+              size={14}
+              className={isRefreshing ? "animate-spin" : ""}
+            />
+          </button>
         </div>
-
-        <button
-          onClick={handleRefresh}
-          disabled={status.status !== "ready"}
-          className="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-40"
-        >
-          <RefreshCw
-            size={14}
-            className={isRefreshing ? "animate-spin" : ""}
-          />
-        </button>
-      </div>
+      )}
 
       {/* Preview Area */}
-      <div className="flex-1 relative overflow-auto bg-[#2d2d2d] p-4">
+      <div className={hideHeader ? "flex-1 relative overflow-auto bg-transparent" : "flex-1 relative overflow-auto bg-[#2d2d2d] p-4"}>
 
         {status.status === "error" && (
           <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-[#1f1f1f]">
