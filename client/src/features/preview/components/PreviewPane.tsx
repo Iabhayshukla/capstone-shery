@@ -26,6 +26,17 @@ const VIEWPORT_WIDTHS: Record<ViewportSize, number> = {
   desktop: 1280,
 };
 
+/**
+ * Forces an iframe to reload by bouncing its src through an empty string.
+ * Direct src = src self-assignment is a no-op in modern browsers and triggers
+ * the no-self-assign ESLint rule.
+ */
+function reloadIframe(iframe: HTMLIFrameElement): void {
+  const src = iframe.src;
+  iframe.src = '';
+  iframe.src = src;
+}
+
 export default function PreviewPane({
   html,
   onSectionClick,
@@ -48,7 +59,7 @@ export default function PreviewPane({
 
         setTimeout(() => {
           if (iframeRef.current) {
-            iframeRef.current.src = iframeRef.current.src;
+            reloadIframe(iframeRef.current);
           }
         }, 100);
       } catch (err) {
@@ -75,7 +86,7 @@ export default function PreviewPane({
 
       setTimeout(() => {
         if (iframeRef.current) {
-          iframeRef.current.src = iframeRef.current.src;
+          reloadIframe(iframeRef.current);
         }
       }, 100);
     } finally {
