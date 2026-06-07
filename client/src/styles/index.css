@@ -651,7 +651,42 @@ body {
 }
 @media (pointer: coarse) {
   /* Touch devices pe default cursor wapas */
-  body {
+  .landing-page, .landing-page * {
     cursor: auto !important;
   }
+}
+.landing-page, .landing-page * { cursor: none; }
+.landing-page a,
+.landing-page button,
+.landing-page [role="button"],
+.landing-page .cursor-pointer,
+.landing-page a *,
+.landing-page button * {
+  cursor: pointer !important;
+}
+
+#cur {
+  position: fixed;
+  width: 8px;
+  height: 8px;
+  background: #D4FF57;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9999;
+  transform: translate(-50%, -50%);
+  mix-blend-mode: difference;
+  transition: opacity 0.2s, width 0.2s, height 0.2s;
+}
+
+#curR {
+  position: fixed;
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(212, 255, 87, 0.45);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9998;
+  transform: translate(-50%, -50%);
+  mix-blend-mode: difference;
+  transition: opacity 0.2s, width 0.2s, height 0.2s;
 }
