@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { useAuth } from '@/features/auth';
 import { streamGenerate } from '../api/generate.api';
+import { classifyPrompt, ClassifierResult } from '@/shared/classifier';
 
 interface UseGenerateOptions {
   projectId: string | undefined;
@@ -12,6 +13,7 @@ interface UseGenerateReturn {
   isGenerating: boolean;
   streamingHtml: string;
   error: string | null;
+  classification: ClassifierResult | null;
   generate: (prompt: string) => Promise<void>;
   cancel: () => void;
 }
@@ -21,6 +23,7 @@ export function useGenerate(options: UseGenerateOptions): UseGenerateReturn {
   const [isGenerating, setIsGenerating] = useState(false);
   const [streamingHtml, setStreamingHtml] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [classification, setClassification] = useState<ClassifierResult | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const generate = useCallback(
@@ -34,6 +37,10 @@ export function useGenerate(options: UseGenerateOptions): UseGenerateReturn {
         return;
       }
       if (!prompt.trim()) return;
+
+      // ── Classify prompt before generating ──
+      const result = classifyPrompt(prompt);
+      setClassification(result);
 
       // Cancel any in-flight request
       abortRef.current?.abort();
@@ -49,6 +56,8 @@ export function useGenerate(options: UseGenerateOptions): UseGenerateReturn {
           accessToken,
           sectionId: options.selectedSection ?? undefined,
           currentHtml: options.currentHtml ?? undefined,
+          framework: result.framework,
+          previewMethod: result.previewMethod,
           onChunk: (accumulated) => setStreamingHtml(accumulated),
           onDone: (fullHtml) => setStreamingHtml(fullHtml),
           onError: (message) => setError(message),
@@ -56,7 +65,6 @@ export function useGenerate(options: UseGenerateOptions): UseGenerateReturn {
         });
       } catch (err: unknown) {
         if ((err as Error)?.name === 'AbortError') {
-          // User cancelled — not an error
           return;
         }
         setError(
@@ -74,5 +82,5 @@ export function useGenerate(options: UseGenerateOptions): UseGenerateReturn {
     setIsGenerating(false);
   }, []);
 
-  return { isGenerating, streamingHtml, error, generate, cancel };
+  return { isGenerating, streamingHtml, error, classification, generate, cancel };
 }

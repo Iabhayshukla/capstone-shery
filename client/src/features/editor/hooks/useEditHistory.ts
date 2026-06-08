@@ -14,20 +14,24 @@ export function useEditHistory(initialHtml: string = '') {
   }, [present]);
 
   const undo = useCallback(() => {
-    if (past.length === 0) return;
-    const previous = past[past.length - 1];
-    setPast(past.slice(0, -1));
-    setFuture(prev => [present, ...prev]);
-    setPresent(previous);
-  }, [past, present]);
+    setPast(prev => {
+      if (prev.length === 0) return prev;
+      const previous = prev[prev.length - 1];
+      setFuture(futurePrev => [present, ...futurePrev]);
+      setPresent(previous);
+      return prev.slice(0, -1);
+    });
+  }, [present]);
 
   const redo = useCallback(() => {
-    if (future.length === 0) return;
-    const next = future[0];
-    setFuture(future.slice(1));
-    setPast(prev => [...prev, present]);
-    setPresent(next);
-  }, [future, present]);
+    setFuture(prev => {
+      if (prev.length === 0) return prev;
+      const next = prev[0];
+      setPast(pastPrev => [...pastPrev, present].slice(-MAX_HISTORY));
+      setPresent(next);
+      return prev.slice(1);
+    });
+  }, [present]);
 
   const reset = useCallback((newHtml: string) => {
     setPast([]);
