@@ -421,7 +421,7 @@ const AnimatedSubHeading = ({
                   background:
                     "linear-gradient(90deg, #6c63ff, #ff6584)",
                   display: "block",
-                  scaleX: 0,
+                  transform: "scaleX(0)",
                   transformOrigin: "left center",
                 }}
               />

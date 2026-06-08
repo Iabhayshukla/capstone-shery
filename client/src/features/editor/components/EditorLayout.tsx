@@ -14,6 +14,7 @@ import StreamingView from './StreamingView';
 import PreviewScreen from './PreviewScreen';
 import { Sparkles } from 'lucide-react';
 import type { Message } from './PromptPanel';
+import type { PreviewMethod } from '@/shared/classifier'; // ✅ ADDED
 
 interface StreamingFile {
   name: string;
@@ -21,15 +22,9 @@ interface StreamingFile {
   language: string;
 }
 
-// ─── Types ──────────────────────────────────────────────────────────────────
 type EditorPhase = 'loading' | 'welcome' | 'streaming' | 'preview';
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-// Build StreamingFile list from generated HTML string
-// Backend sends full HTML; we split into logical files for display
 function parseFilesFromHtml(rawHtml: string): StreamingFile[] {
-  // If backend already sends multi-file JSON, parse here.
-  // For now we display as single index.html
   return [
     {
       name: 'index.html',
@@ -39,7 +34,6 @@ function parseFilesFromHtml(rawHtml: string): StreamingFile[] {
   ];
 }
 
-// ─── Component ───────────────────────────────────────────────────────────────
 export default function EditorLayout() {
   const { projectId } = useParams<{ projectId: string }>();
   const { accessToken } = useAuth();
@@ -52,6 +46,7 @@ export default function EditorLayout() {
     streamingHtml,
     error: generateError,
     generate,
+    classification, // ✅ ADDED — classifier result se previewMethod milega
   } = useGenerate({
     projectId,
     selectedSection,
@@ -66,14 +61,18 @@ export default function EditorLayout() {
   const [messages, setMessages] = useState<Message[]>([]);
   const generatingSectionRef = useRef<string | null>(null);
 
+  // ✅ ADDED — previewMethod state: generate hone ke baad set hota hai, project load pe 'iframe' rehta hai
+  const [previewMethod, setPreviewMethod] = useState<PreviewMethod>('iframe');
+
   // Reset session state when projectId changes
   useEffect(() => {
     initialCodeRef.current = null;
     setLastPrompt('');
     setMessages([]);
+    setPreviewMethod('iframe'); // ✅ project change pe reset
   }, [projectId]);
 
-  // ─── Sync streamingHtml → preview files in real time ──────────────────────
+  // Sync streamingHtml → preview files in real time
   useEffect(() => {
     if (streamingHtml) {
       setStreamingFiles(parseFilesFromHtml(streamingHtml));
@@ -81,12 +80,16 @@ export default function EditorLayout() {
   }, [streamingHtml]);
 
   // Push final HTML into edit history once generation is fully done
-  // We watch isGenerating going from true → false and streamingHtml being non-empty
   const wasGenerating = useRef(false);
   useEffect(() => {
     if (wasGenerating.current && !isGenerating && streamingHtml) {
       push(streamingHtml);
       initialCodeRef.current = streamingHtml;
+
+      // ✅ ADDED — generation complete hone ke baad classification se previewMethod set karo
+      if (classification?.previewMethod) {
+        setPreviewMethod(classification.previewMethod);
+      }
 
       const targetSec = generatingSectionRef.current;
       const aiMsg: Message = {
@@ -100,9 +103,9 @@ export default function EditorLayout() {
       generatingSectionRef.current = null;
     }
     wasGenerating.current = isGenerating;
-  }, [isGenerating, streamingHtml, push]);
+  }, [isGenerating, streamingHtml, push, classification]);
 
-  // ─── Load project ──────────────────────────────────────────────────────────
+  // Load project
   useEffect(() => {
     if (!accessToken || !projectId) return;
     const load = async () => {
@@ -114,8 +117,9 @@ export default function EditorLayout() {
             initialCodeRef.current = proj.currentCode;
           }
           reset(proj.currentCode);
-          // If project already has code, skip welcome and go straight to preview
           setStreamingFiles(parseFilesFromHtml(proj.currentCode));
+          // ✅ Saved project ka code hamesha iframe se load hoga — safe default
+          setPreviewMethod('iframe');
           setPhase('preview');
         } else {
           if (initialCodeRef.current === null) {
@@ -131,7 +135,7 @@ export default function EditorLayout() {
     load();
   }, [accessToken, projectId, reset]);
 
-  // ─── Auto-save ────────────────────────────────────────────────────────────
+  // Auto-save
   useEffect(() => {
     if (!accessToken || !projectId || phase === 'loading') return;
 
@@ -151,7 +155,7 @@ export default function EditorLayout() {
     return () => clearTimeout(timer);
   }, [html, accessToken, projectId, project, phase]);
 
-  // ─── Generate ──────────────────────────────────────────────────────────────
+  // Generate
   const handleGenerate = useCallback(async (prompt: string) => {
     setLastPrompt(prompt);
     setStreamingFiles([]);
@@ -160,12 +164,10 @@ export default function EditorLayout() {
 
     await generate(prompt);
 
-    // Generation done — streaming phase stays visible.
-    // StreamingView shows a "View Preview" button the user clicks to transition.
     setSelectedSection(null);
   }, [generate, selectedSection]);
 
-  // ─── Regenerate (same last prompt, re-run) ─────────────────────────────────
+  // Regenerate
   const handleRegenerate = useCallback(async () => {
     if (!lastPrompt) return;
     setStreamingFiles([]);
@@ -182,28 +184,28 @@ export default function EditorLayout() {
     ]);
 
     await generate(lastPrompt);
-
     setSelectedSection(null);
   }, [generate, lastPrompt]);
 
-  // ─── Go to preview after streaming ────────────────────────────────────────
+  // Go to preview after streaming
   const handleGoToPreview = useCallback(() => {
     setPhase('preview');
   }, []);
 
-  // ─── Code change from Monaco ───────────────────────────────────────────────
+  // Code change from Monaco
   const handleCodeChange = useCallback((newHtml: string) => {
     push(newHtml);
     setStreamingFiles(parseFilesFromHtml(newHtml));
   }, [push]);
 
-  // ─── Reset code to initial fetched code ────────────────────────────────────
+  // Reset code
   const handleReset = useCallback(() => {
     if (window.confirm("Are you sure you want to reset the code? All your unsaved changes will be lost.")) {
       const targetCode = initialCodeRef.current ?? '';
       reset(targetCode);
       if (targetCode) {
         setStreamingFiles(parseFilesFromHtml(targetCode));
+        setPreviewMethod('iframe'); // ✅ reset pe iframe mode
         setPhase('preview');
       } else {
         setStreamingFiles([]);
@@ -216,7 +218,7 @@ export default function EditorLayout() {
     <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: 'var(--brand-dark)' }}>
       <AnimatePresence mode="wait">
 
-        {/* ── LOADING ── */}
+        {/* LOADING */}
         {phase === 'loading' && (
           <motion.div
             key="loading"
@@ -225,14 +227,10 @@ export default function EditorLayout() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25 }}
             style={{
-              width: '100%',
-              height: '100%',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 16,
-              background: 'var(--brand-dark)',
+              width: '100%', height: '100%',
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+              gap: 16, background: 'var(--brand-dark)',
             }}
           >
             <div style={{ position: 'relative', width: 50, height: 50 }}>
@@ -240,8 +238,7 @@ export default function EditorLayout() {
                 animate={{ rotate: 360 }}
                 transition={{ repeat: Infinity, duration: 1.2, ease: "linear" }}
                 style={{
-                  width: '100%',
-                  height: '100%',
+                  width: '100%', height: '100%',
                   borderRadius: '50%',
                   border: '3px solid rgba(255, 255, 255, 0.05)',
                   borderTopColor: '#D4FF57',
@@ -252,11 +249,8 @@ export default function EditorLayout() {
                 animate={{ scale: [0.85, 1.05, 0.85] }}
                 transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
                 style={{
-                  width: '100%',
-                  height: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  width: '100%', height: '100%',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
                   color: '#D4FF57',
                 }}
               >
@@ -269,8 +263,7 @@ export default function EditorLayout() {
               transition={{ delay: 0.2 }}
               style={{
                 fontFamily: 'DM Sans, sans-serif',
-                fontSize: 11,
-                letterSpacing: 2,
+                fontSize: 11, letterSpacing: 2,
                 textTransform: 'uppercase',
                 color: 'rgba(240, 237, 230, 0.6)',
               }}
@@ -280,7 +273,7 @@ export default function EditorLayout() {
           </motion.div>
         )}
 
-        {/* ── WELCOME ── */}
+        {/* WELCOME */}
         {phase === 'welcome' && (
           <motion.div
             key="welcome"
@@ -297,7 +290,7 @@ export default function EditorLayout() {
           </motion.div>
         )}
 
-        {/* ── STREAMING ── */}
+        {/* STREAMING */}
         {phase === 'streaming' && (
           <motion.div
             key="streaming"
@@ -316,7 +309,7 @@ export default function EditorLayout() {
           </motion.div>
         )}
 
-        {/* ── PREVIEW ── */}
+        {/* PREVIEW */}
         {phase === 'preview' && (
           <motion.div
             key="preview"
@@ -344,6 +337,7 @@ export default function EditorLayout() {
               onReset={handleReset}
               messages={messages}
               setMessages={setMessages}
+              previewMethod={previewMethod} // ✅ ADDED — classifier result pass ho raha hai
             />
           </motion.div>
         )}

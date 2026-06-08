@@ -6,7 +6,6 @@ import { exportHtml } from '../api/export.api';
 import { PreviewPane } from '@/features/preview';
 import { ViewportSize } from '@/features/preview/types/preview.types';
 import { useWebContainer } from '@/features/preview';
-import EditorToolbar from './EditorToolbar';
 import PromptPanel, { Message } from './PromptPanel';
 import MonacoEditor from './MonacoEditor';
 
@@ -34,6 +33,7 @@ interface PreviewScreenProps {
   onReset: () => void;
   messages: Message[];
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
+  previewMethod?: 'iframe' | 'webcontainer'; // ✅ ADDED
 }
 
 type PanelSide = 'left' | 'right';
@@ -56,6 +56,7 @@ export default function PreviewScreen({
   onReset,
   messages,
   setMessages,
+  previewMethod = 'iframe', // ✅ ADDED — default iframe, CSS perfectly works
 }: PreviewScreenProps) {
   const { status } = useWebContainer();
 
@@ -64,7 +65,7 @@ export default function PreviewScreen({
   const [consoleErrors, setConsoleErrors] = useState<string[]>([]);
   const [showMonaco, setShowMonaco] = useState(false);
   const [panelSide, setPanelSide] = useState<PanelSide>('left');
-  const [isPanelOpen, setIsPanelOpen] = useState(true); // ← NEW: slide toggle
+  const [isPanelOpen, setIsPanelOpen] = useState(true);
   const [panelWidth, setPanelWidth] = useState(300);
   const [monacoWidth, setMonacoWidth] = useState(450);
   const [isResizingPanel, setIsResizingPanel] = useState(false);
@@ -73,8 +74,6 @@ export default function PreviewScreen({
 
   const containerRef = useRef<HTMLDivElement>(null);
   const dragStartX = useRef(0);
-
-  const [isDark] = useState(() => document.documentElement.classList.contains('dark'));
 
   // Panel resize
   const startPanelResize = useCallback((e: React.MouseEvent) => {
@@ -99,7 +98,7 @@ export default function PreviewScreen({
     return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
   }, [isResizingPanel, panelSide]);
 
-  // Monaco resize (horizontal split)
+  // Monaco resize
   const startMonacoResize = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     setIsResizingMonaco(true);
@@ -109,8 +108,7 @@ export default function PreviewScreen({
     if (!isResizingMonaco) return;
     const onMove = (e: MouseEvent) => {
       setMonacoWidth(prev => {
-        const deltaX = e.movementX;
-        const newWidth = prev - deltaX;
+        const newWidth = prev - e.movementX;
         return Math.max(280, Math.min(newWidth, 800));
       });
     };
@@ -123,18 +121,13 @@ export default function PreviewScreen({
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Undo / Redo
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
-        if (e.shiftKey) {
-          if (canRedo) { e.preventDefault(); onRedo(); }
-        } else {
-          if (canUndo) { e.preventDefault(); onUndo(); }
-        }
+        if (e.shiftKey) { if (canRedo) { e.preventDefault(); onRedo(); } }
+        else { if (canUndo) { e.preventDefault(); onUndo(); } }
       }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
         if (canRedo) { e.preventDefault(); onRedo(); }
       }
-      // Toggle panel with Ctrl+B
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
         e.preventDefault();
         setIsPanelOpen(v => !v);
@@ -162,10 +155,10 @@ export default function PreviewScreen({
     return () => window.removeEventListener('mouseup', onUp);
   }, [isDraggingPanel]);
 
-  const isReady = status.status === 'ready';
+  // iframe mode mein WebContainer ready nahi hota — isReady always true rakho
+  const isReady = previewMethod === 'iframe' ? true : status.status === 'ready';
   const vpLabel = viewport === 'mobile' ? '375px' : viewport === 'tablet' ? '768px' : '1280px';
 
-  // Slide direction based on which side the panel is on
   const slideVariants = {
     open: { width: panelWidth, opacity: 1, x: 0 },
     closed: {
@@ -175,7 +168,6 @@ export default function PreviewScreen({
     },
   };
 
-  // Pick correct panel toggle icon
   const PanelToggleIcon = isPanelOpen
     ? (panelSide === 'left' ? PanelLeftClose : PanelRightClose)
     : (panelSide === 'left' ? PanelLeftOpen : PanelRightOpen);
@@ -196,7 +188,7 @@ export default function PreviewScreen({
         position: 'relative',
         zIndex: 10,
         fontFamily: 'DM Sans, sans-serif',
-        overflow: 'hidden', // critical — hides content while sliding
+        overflow: 'hidden',
         minWidth: 0,
       }}
     >
@@ -284,10 +276,9 @@ export default function PreviewScreen({
           </span>
         </Link>
 
-        {/* Divider */}
         <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.08)', marginRight: 16, flexShrink: 0 }} />
 
-        {/* ── PANEL TOGGLE BUTTON ── */}
+        {/* Panel toggle */}
         <button
           onClick={() => setIsPanelOpen(v => !v)}
           title={`${isPanelOpen ? 'Hide' : 'Show'} Prompt Panel (Ctrl+B)`}
@@ -297,14 +288,12 @@ export default function PreviewScreen({
             background: isPanelOpen ? 'rgba(212,255,87,0.08)' : 'transparent',
             border: isPanelOpen ? '1px solid rgba(212,255,87,0.25)' : '1px solid transparent',
             color: isPanelOpen ? '#D4FF57' : 'rgba(240,237,230,0.65)',
-            cursor: 'pointer', transition: 'all 0.2s', borderRadius: 0,
-            marginRight: 4,
+            cursor: 'pointer', transition: 'all 0.2s', borderRadius: 0, marginRight: 4,
           }}
         >
           <PanelToggleIcon size={13} />
         </button>
 
-        {/* Divider */}
         <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.08)', marginRight: 12, flexShrink: 0 }} />
 
         {/* Undo/Redo */}
@@ -332,7 +321,6 @@ export default function PreviewScreen({
           </button>
         ))}
 
-        {/* Divider */}
         <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.08)', margin: '0 12px', flexShrink: 0 }} />
 
         {/* Viewport switcher */}
@@ -359,7 +347,17 @@ export default function PreviewScreen({
           ))}
         </div>
 
-        {/* Spacer */}
+        {/* Preview method badge */}
+        <div style={{
+          marginLeft: 12,
+          fontSize: 9, letterSpacing: 1.5, textTransform: 'uppercase',
+          color: previewMethod === 'webcontainer' ? '#D4FF57' : 'rgba(240,237,230,0.4)',
+          border: `1px solid ${previewMethod === 'webcontainer' ? 'rgba(212,255,87,0.2)' : 'rgba(255,255,255,0.06)'}`,
+          padding: '3px 8px',
+        }}>
+          {previewMethod === 'webcontainer' ? '⚡ WC' : '◈ iframe'}
+        </div>
+
         <div style={{ flex: 1 }} />
 
         {/* Regenerate */}
@@ -486,8 +484,13 @@ export default function PreviewScreen({
                 fontFamily: 'monospace', letterSpacing: 0.3,
                 display: 'flex', alignItems: 'center',
               }}>
-                <Loader2 size={10} style={{ color: '#D4FF57', marginRight: 8, opacity: 0.8, animation: isReady ? 'none' : 'spin 1s linear infinite' }} />
-                <span style={{ color: 'rgba(240,237,230,0.95)' }}>localhost:3001</span>
+                {/* iframe mode mein spinner nahi dikhna chahiye */}
+                {previewMethod === 'webcontainer' && (
+                  <Loader2 size={10} style={{ color: '#D4FF57', marginRight: 8, opacity: 0.8, animation: isReady ? 'none' : 'spin 1s linear infinite' }} />
+                )}
+                <span style={{ color: 'rgba(240,237,230,0.95)' }}>
+                  {previewMethod === 'webcontainer' ? 'localhost:3001' : 'srcdoc'}
+                </span>
                 <span style={{ color: 'rgba(240,237,230,0.6)' }}>/index.html</span>
                 <span style={{ marginLeft: 'auto', color: 'rgba(240,237,230,0.45)' }}>· {vpLabel}</span>
               </div>
@@ -505,6 +508,7 @@ export default function PreviewScreen({
 
             {/* Preview pane */}
             <div style={{ position: 'relative', flex: 1, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.04)' }}>
+              {/* ✅ FIXED: previewMethod prop pass ho raha hai ab */}
               <PreviewPane
                 html={html}
                 onSectionClick={(id) => onSectionSelect(id)}
@@ -513,11 +517,12 @@ export default function PreviewScreen({
                 selectedSectionId={selectedSection}
                 hideHeader={true}
                 refreshTrigger={refreshTrigger}
+                previewMethod={previewMethod}
               />
 
-              {/* Loading overlay */}
+              {/* Loading overlay — sirf WebContainer mode mein */}
               <AnimatePresence>
-                {!isReady && (
+                {!isReady && previewMethod === 'webcontainer' && (
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -567,7 +572,7 @@ export default function PreviewScreen({
                 )}
               </AnimatePresence>
 
-              {/* ── FLOATING PANEL TOGGLE (jab panel band ho) ── */}
+              {/* Floating panel toggle */}
               <AnimatePresence>
                 {!isPanelOpen && (
                   <motion.button
@@ -596,10 +601,8 @@ export default function PreviewScreen({
                     <PanelToggleIcon size={14} />
                     <span style={{
                       fontSize: 9, letterSpacing: 2, textTransform: 'uppercase',
-                      writingMode: 'vertical-rl',
-                      textOrientation: 'mixed',
-                      color: 'rgba(212,255,87,0.7)',
-                      marginTop: 4,
+                      writingMode: 'vertical-rl', textOrientation: 'mixed',
+                      color: 'rgba(212,255,87,0.7)', marginTop: 4,
                     }}>
                       Panel
                     </span>
@@ -681,7 +684,9 @@ export default function PreviewScreen({
             boxShadow: `0 0 8px ${isReady ? '#22c55e' : '#D4FF57'}`,
             display: 'inline-block',
           }} />
-          <span style={{ color: 'rgba(240,237,230,0.85)' }}>WebContainer: {status.status}</span>
+          <span style={{ color: 'rgba(240,237,230,0.85)' }}>
+            {previewMethod === 'webcontainer' ? `WebContainer: ${status.status}` : 'iframe: ready'}
+          </span>
         </div>
         <span style={{ color: 'rgba(255,255,255,0.1)' }}>|</span>
         <span style={{ color: selectedSection ? '#D4FF57' : 'rgba(240,237,230,0.65)' }}>
@@ -694,13 +699,11 @@ export default function PreviewScreen({
         <span style={{ color: 'rgba(255,255,255,0.1)' }}>|</span>
         <span>Size: {(html.length / 1024).toFixed(1)} KB</span>
         <span style={{ color: 'rgba(255,255,255,0.1)' }}>|</span>
-        <span>Latency: 14ms</span>
-        <span style={{ color: 'rgba(255,255,255,0.1)' }}>|</span>
         <span style={{ color: isPanelOpen ? '#22c55e' : 'rgba(240,237,230,0.45)' }}>
           Panel: {isPanelOpen ? 'Open' : 'Hidden'}
         </span>
         <span style={{ color: 'rgba(255,255,255,0.1)' }}>|</span>
-        <span>Sandbox: Active</span>
+        <span>Mode: {previewMethod}</span>
         <span style={{ marginLeft: 'auto', fontFamily: 'monospace', color: 'rgba(240,237,230,0.65)' }}>
           {viewport} · {vpLabel}
         </span>
@@ -708,14 +711,8 @@ export default function PreviewScreen({
 
       <style>{`
   @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap');
-
-  .glow-divider {
-    transition: background 0.15s, box-shadow 0.15s;
-  }
-  .glow-divider:hover {
-    background: #D4FF57 !important;
-    box-shadow: 0 0 10px rgba(212, 255, 87, 0.8) !important;
-  }
+  .glow-divider { transition: background 0.15s, box-shadow 0.15s; }
+  .glow-divider:hover { background: #D4FF57 !important; box-shadow: 0 0 10px rgba(212, 255, 87, 0.8) !important; }
 `}</style>
     </div>
   );

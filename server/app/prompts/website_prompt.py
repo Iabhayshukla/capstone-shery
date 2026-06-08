@@ -1,218 +1,436 @@
+"""
+website_prompt.py
+Framework-aware prompt builder for AWS Bedrock Nova Pro.
+The framework string comes from the frontend classifier via the API request body.
+"""
 
-def build_website_prompt(user_prompt: str):
-    return f"""
-    Generate a complete production-ready website.
+BASE_RULES = """
+STRICT OUTPUT RULES:
+- Return ONLY raw code. No markdown. No code fences. No explanations.
+- The very first character must be the opening tag/token of the output file.
+- No external images, no local image files (no hero.jpg, banner.jpg, logo.png).
+- Every major section must have a unique data-section-id attribute for section editing.
 
-                        USER REQUEST:
-                        {user_prompt}
+SECTION EDITING MODE:
+When a sectionId is provided, keep ALL other sections EXACTLY as-is.
+Only regenerate the section with the matching data-section-id.
+Return the COMPLETE page with the edited section merged in.
 
-                        ROLE:
-                        You are a world-class Senior UI/UX Designer, Frontend Architect, and Product Designer.
+CRITICAL — ZERO CDN ALLOWED:
+Do NOT use ANY of the following under ANY circumstances:
+- cdn.tailwindcss.com, unpkg.com, jsdelivr.net, cdnjs.cloudflare.com
+- fonts.googleapis.com, fonts.gstatic.com, use.fontawesome.com
+- skypack.dev, esm.sh, esm.run, ga.jspm.io
+- Three.js CDN, GSAP CDN, Chart.js CDN, Bootstrap CDN, Alpine.js CDN
+- ANY <script src="http..."> or <link href="http...">
+- ANY @import url() pointing to an external domain
+Write ALL styles inside <style>. Write ALL scripts inside <script>. No exceptions.
 
-                        Your goal is to generate a website that looks comparable to modern startup websites built using:
+CRITICAL — NO TAILWIND CLASS NAMES:
+Do NOT use Tailwind utility classes in HTML attributes.
+- BANNED: class="bg-gray-50 text-white mt-8 flex items-center px-4 rounded-lg font-inter ..."
+- BANNED: Any class that is a Tailwind utility (bg-*, text-*, mt-*, p-*, flex, grid, rounded-*, etc.)
+- CORRECT: Write actual CSS properties inside <style> and use your own descriptive class names.
+- Example: Instead of class="mt-8 bg-blue-500", write .btn { margin-top: 2rem; background: #3b82f6; }
+"""
 
-                        * Stripe
-                        * Linear
-                        * Vercel
-                        * Framer
-                        * Webflow
-                        * Notion
-                        
+QUALITY_BAR = """
+QUALITY BAR:
+Every page should look like it was designed by a senior product designer at a top tech company.
+- Use system fonts: font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+- Gradient text, gradient backgrounds, glassmorphism effects
+- Subtle animations with CSS @keyframes and transitions
+- Strong visual hierarchy with varied font sizes
+- Cards, badges, feature grids, testimonial sections as appropriate
+- Realistic marketing copy — no lorem ipsum
+- NO Google Fonts CDN — use system fonts or embed font-face with base64 if needed
+"""
 
-                        DESIGN REQUIREMENTS:
-
-                        * Premium modern UI
-                        * Beautiful gradients
-                        * Modern typography
-                        * Strong visual hierarchy
-                        * Excellent spacing
-                        * Clean layouts
-                        * Professional color palette
-                        * Rounded corners
-                        * Subtle shadows
-                        * Hover effects
-                        * Smooth transitions
-                        * Responsive design
-                        * Mobile-first approach
-                        * High-end SaaS appearance
-
-                        MANDATORY SECTIONS:
-
-                        1. Navigation Bar
-                        2. Hero Section
-                        3. Features Section
-                        4. Benefits Section
-                        5. Testimonials Section
-                        6. FAQ Section
-                        7. Contact Section
-                        8. Footer
-
-                        UI REQUIREMENTS:
-
-                        * Use CSS Grid and Flexbox
-                        * Create attractive cards
-                        * Create CTA buttons
-                        * Use gradient hero background
-                        * Add modern section spacing
-                        * Use responsive breakpoints
-                        * Make the page visually impressive
-                        * Avoid plain HTML layouts
-
-                        STRICT RULES:
-
-                        * Return ONLY raw HTML
-                        * No markdown
-                        * No explanations
-                        * No code fences
-                        * No external images
-                        * No local image files
-                        * No hero.jpg
-                        * No banner.jpg
-                        * No logo.png
-                        * No placeholder image paths
-                        * No external CSS files
-                        * No external JS files
-                        * All CSS must be embedded in <style>
-                        * All code must be self-contained
-
-                        OUTPUT QUALITY:
-
-                        The generated website should be portfolio-worthy and look like a modern commercial product landing page rather than a beginner HTML assignment.
-
-                        For every section, generate meaningful content.
-
-                        Features section:
-                        - Minimum 6 feature cards
-
-                        Benefits section:
-                        - Minimum 4 benefit cards
-
-                        Testimonials section:
-                        - Minimum 3 testimonials
-
-                        FAQ section:
-                        - Minimum 5 FAQ items
-
-                        Do not leave any section empty.
-                        Every section must contain visible content.
-                        ADVANCED DESIGN SYSTEM:
-
-Create a visually stunning website that looks like it was designed by a senior product designer.
-
-VISUAL STYLE:
-
-* Premium SaaS aesthetic
-* Modern startup landing page
-* Elegant gradients
-* Glassmorphism where appropriate
-* Soft shadows
-* Smooth hover interactions
-* Large typography
-* Spacious layouts
-* High visual appeal
-* Conversion-focused design
-
-LAYOUT REQUIREMENTS:
-
-* Full-width hero section
-* Large headline and supporting text
-* Primary CTA button
-* Secondary CTA button
-* Feature cards in responsive grid
-* Benefit cards with icons/placeholders
-* Testimonial cards
-* FAQ accordion-style layout
-* Modern footer with multiple columns
-
-CONTENT QUALITY:
-
-* Write realistic marketing copy
-* Use persuasive headlines
-* Use professional subheadings
-* Use meaningful feature descriptions
-* Avoid lorem ipsum
-* Avoid generic filler text
-
-SPACING REQUIREMENTS:
-
-* Use generous whitespace
-* Maintain strong visual hierarchy
-* Ensure every section feels balanced
-* Avoid cramped layouts
-
-RESPONSIVENESS:
-
-* Mobile responsive
-* Tablet responsive
-* Desktop responsive
-
-HTML REQUIREMENTS:
-
-* Use modern semantic HTML5
-* Use CSS custom properties where appropriate
-* Use CSS Grid and Flexbox
-* Use smooth transitions
-* Use modern button styles
-* Use modern card styles
-
-IMPORTANT:
-
-Every navigation link must point to an existing section.
-
-Every section must contain visible content.
-
-Avoid empty sections.
-
-Avoid excessive blank space.
-
-Generate a website that looks suitable for a real startup launch.
-
-
+DESIGN_SYSTEM = """
 DESIGN TOKENS:
+- Define all colors in :root as CSS variables
+- Consistent spacing scale (0.25rem increments)
+- Consistent border-radius (4px, 8px, 12px, 16px, 24px)
+- Consistent shadows (sm, md, lg)
+- Typography scale (xs through 5xl)
 
-- Use a modern color system
-- Define CSS variables in :root
-- Use consistent spacing scale
-- Use consistent border radius
-- Use consistent shadows
-- Use consistent typography scale
-
-Use CSS variables defined in :root for colors, spacing and typography.
-
-HERO SECTION REQUIREMENTS:
-
-- Large bold headline
-- Supporting description
-- Primary CTA button
-- Secondary CTA button
-- Trust indicators
-- Modern gradient background
-- Strong visual impact above the fold
-
-CARD DESIGN REQUIREMENTS:
-
-- Glassmorphism or elevated card style
-- Rounded corners
-- Hover effects
-- Soft shadows
-- Consistent spacing
-- Modern SaaS appearance
+ADVANCED DESIGN:
+- Premium SaaS aesthetic
+- Large bold headline with gradient text
+- Glassmorphism cards where appropriate
+- Sticky navigation with smooth scroll
+- Hover micro-interactions on all interactive elements
+- Mobile-first responsive design
+"""
 
 
-NAVIGATION REQUIREMENTS:
+# ─────────────────────────────────────────────────────────────────────────────
+# DEFAULT — HTML + CSS + JS (iframe)
+# ─────────────────────────────────────────────────────────────────────────────
 
-- Sticky navigation bar
-- Smooth scrolling
-- Active hover states
-- CTA button in navbar
+def build_default_prompt(user_prompt: str) -> str:
+    return f"""
+Generate a complete production-ready website.
 
-MICRO INTERACTIONS:
+USER REQUEST:
+{user_prompt}
 
-- Smooth hover transitions
-- Button hover effects
-- Card hover effects
-- Section fade-in styling using CSS
+ROLE:
+You are a world-class Senior UI/UX Designer, Frontend Architect, and Product Designer.
+Your goal is to generate a website comparable to: Stripe, Linear, Vercel, Framer, Webflow.
+
+{BASE_RULES}
+
+FORMAT:
+- Return a single complete <!DOCTYPE html> document.
+- Write ALL styles as pure CSS inside a <style> tag. NO CDN. NO external links.
+- Use system fonts only: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif
+- All layout, spacing, colors, and components must be hand-written CSS.
+- All JS in a <script> tag at the bottom of <body>.
+- No external CSS or JS files of any kind.
+
+MANDATORY SECTIONS (each with data-section-id):
+1. Navigation Bar       (data-section-id="navbar")
+2. Hero Section         (data-section-id="hero")
+3. Features Section     (data-section-id="features")   — min 6 feature cards
+4. Benefits Section     (data-section-id="benefits")   — min 4 benefit cards
+5. Testimonials         (data-section-id="testimonials") — min 3
+6. FAQ Section          (data-section-id="faq")         — min 5 items, accordion style
+7. Contact Section      (data-section-id="contact")
+8. Footer               (data-section-id="footer")
+
+{QUALITY_BAR}
+
+{DESIGN_SYSTEM}
+
+Return only valid HTML.
+"""
 
 
-                        Return only valid HTML
+# ─────────────────────────────────────────────────────────────────────────────
+# THREE.JS (iframe) — use raw WebGL or Canvas 2D, NO CDN
+# ─────────────────────────────────────────────────────────────────────────────
+
+def build_threejs_prompt(user_prompt: str) -> str:
+    return f"""
+Generate a complete interactive 3D scene using ONLY browser built-in APIs.
+
+USER REQUEST:
+{user_prompt}
+
+ROLE:
+You are an expert WebGL and Canvas 2D developer.
+
+{BASE_RULES}
+
+FORMAT:
+- Single complete <!DOCTYPE html> file.
+- DO NOT load Three.js or any CDN. Use raw WebGL or Canvas 2D with 3D math instead.
+- Use CSS 3D transforms, Canvas 2D with projection math, or raw WebGL.
+- Canvas fills full viewport: width:100vw; height:100vh; margin:0; overflow:hidden.
+- Include animation loop with requestAnimationFrame.
+- Add mouse/touch interactivity.
+- No external assets — all geometries generated in JS.
+
+QUALITY BAR:
+- Visually stunning 3D scene using only native browser APIs
+- Smooth 60fps animation
+- Mouse interactivity (rotate, zoom, etc.)
+
+Return only valid HTML.
+"""
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# GSAP / ANIMATION (iframe) — use CSS @keyframes, NO CDN
+# ─────────────────────────────────────────────────────────────────────────────
+
+def build_gsap_prompt(user_prompt: str) -> str:
+    return f"""
+Generate a stunning animated web page using ONLY native CSS and JS animation APIs.
+
+USER REQUEST:
+{user_prompt}
+
+ROLE:
+You are an expert in CSS animations and creative web experiences.
+
+{BASE_RULES}
+
+FORMAT:
+- Single complete <!DOCTYPE html> file.
+- DO NOT load GSAP or any CDN. Use native browser APIs instead:
+  CSS @keyframes, CSS transitions, IntersectionObserver, Web Animations API, requestAnimationFrame.
+- Write ALL styles as pure CSS inside a <style> tag.
+- Use system fonts only. No Google Fonts CDN.
+- Every section should have an entrance animation triggered by IntersectionObserver.
+- Hero has dramatic CSS @keyframes entrance animation.
+
+Return only valid HTML.
+"""
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CHART / GRAPH (iframe) — use inline SVG or Canvas 2D, NO CDN
+# ─────────────────────────────────────────────────────────────────────────────
+
+def build_chart_prompt(user_prompt: str) -> str:
+    return f"""
+Generate a beautiful data dashboard using ONLY inline SVG and Canvas 2D.
+
+USER REQUEST:
+{user_prompt}
+
+ROLE:
+You are an expert in data visualization and dashboard design.
+
+{BASE_RULES}
+
+FORMAT:
+- Single complete <!DOCTYPE html> file.
+- DO NOT load Chart.js or any CDN. Draw all charts with:
+  - Inline SVG (<rect>, <polyline>, <path>, <circle stroke-dasharray>)
+  - OR Canvas 2D API (ctx.fillRect, ctx.beginPath, etc.)
+- Write ALL styles as pure CSS inside a <style> tag.
+- Use system fonts only. No Google Fonts CDN.
+- Use realistic mock data. Multiple chart types (bar, line, pie/doughnut).
+- KPI cards with trend indicators.
+
+Return only valid HTML.
+"""
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# BOOTSTRAP (iframe) — hand-written grid, NO CDN
+# ─────────────────────────────────────────────────────────────────────────────
+
+def build_bootstrap_prompt(user_prompt: str) -> str:
+    return f"""
+Generate a professional responsive HTML page with a hand-written CSS grid framework.
+
+USER REQUEST:
+{user_prompt}
+
+ROLE:
+You are an expert CSS developer.
+
+{BASE_RULES}
+
+FORMAT:
+- Single complete <!DOCTYPE html> file.
+- DO NOT load Bootstrap or any CDN. Write your own grid and utility classes:
+  .container, .row, .col, .col-4, .flex, .items-center, etc.
+- All CSS inside a <style> tag. No external stylesheets.
+- Use system fonts only. No Google Fonts CDN.
+
+{QUALITY_BAR}
+
+Return only valid HTML.
+"""
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TAILWIND (explicit, iframe) — hand-written utilities, NO CDN
+# ─────────────────────────────────────────────────────────────────────────────
+
+def build_tailwind_prompt(user_prompt: str) -> str:
+    return f"""
+Generate a beautiful HTML page with premium custom CSS styling.
+
+USER REQUEST:
+{user_prompt}
+
+ROLE:
+You are an expert frontend developer and UI designer.
+
+{BASE_RULES}
+
+FORMAT:
+- Single complete <!DOCTYPE html> file.
+- Write ALL styles as pure CSS inside a <style> tag. DO NOT use Tailwind CDN or any CDN.
+- Use system fonts only. No Google Fonts CDN.
+- All layout, spacing, grid, flexbox, and components must be hand-written CSS.
+- All JS in a <script> tag at the bottom of <body>.
+- No external CSS or JS files of any kind.
+
+{QUALITY_BAR}
+{DESIGN_SYSTEM}
+
+Return only valid HTML.
+"""
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# REACT (WebContainer)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def build_react_prompt(user_prompt: str) -> str:
+    return f"""
+Generate a complete React application component.
+
+USER REQUEST:
+{user_prompt}
+
+ROLE:
+You are an expert React developer.
+
+{BASE_RULES}
+
+FORMAT:
+- Output a single App.jsx file.
+- Use React hooks (useState, useEffect, useCallback, useMemo).
+- Inject CSS via: useEffect(() => {{ const s = document.createElement('style'); s.textContent = `/* your CSS */`; document.head.appendChild(s); }}, []);
+- Export default: export default function App() {{ ... }}
+- All child components defined in the same file.
+- No external npm packages except React.
+
+{QUALITY_BAR}
+
+Return only valid JSX/React code.
+"""
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# VUE (WebContainer)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def build_vue_prompt(user_prompt: str) -> str:
+    return f"""
+Generate a complete Vue 3 single-file component.
+
+USER REQUEST:
+{user_prompt}
+
+ROLE:
+You are an expert Vue 3 developer.
+
+{BASE_RULES}
+
+FORMAT:
+- Output a single App.vue file with <template>, <script setup>, and <style scoped>.
+- Use Vue 3 Composition API (ref, computed, onMounted, watch).
+- All child components defined inline in the same file.
+- No external packages except Vue.
+
+Return only valid Vue SFC code.
+"""
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SVELTE (WebContainer)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def build_svelte_prompt(user_prompt: str) -> str:
+    return f"""
+Generate a complete Svelte component.
+
+USER REQUEST:
+{user_prompt}
+
+ROLE:
+You are an expert Svelte developer.
+
+{BASE_RULES}
+
+FORMAT:
+- Output a single App.svelte file with <script>, markup, and <style>.
+- Use Svelte reactivity ($:, stores, lifecycle hooks).
+- Self-contained — all logic in one file.
+- No external packages except Svelte.
+
+Return only valid Svelte code.
+"""
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# NEXT.JS (WebContainer)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def build_next_prompt(user_prompt: str) -> str:
+    return f"""
+Generate a complete Next.js page component.
+
+USER REQUEST:
+{user_prompt}
+
+ROLE:
+You are an expert Next.js developer.
+
+{BASE_RULES}
+
+FORMAT:
+- Output a single pages/index.jsx file.
+- Use Next.js conventions (Image, Link, useRouter) where appropriate.
+- Style with pure CSS-in-JS or a <style jsx> block (assume styled-jsx is available).
+- No external CSS CDN of any kind.
+- No external packages except Next.js.
+
+{QUALITY_BAR}
+
+Return only valid Next.js JSX code.
+"""
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# NODE / EXPRESS (WebContainer)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def build_node_prompt(user_prompt: str) -> str:
+    return f"""
+Generate a complete Node.js Express application.
+
+USER REQUEST:
+{user_prompt}
+
+ROLE:
+You are an expert Node.js and Express developer.
+
+{BASE_RULES}
+
+FORMAT:
+- Output a single server.js file.
+- Use express.json() and express.static().
+- Serve a beautiful HTML frontend from GET / using res.send().
+- The inline HTML must use pure CSS in a <style> tag — no CDN of any kind.
+- Include realistic REST API endpoints with mock JSON data.
+- Use ES modules (import/export) syntax.
+- No external packages except express.
+
+Return only valid Node.js code.
+"""
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SELECTOR — called from llm_service.py or routes/generate.py
+# ─────────────────────────────────────────────────────────────────────────────
+
+def build_website_prompt(user_prompt: str, framework: str = "") -> str:
     """
+    Select the correct prompt builder based on the framework detected
+    by the frontend classifier. Falls back to the default HTML prompt.
+    """
+    f = (framework or "").lower()
+
+    if "three" in f:
+        return build_threejs_prompt(user_prompt)
+    if "gsap" in f:
+        return build_gsap_prompt(user_prompt)
+    if "chart" in f:
+        return build_chart_prompt(user_prompt)
+    if "bootstrap" in f:
+        return build_bootstrap_prompt(user_prompt)
+    if "tailwind" in f:
+        return build_tailwind_prompt(user_prompt)
+    if "react" in f:
+        return build_react_prompt(user_prompt)
+    if "vue" in f:
+        return build_vue_prompt(user_prompt)
+    if "svelte" in f:
+        return build_svelte_prompt(user_prompt)
+    if "next" in f:
+        return build_next_prompt(user_prompt)
+    if "node" in f or "express" in f:
+        return build_node_prompt(user_prompt)
+
+    # Default: plain HTML + CSS + JS
+    return build_default_prompt(user_prompt)

@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect, KeyboardEvent } from 'react';
+import { useState, useRef, useEffect, KeyboardEvent, MouseEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Sparkles } from 'lucide-react';
 
 interface WelcomeScreenProps {
@@ -331,11 +331,11 @@ export default function WelcomeScreen({ onGenerate, isGenerating }: WelcomeScree
                 transition: 'all 0.2s',
                 fontFamily: 'DM Sans, sans-serif',
               }}
-              onMouseEnter={e => {
+              onMouseEnter={(e: MouseEvent<HTMLButtonElement>) => {
                 (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(212,255,87,0.3)';
                 (e.currentTarget as HTMLButtonElement).style.color = 'rgba(240,237,230,0.85)';
               }}
-              onMouseLeave={e => {
+              onMouseLeave={(e: MouseEvent<HTMLButtonElement>) => {
                 (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.07)';
                 (e.currentTarget as HTMLButtonElement).style.color = 'rgba(240,237,230,0.65)';
               }}

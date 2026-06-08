@@ -1,3 +1,5 @@
+import type { PreviewMethod } from '@/shared/classifier';
+
 const API_URL = import.meta.env.VITE_API_URL as string;
 
 export interface GenerateOptions {
@@ -5,6 +7,8 @@ export interface GenerateOptions {
   accessToken: string;
   sectionId?: string | null;
   currentHtml?: string | null;
+  framework?: string;
+  previewMethod?: PreviewMethod;
   onChunk: (accumulated: string) => void;
   onDone: (fullHtml: string) => void;
   onError: (message: string) => void;
@@ -24,15 +28,27 @@ export async function streamGenerate(
   prompt: string,
   options: GenerateOptions
 ): Promise<void> {
-  const { projectId, accessToken, sectionId, currentHtml, onChunk, onDone, onError, signal } =
-    options;
+  const {
+    projectId,
+    accessToken,
+    sectionId,
+    currentHtml,
+    framework,
+    previewMethod,
+    onChunk,
+    onDone,
+    onError,
+    signal,
+  } = options;
 
   const body: Record<string, unknown> = {
     prompt,
     projectId,
   };
-  if (sectionId) body.sectionId = sectionId;
-  if (currentHtml) body.currentHtml = currentHtml;
+  if (sectionId)     body.sectionId     = sectionId;
+  if (currentHtml)   body.currentHtml   = currentHtml;
+  if (framework)     body.framework     = framework;
+  if (previewMethod) body.previewMethod = previewMethod;
 
   const response = await fetch(`${API_URL}/generate`, {
     method: 'POST',
@@ -70,7 +86,7 @@ export async function streamGenerate(
 
     // SSE messages are separated by double newlines
     const messages = buffer.split('\n\n');
-    buffer = messages.pop() ?? ''; // keep incomplete last chunk
+    buffer = messages.pop() ?? '';
 
     for (const message of messages) {
       const lines = message.trim().split('\n');
@@ -108,11 +124,9 @@ export async function streamGenerate(
         onError(message);
         return;
       }
-      // 'retry' events are informational — no UI action needed
     }
   }
 
-  // Stream ended without a 'done' event — use what we accumulated
   if (accumulated) {
     onDone(accumulated);
   }
