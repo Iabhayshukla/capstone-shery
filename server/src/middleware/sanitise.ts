@@ -4,17 +4,20 @@ import xss from 'xss';
 /**
  * Recursively sanitize a value against XSS attacks.
  */
-function sanitizeValue(value: unknown): unknown {
+function sanitizeValue(value: unknown, key?: string): unknown {
+  if (key === 'currentCode') {
+    return value; // Bypass XSS sanitization for generated website HTML code
+  }
   if (typeof value === 'string') {
     return xss(value.trim());
   }
   if (Array.isArray(value)) {
-    return value.map(sanitizeValue);
+    return value.map((v) => sanitizeValue(v));
   }
   if (value !== null && typeof value === 'object') {
     const sanitized: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-      sanitized[k] = sanitizeValue(v);
+      sanitized[k] = sanitizeValue(v, k);
     }
     return sanitized;
   }
