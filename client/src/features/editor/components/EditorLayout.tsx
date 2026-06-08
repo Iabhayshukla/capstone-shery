@@ -34,6 +34,30 @@ function parseFilesFromHtml(rawHtml: string): StreamingFile[] {
   ];
 }
 
+function decodeEscapedHtml(html: string): string {
+  if (!html) return html;
+  // Check if it is HTML-entity escaped
+  if (html.includes('&lt;') || html.includes('&gt;')) {
+    let decoded = html;
+    // Replace JSON-escaped newlines and double quotes if they exist
+    if (decoded.includes('\\n') || decoded.includes('\\"')) {
+      decoded = decoded
+        .replace(/\\n/g, '\n')
+        .replace(/\\"/g, '"')
+        .replace(/\\'/g, "'")
+        .replace(/\\\\/g, '\\');
+    }
+    return decoded
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&')
+      .replace(/&quot;/g, '"')
+      .replace(/&#x27;/g, "'")
+      .replace(/&#x2F;/g, '/');
+  }
+  return html;
+}
+
 export default function EditorLayout() {
   const { projectId } = useParams<{ projectId: string }>();
   const { accessToken } = useAuth();
@@ -111,6 +135,9 @@ export default function EditorLayout() {
     const load = async () => {
       try {
         const proj = await fetchProjectById(accessToken, projectId);
+        if (proj.currentCode) {
+          proj.currentCode = decodeEscapedHtml(proj.currentCode);
+        }
         setProject(proj);
         if (proj.currentCode) {
           if (initialCodeRef.current === null) {

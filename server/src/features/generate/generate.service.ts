@@ -41,17 +41,37 @@ function stripCodeFences(text: string): string {
 // ─── FORCE STRIP ALL EXTERNAL CDN / FONT LINKS ───────────────────────────────
 // AI prompt rules ko ignore karta hai — yahan HARD remove karo (every CDN blocked)
 function stripExternalResources(html: string): string {
-  return html
+  let cleaned = html
     // Remove ALL <script src="https://..."> — paired or self-closing
     .replace(/<script[^>]+src=["']https?:\/\/[^"']+["'][^>]*>(<\/script>)?/gi, '')
     // Remove ALL <link href="https://..."> — any rel, self-closing or not
-    .replace(/<link[^>]+href=["']https?:\/\/[^"']+["'][^>]*\/?>/gi, '')
+    .replace(/<link[^>]+href=["']https?:\/\/[^"']+["']*\/?>/gi, '')
     // Remove ALL @import url('https://...') — any domain (Google Fonts, unpkg, etc.)
     .replace(/@import\s+url\(['"]?https?:\/\/[^)]+['"]?\)\s*;?/gi, '')
     // Remove ALL @import "https://..." or @import 'https://...' (without url())
     .replace(/@import\s+["']https?:\/\/[^"']+["']\s*;?/gi, '')
     // Remove placeholder image srcs (picsum, placehold, via.placeholder)
     .replace(/src=["']https?:\/\/(via\.placeholder|picsum\.photos|placehold)\.[a-z]+[^"']*["']/gi, 'src=""');
+
+  // Repair common CSS mistakes (e.g. Sass functions and concatenated class selectors)
+  cleaned = cleaned
+    // Fix Sass darken(color, X%) -> native CSS color-mix()
+    .replace(/darken\(([^,]+),\s*(\d+)%\)/gi, (_, color, pct) => {
+      const mixPct = 100 - parseInt(pct, 10);
+      return `color-mix(in srgb, ${color.trim()} ${mixPct}%, black)`;
+    })
+    // Fix Sass lighten(color, X%) -> native CSS color-mix()
+    .replace(/lighten\(([^,]+),\s*(\d+)%\)/gi, (_, color, pct) => {
+      const mixPct = 100 - parseInt(pct, 10);
+      return `color-mix(in srgb, ${color.trim()} ${mixPct}%, white)`;
+    });
+
+  // Repair concatenated selectors (e.g. .features.card -> .features .card)
+  for (let i = 0; i < 3; i++) {
+    cleaned = cleaned.replace(/\.(navbar|hero|features|benefits|testimonials|faq|contact|footer|item)\.([a-zA-Z0-9_-]+)/gi, '.$1 .$2');
+  }
+
+  return cleaned;
 }
 
 // ─── Core streaming call ──────────────────────────────────────────────────────

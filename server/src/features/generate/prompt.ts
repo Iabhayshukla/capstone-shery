@@ -22,6 +22,14 @@ const BASE_RULES = `
    - BANNED: Any class that is a Tailwind utility (bg-*, text-*, mt-*, p-*, flex, grid, rounded-*, etc.)
    - CORRECT: Write actual CSS properties inside <style> and use your own class names.
    - Example: Instead of class="mt-8 bg-blue-500", write .my-button { margin-top: 2rem; background: #3b82f6; }
+10. CRITICAL — NO CSS PREPROCESSORS / SASS FUNCTIONS:
+    - BANNED: Sass functions like \`darken()\`, \`lighten()\`, \`rgba(var(--primary), 0.5)\`. Standard CSS cannot parse these.
+    - CORRECT: For color modifications, use native CSS color-mix() or opacity.
+      Example: Instead of \`background: darken(var(--primary), 10%);\`, use \`background: color-mix(in srgb, var(--primary) 90%, black);\`.
+11. CRITICAL — CORRECT DESCENDANT SELECTORS:
+    - BANNED: Concatenating section and item classes without spaces (e.g., \`.features.card\`, \`.benefits.benefit\`, \`.testimonials.card\`, \`.faq.item.question\`).
+    - CORRECT: Use descendant spacing.
+      Example: Use \`.features .card\` (with a space) to style elements nested inside the features container.
 `;
 
 const DESIGN_SYSTEM = `
@@ -173,17 +181,37 @@ ${QUALITY_BAR}
 // ─── FORCE STRIP ALL EXTERNAL CDN / FONT LINKS ───────────────────────────────
 // AI prompt rules ko ignore karta hai — yahan HARD remove karo
 function stripExternalResources(html: string): string {
-  return html
+  let cleaned = html
     // Remove ALL external <script src="http(s)://..."> tags (self-closing or paired)
     .replace(/<script[^>]+src=["']https?:\/\/[^"']+["'][^>]*>(<\/script>)?/gi, '')
     // Remove ALL external <link href="http(s)://..."> tags (any rel)
-    .replace(/<link[^>]+href=["']https?:\/\/[^"']+["'][^>]*\/?>/gi, '')
+    .replace(/<link[^>]+href=["']https?:\/\/[^"']+["']*\/?>/gi, '')
     // Remove ALL @import url() pointing to any external http(s) domain
     .replace(/@import\s+url\(['"]?https?:\/\/[^)]+['"]?\)\s*;?/gi, '')
     // Remove ALL @import "https://..." or @import 'https://...' (without url())
     .replace(/@import\s+['"]https?:\/\/[^'"]+['"]\s*;?/gi, '')
     // Remove placeholder image srcs (picsum, placehold, via.placeholder)
     .replace(/src=["']https?:\/\/(via\.placeholder|picsum\.photos|placehold)\.\w+[^"']*["']/gi, 'src=""');
+
+  // Repair common CSS mistakes (e.g. Sass functions and concatenated class selectors)
+  cleaned = cleaned
+    // Fix Sass darken(color, X%) -> native CSS color-mix()
+    .replace(/darken\(([^,]+),\s*(\d+)%\)/gi, (_, color, pct) => {
+      const mixPct = 100 - parseInt(pct, 10);
+      return `color-mix(in srgb, ${color.trim()} ${mixPct}%, black)`;
+    })
+    // Fix Sass lighten(color, X%) -> native CSS color-mix()
+    .replace(/lighten\(([^,]+),\s*(\d+)%\)/gi, (_, color, pct) => {
+      const mixPct = 100 - parseInt(pct, 10);
+      return `color-mix(in srgb, ${color.trim()} ${mixPct}%, white)`;
+    });
+
+  // Repair concatenated selectors (e.g. .features.card -> .features .card)
+  for (let i = 0; i < 3; i++) {
+    cleaned = cleaned.replace(/\.(navbar|hero|features|benefits|testimonials|faq|contact|footer|item)\.([a-zA-Z0-9_-]+)/gi, '.$1 .$2');
+  }
+
+  return cleaned;
 }
 
 // ─── CHART / GRAPH ────────────────────────────────────────────────────────────
