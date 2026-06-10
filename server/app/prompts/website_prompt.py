@@ -1,414 +1,408 @@
 """
-website_prompt.py
-Framework-aware prompt builder for AWS Bedrock Nova Pro.
-The framework string comes from the frontend classifier via the API request body.
+website_prompt.py – Optimized prompt builders for AWS Bedrock Nova Pro.
+Includes chain‑of‑thought, few‑shot examples, and strict quality rules.
 """
-
-BASE_RULES = """
-STRICT OUTPUT RULES:
-- Return ONLY raw code. No markdown. No code fences. No explanations.
-- The very first character must be the opening tag/token of the output file.
-- No external images, no local image files (no hero.jpg, banner.jpg, logo.png).
-- Every major section must have a unique data-section-id attribute for section editing.
-
-SECTION EDITING MODE:
-When a sectionId is provided, keep ALL other sections EXACTLY as-is.
-Only regenerate the section with the matching data-section-id.
-Return the COMPLETE page with the edited section merged in.
-
-CRITICAL — ZERO CDN ALLOWED:
-Do NOT use ANY of the following under ANY circumstances:
-- cdn.tailwindcss.com, unpkg.com, jsdelivr.net, cdnjs.cloudflare.com
-- fonts.googleapis.com, fonts.gstatic.com, use.fontawesome.com
-- skypack.dev, esm.sh, esm.run, ga.jspm.io
-- Three.js CDN, GSAP CDN, Chart.js CDN, Bootstrap CDN, Alpine.js CDN
-- ANY <script src="http..."> or <link href="http...">
-- ANY @import url() pointing to an external domain
-Write ALL styles inside <style>. Write ALL scripts inside <script>. No exceptions.
-
-CRITICAL — NO TAILWIND CLASS NAMES:
-Do NOT use Tailwind utility classes in HTML attributes.
-- BANNED: class="bg-gray-50 text-white mt-8 flex items-center px-4 rounded-lg font-inter ..."
-- BANNED: Any class that is a Tailwind utility (bg-*, text-*, mt-*, p-*, flex, grid, rounded-*, etc.)
-- CORRECT: Write actual CSS properties inside <style> and use your own descriptive class names.
-- Example: Instead of class="mt-8 bg-blue-500", write .btn { margin-top: 2rem; background: #3b82f6; }
-"""
-
-QUALITY_BAR = """
-QUALITY BAR:
-Every page should look like it was designed by a senior product designer at a top tech company.
-- Use system fonts: font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-- Gradient text, gradient backgrounds, glassmorphism effects
-- Subtle animations with CSS @keyframes and transitions
-- Strong visual hierarchy with varied font sizes
-- Cards, badges, feature grids, testimonial sections as appropriate
-- Realistic marketing copy — no lorem ipsum
-- NO Google Fonts CDN — use system fonts or embed font-face with base64 if needed
-"""
-
-DESIGN_SYSTEM = """
-DESIGN TOKENS:
-- Define all colors in :root as CSS variables
-- Consistent spacing scale (0.25rem increments)
-- Consistent border-radius (4px, 8px, 12px, 16px, 24px)
-- Consistent shadows (sm, md, lg)
-- Typography scale (xs through 5xl)
-
-ADVANCED DESIGN:
-- Premium SaaS aesthetic
-- Large bold headline with gradient text
-- Glassmorphism cards where appropriate
-- Sticky navigation with smooth scroll
-- Hover micro-interactions on all interactive elements
-- Mobile-first responsive design
-"""
-
 
 # ─────────────────────────────────────────────────────────────────────────────
-# DEFAULT — HTML + CSS + JS (iframe)
+# SHARED RULES (enhanced)
+# ─────────────────────────────────────────────────────────────────────────────
+
+STRICT_OUTPUT = """\
+CRITICAL OUTPUT FORMAT – FOLLOW EXACTLY:
+- Your entire response must be ONLY the code.
+- The very first character must be the first character of the code (e.g., `<` for HTML).
+- The very last character must be the last character of the code.
+- NO markdown, NO code fences, NO explanations, NO greetings.
+- NO extra text before or after the code.
+"""
+
+NO_CDN_RULES = """\
+ZERO EXTERNAL RESOURCES:
+- NO CDN links of any kind. No <script src="http...">, no <link href="http...">.
+- NO @import url() pointing to external domains.
+- NO external images or fonts. Use system fonts and inline SVG/CSS shapes instead.
+- ALL styles inside <style>, ALL scripts inside <script>.
+"""
+
+NO_TAILWIND_RULES = """\
+NO TAILWIND CLASS NAMES:
+- Do NOT use Tailwind utility classes (bg-*, text-*, flex, grid, mt-*, p-*, rounded-*, etc.).
+- Use your own descriptive class names and write actual CSS.
+"""
+
+QUALITY_BAR = """\
+VISUAL QUALITY (non‑negotiable):
+- System font stack: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif.
+- Premium SaaS aesthetic: gradient text, glassmorphism, subtle shadows, smooth animations.
+- Realistic marketing copy – NO "lorem ipsum", NO "placeholder image". Write actual product names, benefits, and testimonials.
+- Fully responsive (mobile-first), using CSS Grid/Flexbox, media queries at 768px and 1024px.
+- Every interactive element (button, card, link) must have a hover transition (scale, shadow, or color change).
+- All sections must have entrance animations (fade-up on scroll) using IntersectionObserver or CSS @keyframes.
+"""
+
+DESIGN_TOKENS = """\
+USE THESE CSS VARIABLES IN :root:
+  --primary: #6366f1;
+  --primary-dark: #4f46e5;
+  --accent: #f59e0b;
+  --bg: #0f0f0f;
+  --surface: #1a1a1a;
+  --surface-2: #242424;
+  --border: rgba(255,255,255,0.08);
+  --text: #f1f5f9;
+  --text-muted: #94a3b8;
+  --radius: 12px;
+  --shadow: 0 4px 24px rgba(0,0,0,0.4);
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+"""
+
+MANDATORY_SECTIONS_HTML = """\
+MANDATORY SECTIONS (in this exact order, each with the given data-section-id):
+1. <header data-section-id="navbar">  – sticky nav, logo, 4–5 links, CTA button
+2. <section data-section-id="hero">   – large headline, subtitle, two buttons, gradient background, entrance animation
+3. <section data-section-id="features"> – exactly 6 feature cards in a 3×2 grid (glassmorphism)
+4. <section data-section-id="benefits"> – exactly 4 benefit cards with icons (use CSS shapes or emoji)
+5. <section data-section-id="testimonials"> – exactly 3 testimonial cards (photo placeholder as SVG circle, quote, name, title)
+6. <section data-section-id="faq">    – exactly 5 FAQ items using <details><summary> (no JS needed)
+7. <section data-section-id="contact"> – simple form (name, email, message) + submit button that shows alert("Message sent!")
+8. <footer data-section-id="footer">  – 3–4 columns, links, copyright, social icons (inline SVG)
+"""
+
+CHAIN_OF_THOUGHT = """\
+BEFORE WRITING CODE, PLAN IN YOUR HEAD:
+1. Understand the user's request: what type of website? (SaaS, portfolio, e‑commerce, blog?)
+2. Choose a color scheme (modern, high contrast, accessible).
+3. Plan the layout: hero → features → benefits → testimonials → FAQ → contact → footer.
+4. Write the HTML structure first, then CSS (using the design tokens above), then minimal JS for interactivity.
+5. Ensure every section has a data-section-id and realistic, compelling copy (no placeholders).
+"""
+
+FEW_SHOT_HERO = """\
+EXAMPLE OF A PERFECT HERO SECTION (follow this style):
+<section data-section-id="hero" class="hero">
+  <div class="hero-content">
+    <h1>Build AI Websites <span class="gradient">in Minutes</span></h1>
+    <p>Generate production‑ready code with a single prompt. No coding required.</p>
+    <div class="hero-buttons">
+      <button class="btn-primary">Get Started →</button>
+      <button class="btn-secondary">Watch Demo</button>
+    </div>
+  </div>
+</section>
+CSS for that hero: gradient text, glassmorphism button, hover scale effect, fade-up animation.
+"""
+
+SECTION_EDITING_NOTE = """\
+SECTION EDITING MODE (when sectionId is given):
+- Keep ALL other sections EXACTLY as they were.
+- Only replace the section with the matching data-section-id.
+- Output the COMPLETE page, not just the edited section.
+"""
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DEFAULT HTML + CSS + JS (iframe)
 # ─────────────────────────────────────────────────────────────────────────────
 
 def build_default_prompt(user_prompt: str) -> str:
-    return f"""
-Generate a complete production-ready website.
+    return f"""\
+Generate a complete, self-contained HTML page.
 
-USER REQUEST:
-{user_prompt}
+USER REQUEST: {user_prompt}
 
-ROLE:
-You are a world-class Senior UI/UX Designer, Frontend Architect, and Product Designer.
-Your goal is to generate a website comparable to: Stripe, Linear, Vercel, Framer, Webflow.
-
-{BASE_RULES}
-
-FORMAT:
-- Return a single complete <!DOCTYPE html> document.
-- Write ALL styles as pure CSS inside a <style> tag. NO CDN. NO external links.
-- Use system fonts only: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif
-- All layout, spacing, colors, and components must be hand-written CSS.
-- All JS in a <script> tag at the bottom of <body>.
-- No external CSS or JS files of any kind.
-
-MANDATORY SECTIONS (each with data-section-id):
-1. Navigation Bar       (data-section-id="navbar")
-2. Hero Section         (data-section-id="hero")
-3. Features Section     (data-section-id="features")   — min 6 feature cards
-4. Benefits Section     (data-section-id="benefits")   — min 4 benefit cards
-5. Testimonials         (data-section-id="testimonials") — min 3
-6. FAQ Section          (data-section-id="faq")         — min 5 items, accordion style
-7. Contact Section      (data-section-id="contact")
-8. Footer               (data-section-id="footer")
-
+{STRICT_OUTPUT}
+{NO_CDN_RULES}
+{NO_TAILWIND_RULES}
+{CHAIN_OF_THOUGHT}
+{FEW_SHOT_HERO}
+{MANDATORY_SECTIONS_HTML}
 {QUALITY_BAR}
+{DESIGN_TOKENS}
 
-{DESIGN_SYSTEM}
+ADDITIONAL REQUIREMENTS:
+- Hero: gradient text (background-clip: text) and a subtle animated gradient background.
+- Feature cards: glassmorphism (background: rgba(255,255,255,0.05); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1)).
+- FAQ: use <details> with a subtle open/close animation (details[open] selector).
+- Form: prevent default submit with e.preventDefault() and show alert("Message sent!").
+- Include a CSS @keyframes pulse animation for the CTA button.
+- Use IntersectionObserver in a <script> at the end to add a "visible" class to elements when they enter the viewport (for fade‑up effects).
+- Navbar: transparent on hero, solid background when scrolled (use IntersectionObserver).
+- No placeholder text – write realistic copy: e.g., "Boost conversions by 40%", "Join 10,000+ happy customers".
 
-Return only valid HTML.
+REMEMBER: Output ONLY the raw HTML. First character must be `<`. No markdown, no CDN, no Tailwind classes.
 """
 
-
 # ─────────────────────────────────────────────────────────────────────────────
-# THREE.JS (iframe) — use raw WebGL or Canvas 2D, NO CDN
+# THREE.JS – raw WebGL / Canvas 2D, NO CDN
 # ─────────────────────────────────────────────────────────────────────────────
 
 def build_threejs_prompt(user_prompt: str) -> str:
-    return f"""
-Generate a complete interactive 3D scene using ONLY browser built-in APIs.
+    return f"""\
+Create a single HTML file with an interactive 3D scene using only browser built‑in APIs (WebGL or Canvas 2D with 3D math).
 
-USER REQUEST:
-{user_prompt}
+USER REQUEST: {user_prompt}
 
-ROLE:
-You are an expert WebGL and Canvas 2D developer.
+{STRICT_OUTPUT}
+{NO_CDN_RULES}
+{NO_TAILWIND_RULES}
+{CHAIN_OF_THOUGHT}
+{QUALITY_BAR}
 
-{BASE_RULES}
+REQUIREMENTS:
+- Full viewport canvas (width:100vw; height:100vh; margin:0; overflow:hidden).
+- Animation loop using requestAnimationFrame.
+- Mouse/touch interactivity (rotate, zoom).
+- All geometry generated programmatically – no external assets.
+- Smooth 60fps performance.
+- Use realistic colors and lighting (no placeholder colors).
 
-FORMAT:
-- Single complete <!DOCTYPE html> file.
-- DO NOT load Three.js or any CDN. Use raw WebGL or Canvas 2D with 3D math instead.
-- Use CSS 3D transforms, Canvas 2D with projection math, or raw WebGL.
-- Canvas fills full viewport: width:100vw; height:100vh; margin:0; overflow:hidden.
-- Include animation loop with requestAnimationFrame.
-- Add mouse/touch interactivity.
-- No external assets — all geometries generated in JS.
-
-QUALITY BAR:
-- Visually stunning 3D scene using only native browser APIs
-- Smooth 60fps animation
-- Mouse interactivity (rotate, zoom, etc.)
-
-Return only valid HTML.
+REMEMBER: Output ONLY raw HTML. No CDN, no markdown, no extra text.
 """
 
-
 # ─────────────────────────────────────────────────────────────────────────────
-# GSAP / ANIMATION (iframe) — use CSS @keyframes, NO CDN
+# GSAP / ANIMATION – native CSS/JS, NO CDN
 # ─────────────────────────────────────────────────────────────────────────────
 
 def build_gsap_prompt(user_prompt: str) -> str:
-    return f"""
-Generate a stunning animated web page using ONLY native CSS and JS animation APIs.
+    return f"""\
+Build a visually stunning animated web page using only native CSS and JavaScript (no GSAP CDN).
 
-USER REQUEST:
-{user_prompt}
+USER REQUEST: {user_prompt}
 
-ROLE:
-You are an expert in CSS animations and creative web experiences.
+{STRICT_OUTPUT}
+{NO_CDN_RULES}
+{NO_TAILWIND_RULES}
+{CHAIN_OF_THOUGHT}
+{FEW_SHOT_HERO}
+{MANDATORY_SECTIONS_HTML}
+{QUALITY_BAR}
+{DESIGN_TOKENS}
 
-{BASE_RULES}
+REQUIREMENTS:
+- Use CSS @keyframes, transitions, IntersectionObserver, and the Web Animations API.
+- Every major section must have an entrance animation (fade‑up on scroll).
+- Hero must have a dramatic entrance animation (e.g., scale + fade).
+- All styles in a <style> tag, all scripts in a <script> tag.
+- System fonts only, realistic copy.
 
-FORMAT:
-- Single complete <!DOCTYPE html> file.
-- DO NOT load GSAP or any CDN. Use native browser APIs instead:
-  CSS @keyframes, CSS transitions, IntersectionObserver, Web Animations API, requestAnimationFrame.
-- Write ALL styles as pure CSS inside a <style> tag.
-- Use system fonts only. No Google Fonts CDN.
-- Every section should have an entrance animation triggered by IntersectionObserver.
-- Hero has dramatic CSS @keyframes entrance animation.
-
-Return only valid HTML.
+REMEMBER: Output ONLY raw HTML. No CDN, no markdown.
 """
 
-
 # ─────────────────────────────────────────────────────────────────────────────
-# CHART / GRAPH (iframe) — use inline SVG or Canvas 2D, NO CDN
+# CHART / GRAPH – inline SVG / Canvas 2D, NO CDN
 # ─────────────────────────────────────────────────────────────────────────────
 
 def build_chart_prompt(user_prompt: str) -> str:
-    return f"""
-Generate a beautiful data dashboard using ONLY inline SVG and Canvas 2D.
+    return f"""\
+Create a data dashboard using only inline SVG and Canvas 2D (no Chart.js CDN).
 
-USER REQUEST:
-{user_prompt}
+USER REQUEST: {user_prompt}
 
-ROLE:
-You are an expert in data visualization and dashboard design.
+{STRICT_OUTPUT}
+{NO_CDN_RULES}
+{NO_TAILWIND_RULES}
+{CHAIN_OF_THOUGHT}
+{QUALITY_BAR}
 
-{BASE_RULES}
+REQUIREMENTS:
+- Use inline SVG (<rect>, <polyline>, <circle>, etc.) or Canvas 2D for charts.
+- Include bar, line, and pie/doughnut charts with realistic mock data (e.g., sales figures, user growth).
+- Add KPI cards with trend indicators (up/down arrows using SVG).
+- All CSS in a <style> tag, system fonts only.
+- No placeholder text – use real‑looking data labels.
 
-FORMAT:
-- Single complete <!DOCTYPE html> file.
-- DO NOT load Chart.js or any CDN. Draw all charts with:
-  - Inline SVG (<rect>, <polyline>, <path>, <circle stroke-dasharray>)
-  - OR Canvas 2D API (ctx.fillRect, ctx.beginPath, etc.)
-- Write ALL styles as pure CSS inside a <style> tag.
-- Use system fonts only. No Google Fonts CDN.
-- Use realistic mock data. Multiple chart types (bar, line, pie/doughnut).
-- KPI cards with trend indicators.
-
-Return only valid HTML.
+REMEMBER: Output ONLY raw HTML. No CDN, no markdown.
 """
 
-
 # ─────────────────────────────────────────────────────────────────────────────
-# BOOTSTRAP (iframe) — hand-written grid, NO CDN
+# BOOTSTRAP – hand‑written grid, NO CDN
 # ─────────────────────────────────────────────────────────────────────────────
 
 def build_bootstrap_prompt(user_prompt: str) -> str:
-    return f"""
-Generate a professional responsive HTML page with a hand-written CSS grid framework.
+    return f"""\
+Build a responsive HTML page with a custom CSS grid framework (no Bootstrap CDN).
 
-USER REQUEST:
-{user_prompt}
+USER REQUEST: {user_prompt}
 
-ROLE:
-You are an expert CSS developer.
-
-{BASE_RULES}
-
-FORMAT:
-- Single complete <!DOCTYPE html> file.
-- DO NOT load Bootstrap or any CDN. Write your own grid and utility classes:
-  .container, .row, .col, .col-4, .flex, .items-center, etc.
-- All CSS inside a <style> tag. No external stylesheets.
-- Use system fonts only. No Google Fonts CDN.
-
+{STRICT_OUTPUT}
+{NO_CDN_RULES}
+{NO_TAILWIND_RULES}
+{CHAIN_OF_THOUGHT}
+{MANDATORY_SECTIONS_HTML}
 {QUALITY_BAR}
+{DESIGN_TOKENS}
 
-Return only valid HTML.
+REQUIREMENTS:
+- Write your own .container, .row, .col, .flex, .items-center utility classes.
+- All CSS in a <style> tag.
+- System fonts only.
+- Fully responsive with media queries.
+- Realistic copy, no placeholders.
+
+REMEMBER: Output ONLY raw HTML. No CDN, no markdown.
 """
 
-
 # ─────────────────────────────────────────────────────────────────────────────
-# TAILWIND (explicit, iframe) — hand-written utilities, NO CDN
+# TAILWIND – hand‑written custom CSS, NO CDN
 # ─────────────────────────────────────────────────────────────────────────────
 
 def build_tailwind_prompt(user_prompt: str) -> str:
-    return f"""
-Generate a beautiful HTML page with premium custom CSS styling.
+    return f"""\
+Generate a beautifully styled HTML page with custom CSS (no Tailwind CDN).
 
-USER REQUEST:
-{user_prompt}
+USER REQUEST: {user_prompt}
 
-ROLE:
-You are an expert frontend developer and UI designer.
-
-{BASE_RULES}
-
-FORMAT:
-- Single complete <!DOCTYPE html> file.
-- Write ALL styles as pure CSS inside a <style> tag. DO NOT use Tailwind CDN or any CDN.
-- Use system fonts only. No Google Fonts CDN.
-- All layout, spacing, grid, flexbox, and components must be hand-written CSS.
-- All JS in a <script> tag at the bottom of <body>.
-- No external CSS or JS files of any kind.
-
+{STRICT_OUTPUT}
+{NO_CDN_RULES}
+{NO_TAILWIND_RULES}
+{CHAIN_OF_THOUGHT}
+{MANDATORY_SECTIONS_HTML}
 {QUALITY_BAR}
-{DESIGN_SYSTEM}
+{DESIGN_TOKENS}
 
-Return only valid HTML.
+REQUIREMENTS:
+- Write all styles in a <style> tag using descriptive class names.
+- No Tailwind utility classes whatsoever.
+- System fonts only.
+- All interactive elements have hover transitions.
+- Realistic copy – no lorem ipsum.
+
+REMEMBER: Output ONLY raw HTML. No CDN, no markdown, no Tailwind classes.
 """
 
-
 # ─────────────────────────────────────────────────────────────────────────────
-# REACT (WebContainer)
+# REACT – WebContainer
 # ─────────────────────────────────────────────────────────────────────────────
 
 def build_react_prompt(user_prompt: str) -> str:
-    return f"""
-Generate a complete React application component.
+    return f"""\
+Create a React application component (App.jsx) that runs in a browser‑only environment.
 
-USER REQUEST:
-{user_prompt}
+USER REQUEST: {user_prompt}
 
-ROLE:
-You are an expert React developer.
-
-{BASE_RULES}
-
-FORMAT:
-- Output a single App.jsx file.
-- Use React hooks (useState, useEffect, useCallback, useMemo).
-- Inject CSS via: useEffect(() => {{ const s = document.createElement('style'); s.textContent = `/* your CSS */`; document.head.appendChild(s); }}, []);
-- Export default: export default function App() {{ ... }}
-- All child components defined in the same file.
-- No external npm packages except React.
-
+{STRICT_OUTPUT}
+{NO_CDN_RULES}
+{NO_TAILWIND_RULES}
+{CHAIN_OF_THOUGHT}
 {QUALITY_BAR}
 
-Return only valid JSX/React code.
+FORMAT:
+- Output a single App.jsx file. First character must be `i` (import).
+- Use React hooks (useState, useEffect, etc.).
+- Inject CSS via a <style> tag appended to document.head inside useEffect.
+- All child components defined in the same file.
+- Export default the App component.
+- No external packages except React.
+- Realistic content, no placeholders.
+
+REMEMBER: Output ONLY the JSX code. No markdown, no explanations.
 """
 
-
 # ─────────────────────────────────────────────────────────────────────────────
-# VUE (WebContainer)
+# VUE – WebContainer
 # ─────────────────────────────────────────────────────────────────────────────
 
 def build_vue_prompt(user_prompt: str) -> str:
-    return f"""
-Generate a complete Vue 3 single-file component.
+    return f"""\
+Create a Vue 3 single‑file component (App.vue).
 
-USER REQUEST:
-{user_prompt}
+USER REQUEST: {user_prompt}
 
-ROLE:
-You are an expert Vue 3 developer.
-
-{BASE_RULES}
+{STRICT_OUTPUT}
+{NO_CDN_RULES}
+{NO_TAILWIND_RULES}
+{CHAIN_OF_THOUGHT}
+{QUALITY_BAR}
 
 FORMAT:
-- Output a single App.vue file with <template>, <script setup>, and <style scoped>.
-- Use Vue 3 Composition API (ref, computed, onMounted, watch).
-- All child components defined inline in the same file.
+- Single file with <template>, <script setup>, and <style scoped>.
+- Use Composition API (ref, computed, onMounted).
 - No external packages except Vue.
+- Realistic copy.
 
-Return only valid Vue SFC code.
+REMEMBER: Output ONLY the Vue SFC code. No markdown.
 """
 
-
 # ─────────────────────────────────────────────────────────────────────────────
-# SVELTE (WebContainer)
+# SVELTE – WebContainer
 # ─────────────────────────────────────────────────────────────────────────────
 
 def build_svelte_prompt(user_prompt: str) -> str:
-    return f"""
-Generate a complete Svelte component.
+    return f"""\
+Create a Svelte component (App.svelte).
 
-USER REQUEST:
-{user_prompt}
+USER REQUEST: {user_prompt}
 
-ROLE:
-You are an expert Svelte developer.
-
-{BASE_RULES}
+{STRICT_OUTPUT}
+{NO_CDN_RULES}
+{NO_TAILWIND_RULES}
+{CHAIN_OF_THOUGHT}
+{QUALITY_BAR}
 
 FORMAT:
-- Output a single App.svelte file with <script>, markup, and <style>.
+- Single file with <script>, markup, and <style>.
 - Use Svelte reactivity ($:, stores, lifecycle hooks).
-- Self-contained — all logic in one file.
 - No external packages except Svelte.
+- Realistic content.
 
-Return only valid Svelte code.
+REMEMBER: Output ONLY the Svelte code. No markdown.
 """
 
-
 # ─────────────────────────────────────────────────────────────────────────────
-# NEXT.JS (WebContainer)
+# NEXT.JS – WebContainer
 # ─────────────────────────────────────────────────────────────────────────────
 
 def build_next_prompt(user_prompt: str) -> str:
-    return f"""
-Generate a complete Next.js page component.
+    return f"""\
+Create a Next.js page component (pages/index.jsx).
 
-USER REQUEST:
-{user_prompt}
+USER REQUEST: {user_prompt}
 
-ROLE:
-You are an expert Next.js developer.
-
-{BASE_RULES}
-
-FORMAT:
-- Output a single pages/index.jsx file.
-- Use Next.js conventions (Image, Link, useRouter) where appropriate.
-- Style with pure CSS-in-JS or a <style jsx> block (assume styled-jsx is available).
-- No external CSS CDN of any kind.
-- No external packages except Next.js.
-
+{STRICT_OUTPUT}
+{NO_CDN_RULES}
+{NO_TAILWIND_RULES}
+{CHAIN_OF_THOUGHT}
 {QUALITY_BAR}
 
-Return only valid Next.js JSX code.
+FORMAT:
+- Use Next.js conventions (Link, useRouter).
+- Style with pure CSS-in-JS or <style jsx>.
+- No external packages except Next.js.
+- Realistic copy, no placeholders.
+
+REMEMBER: Output ONLY the JSX code. No markdown.
 """
 
-
 # ─────────────────────────────────────────────────────────────────────────────
-# NODE / EXPRESS (WebContainer)
+# NODE / EXPRESS – WebContainer
 # ─────────────────────────────────────────────────────────────────────────────
 
 def build_node_prompt(user_prompt: str) -> str:
-    return f"""
-Generate a complete Node.js Express application.
+    return f"""\
+Create a Node.js Express server (server.js).
 
-USER REQUEST:
-{user_prompt}
+USER REQUEST: {user_prompt}
 
-ROLE:
-You are an expert Node.js and Express developer.
-
-{BASE_RULES}
+{STRICT_OUTPUT}
+{NO_CDN_RULES}
+{NO_TAILWIND_RULES}
+{CHAIN_OF_THOUGHT}
+{QUALITY_BAR}
 
 FORMAT:
-- Output a single server.js file.
-- Use express.json() and express.static().
-- Serve a beautiful HTML frontend from GET / using res.send().
-- The inline HTML must use pure CSS in a <style> tag — no CDN of any kind.
-- Include realistic REST API endpoints with mock JSON data.
-- Use ES modules (import/export) syntax.
+- ES modules syntax (import/export).
+- Serve a beautiful HTML frontend from GET / using res.send() with inline CSS (no CDN).
+- Include mock REST API endpoints (GET, POST) with JSON data.
 - No external packages except express.
+- The HTML served must be a complete, modern landing page (no placeholders).
 
-Return only valid Node.js code.
+REMEMBER: Output ONLY the Node.js code. No markdown.
 """
 
-
 # ─────────────────────────────────────────────────────────────────────────────
-# SELECTOR — called from llm_service.py or routes/generate.py
+# SELECTOR (unchanged, but now all prompts are enhanced)
 # ─────────────────────────────────────────────────────────────────────────────
 
 def build_website_prompt(user_prompt: str, framework: str = "") -> str:
-    """
-    Select the correct prompt builder based on the framework detected
-    by the frontend classifier. Falls back to the default HTML prompt.
-    """
     f = (framework or "").lower()
 
     if "three" in f:
@@ -432,5 +426,4 @@ def build_website_prompt(user_prompt: str, framework: str = "") -> str:
     if "node" in f or "express" in f:
         return build_node_prompt(user_prompt)
 
-    # Default: plain HTML + CSS + JS
     return build_default_prompt(user_prompt)
