@@ -37,12 +37,21 @@ const BRIDGE_SCRIPT = `
   window.onerror = function(msg, src, line) {
     window.parent.postMessage({ type: 'console_error', message: msg + ' (' + src + ':' + line + ')' }, '*');
   };
+
   document.addEventListener('click', function(e) {
-    var target = e.target.closest('[data-section-id]');
-    if (target) {
-      window.parent.postMessage({ type: 'section_click', sectionId: target.getAttribute('data-section-id') }, '*');
+    // Always prevent default if it's a link, so no navigation happens at all
+    var target = e.target.closest('a');
+    if (target && target.href) {
+      e.preventDefault();
+    }
+
+    // Section click still works
+    var sectionTarget = e.target.closest('[data-section-id]');
+    if (sectionTarget) {
+      window.parent.postMessage({ type: 'section_click', sectionId: sectionTarget.getAttribute('data-section-id') }, '*');
     }
   });
+
   window.addEventListener('message', function(e) {
     document.querySelectorAll('[data-section-id]').forEach(function(el) { el.classList.remove('section-selected'); });
     if (e.data && e.data.type === 'highlight_section' && e.data.sectionId) {
@@ -51,7 +60,6 @@ const BRIDGE_SCRIPT = `
     }
   });
 <\/script>`;
-
 // Section highlight CSS
 const SECTION_STYLES = `
 <style>
@@ -297,9 +305,7 @@ export default function PreviewPane({
                 title="Live Preview"
                 // srcdoc mode mein sandbox nahi — CSS + images free hain
                 // WC mode mein allow-same-origin zaruri hai
-                {...(useWC ? {
-                  sandbox: "allow-scripts allow-same-origin allow-popups allow-forms allow-modals",
-                } : {})}
+                sandbox={useWC ? "allow-same-origin allow-scripts allow-popups allow-forms allow-modals" : "allow-scripts"}
                 style={{
                   width: '100%',
                   height: '100%',
