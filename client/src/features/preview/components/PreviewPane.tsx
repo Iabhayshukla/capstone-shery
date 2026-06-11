@@ -15,10 +15,6 @@ interface PreviewPaneProps {
   selectedSectionId?: string | null;
   hideHeader?: boolean;
   refreshTrigger?: number;
-  /**
-   * 'iframe'        = srcdoc preview — CSS perfectly works (DEFAULT)
-   * 'webcontainer'  = dynamic server — React/Vue/Next ke liye
-   */
   previewMethod?: 'iframe' | 'webcontainer';
 }
 
@@ -28,30 +24,23 @@ const VIEWPORT_WIDTHS: Record<ViewportSize, number> = {
   desktop: 1280,
 };
 
-// External images + fonts ke liye CSP
 const CSP_META = `<meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data: blob:; font-src * data:; style-src * 'unsafe-inline'; script-src * 'unsafe-inline' 'unsafe-eval';" />`;
 
-// Section click + error bridge
 const BRIDGE_SCRIPT = `
 <script>
   window.onerror = function(msg, src, line) {
     window.parent.postMessage({ type: 'console_error', message: msg + ' (' + src + ':' + line + ')' }, '*');
   };
-
   document.addEventListener('click', function(e) {
-    // Always prevent default if it's a link, so no navigation happens at all
     var target = e.target.closest('a');
     if (target && target.href) {
       e.preventDefault();
     }
-
-    // Section click still works
     var sectionTarget = e.target.closest('[data-section-id]');
     if (sectionTarget) {
       window.parent.postMessage({ type: 'section_click', sectionId: sectionTarget.getAttribute('data-section-id') }, '*');
     }
   });
-
   window.addEventListener('message', function(e) {
     document.querySelectorAll('[data-section-id]').forEach(function(el) { el.classList.remove('section-selected'); });
     if (e.data && e.data.type === 'highlight_section' && e.data.sectionId) {
@@ -60,7 +49,7 @@ const BRIDGE_SCRIPT = `
     }
   });
 </script>`;
-// Section highlight CSS
+
 const SECTION_STYLES = `
 <style>
   [data-section-id] { cursor: pointer; transition: box-shadow 0.2s ease, outline 0.2s ease; }
@@ -76,28 +65,15 @@ const SECTION_STYLES = `
   }
 </style>`;
 
-/**
- * srcdoc ke liye HTML prepare karo:
- * 1. CSP meta inject (external images/fonts allow)
- * 2. Section highlight CSS inject
- * 3. Bridge script inject (section click + errors)
- *
- * Original HTML ki CSS <style> tags BILKUL NAHI chhedta — woh as-is rehti hain
- */
 function prepareIframeSrcdoc(html: string): string {
   let doc = html;
-
-  // Step 1: CSP meta inject karo (agar nahi hai)
   if (!doc.includes('Content-Security-Policy')) {
     if (/<head[^>]*>/i.test(doc)) {
       doc = doc.replace(/<head[^>]*>/i, (m) => `${m}\n  ${CSP_META}`);
     } else {
-      // head tag nahi hai — prepend karo
       doc = `<head>${CSP_META}</head>\n` + doc;
     }
   }
-
-  // Step 2: Section highlight styles inject karo (agar nahi hain)
   if (!doc.includes('section-selected')) {
     if (/<\/head>/i.test(doc)) {
       doc = doc.replace(/<\/head>/i, `${SECTION_STYLES}\n</head>`);
@@ -105,8 +81,6 @@ function prepareIframeSrcdoc(html: string): string {
       doc = SECTION_STYLES + '\n' + doc;
     }
   }
-
-  // Step 3: Bridge script inject karo (agar nahi hai)
   if (!doc.includes('section_click')) {
     if (/<\/body>/i.test(doc)) {
       doc = doc.replace(/<\/body>/i, `${BRIDGE_SCRIPT}\n</body>`);
@@ -114,7 +88,6 @@ function prepareIframeSrcdoc(html: string): string {
       doc = doc + BRIDGE_SCRIPT;
     }
   }
-
   return doc;
 }
 
@@ -134,27 +107,26 @@ export default function PreviewPane({
   selectedSectionId = null,
   hideHeader = false,
   refreshTrigger = 0,
-  previewMethod = 'iframe',  // ✅ FIXED: default 'iframe' — CSS perfectly works via srcdoc
+  previewMethod = 'iframe',
 }: PreviewPaneProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { status, previewUrl, updateHtml } = useWebContainer();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const useWC = previewMethod === 'webcontainer';
+  const iframeWidth = VIEWPORT_WIDTHS[viewport];
 
-  // ── IFRAME (srcdoc) mode — CSS directly inject hoti hai ──────────────────
+  // IFRAME (srcdoc) mode
   useEffect(() => {
     if (useWC) return;
     if (!iframeRef.current || !html) return;
-    // srcdoc mein complete HTML set karo — CSS <style> tags safe hain
     iframeRef.current.srcdoc = prepareIframeSrcdoc(html);
   }, [html, useWC]);
 
-  // ── WEBCONTAINER mode — React/Vue/Next ke liye ────────────────────────────
+  // WEBCONTAINER mode
   useEffect(() => {
     if (!useWC) return;
     if (!html || status.status !== "ready") return;
-
     const run = async () => {
       try {
         await updateHtml(html);
@@ -193,7 +165,6 @@ export default function PreviewPane({
     }
   };
 
-  const iframeWidth = VIEWPORT_WIDTHS[viewport];
   const wcLoading = useWC && status.status !== "ready";
 
   if (!html) {
@@ -222,7 +193,6 @@ export default function PreviewPane({
           : "h-full w-full flex flex-col rounded-xl overflow-hidden border border-[#404040] bg-[#1f1f1f]"
       }
     >
-      {/* WC status bar */}
       {!hideHeader && useWC && status.status !== "ready" && (
         <div className="flex items-center justify-center gap-2 px-3 py-2 bg-yellow-500/10 border-b border-yellow-500/20 text-yellow-400 text-xs">
           <Loader2 size={14} className="animate-spin" />
@@ -233,7 +203,6 @@ export default function PreviewPane({
         </div>
       )}
 
-      {/* Browser chrome */}
       {!hideHeader && (
         <div className="flex items-center justify-between px-4 py-2.5 bg-[#252526] border-b border-[#404040]">
           <div className="flex items-center gap-2">
@@ -289,10 +258,11 @@ export default function PreviewPane({
           </div>
         )}
 
+        {/* FIX: Always apply viewport width, even when header is hidden */}
         <div
           className="mx-auto bg-white shadow-2xl transition-all duration-300 relative"
           style={{
-            width: hideHeader ? '100%' : iframeWidth,
+            width: iframeWidth,
             height: '100%',
             minHeight: 0,
           }}
@@ -303,8 +273,6 @@ export default function PreviewPane({
                 ref={iframeRef}
                 src={useWC ? previewUrl ?? undefined : undefined}
                 title="Live Preview"
-                // srcdoc mode mein sandbox nahi — CSS + images free hain
-                // WC mode mein allow-same-origin zaruri hai
                 sandbox={useWC ? "allow-same-origin allow-scripts allow-popups allow-forms allow-modals" : "allow-scripts"}
                 style={{
                   width: '100%',
