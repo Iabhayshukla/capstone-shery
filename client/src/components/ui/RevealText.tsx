@@ -385,6 +385,7 @@ const AnimatedSubHeading = ({
         gsap.to(word, { y: 0, scale: 1, duration: 0.25, ease: "power2.inOut" });
       });
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAppLoading]);
 
   return (

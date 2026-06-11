@@ -45,7 +45,7 @@ export function classifyPrompt(prompt: string): ClassifierResult {
   const lower = prompt.toLowerCase();
 
   // Tokenize: split on spaces, punctuation etc.
-  const tokens = lower.split(/[\s,./\\()\[\]{}<>:;'"!?@#$%^&*+=|`~-]+/);
+  const tokens = lower.split(/[\s,./\\()[\]{}<>:;'"!?@#$%^&*+=|`~-]+/);
   const detected: string[] = [];
 
   // Check WebContainer first (higher priority)

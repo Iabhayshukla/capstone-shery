@@ -59,7 +59,7 @@ const BRIDGE_SCRIPT = `
       if (t) t.classList.add('section-selected');
     }
   });
-<\/script>`;
+</script>`;
 // Section highlight CSS
 const SECTION_STYLES = `
 <style>

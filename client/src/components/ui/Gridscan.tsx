@@ -416,6 +416,7 @@ export const GridScan: React.FC<GridScanProps> = ({
         try {
           await (DeviceOrientationEvent as any).requestPermission();
         } catch {
+          // permission denied — silently continue without device orientation
         }
       }
     };
@@ -601,6 +602,7 @@ export const GridScan: React.FC<GridScanProps> = ({
       renderer.forceContextLoss();
       container.removeChild(renderer.domElement);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     sensitivity,
     lineThickness,
@@ -791,9 +793,10 @@ export const GridScan: React.FC<GridScanProps> = ({
 
     start();
 
+    const video = videoRef.current;
+
     return () => {
       stop = true;
-      const video = videoRef.current;
       if (video) {
         const stream = video.srcObject as MediaStream | null;
         if (stream) stream.getTracks().forEach(t => t.stop());

@@ -118,7 +118,7 @@ const BASE_TEMPLATE = `<!DOCTYPE html>
         if (t) t.classList.add('section-selected');
       }
     });
-  <\/script>
+  </script>
 </body>
 </html>`;
 
@@ -250,7 +250,7 @@ const BRIDGE_SCRIPT = `
         if (t) t.classList.add('section-selected');
       }
     });
-  <\/script>`;
+  </script>`;
 
 const SECTION_STYLES = `
   <style>

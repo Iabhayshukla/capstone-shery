@@ -42,7 +42,7 @@ export function parseFilesForEditor(rawHtml: string): StreamingFile[] {
   const hasBody = /<\/body>/i.test(htmlContent);
 
   const styleLink = cssContent.trim() ? '\n  <link rel="stylesheet" href="styles.css" />' : '';
-  const scriptTag = jsContent.trim() ? '\n  <script src="script.js" defer><\/script>' : '';
+  const scriptTag = jsContent.trim() ? '\n  <script src="script.js" defer></script>' : '';
 
   if (styleLink) {
     htmlContent = hasHead
