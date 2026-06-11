@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, Monitor, Tablet, Smartphone, Code2, Undo2, Redo2, RotateCcw, ArrowLeft, Download, PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose } from 'lucide-react';
+import { Loader2, Monitor, Tablet, Smartphone, Code2, Undo2, Redo2, RotateCcw, ArrowLeft, Download, PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { exportHtml } from '../api/export.api';
 import { PreviewPane } from '@/features/preview';
@@ -33,7 +33,7 @@ interface PreviewScreenProps {
   onReset: () => void;
   messages: Message[];
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
-  previewMethod?: 'iframe' | 'webcontainer'; // ✅ ADDED
+  previewMethod?: 'iframe' | 'webcontainer';
 }
 
 type PanelSide = 'left' | 'right';
@@ -56,7 +56,7 @@ export default function PreviewScreen({
   onReset,
   messages,
   setMessages,
-  previewMethod = 'iframe', // ✅ ADDED — default iframe, CSS perfectly works
+  previewMethod = 'iframe',
 }: PreviewScreenProps) {
   const { status } = useWebContainer();
 
@@ -75,7 +75,6 @@ export default function PreviewScreen({
   const containerRef = useRef<HTMLDivElement>(null);
   const dragStartX = useRef(0);
 
-  // Panel resize
   const startPanelResize = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     setIsResizingPanel(true);
@@ -98,7 +97,6 @@ export default function PreviewScreen({
     return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
   }, [isResizingPanel, panelSide]);
 
-  // Monaco resize
   const startMonacoResize = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     setIsResizingMonaco(true);
@@ -118,7 +116,6 @@ export default function PreviewScreen({
     return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
   }, [isResizingMonaco]);
 
-  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
@@ -137,7 +134,6 @@ export default function PreviewScreen({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [canUndo, canRedo, onUndo, onRedo]);
 
-  // Panel drag to snap sides
   const handlePanelDragStart = useCallback((e: React.MouseEvent) => {
     dragStartX.current = e.clientX;
     setIsDraggingPanel(true);
@@ -155,7 +151,6 @@ export default function PreviewScreen({
     return () => window.removeEventListener('mouseup', onUp);
   }, [isDraggingPanel]);
 
-  // iframe mode mein WebContainer ready nahi hota — isReady always true rakho
   const isReady = previewMethod === 'iframe' ? true : status.status === 'ready';
   const vpLabel = viewport === 'mobile' ? '375px' : viewport === 'tablet' ? '768px' : '1280px';
 
@@ -192,7 +187,6 @@ export default function PreviewScreen({
         minWidth: 0,
       }}
     >
-      {/* Drag grip */}
       <div
         onMouseDown={handlePanelDragStart}
         style={{
@@ -226,7 +220,6 @@ export default function PreviewScreen({
         />
       </div>
 
-      {/* Panel resize handle */}
       <div
         onMouseDown={startPanelResize}
         className="glow-divider"
@@ -251,7 +244,7 @@ export default function PreviewScreen({
         fontFamily: 'DM Sans, sans-serif',
       }}
     >
-      {/* ── TOP TOOLBAR ── */}
+      {/* Top toolbar (unchanged) */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 0,
         padding: '0 16px',
@@ -259,7 +252,6 @@ export default function PreviewScreen({
         background: 'var(--brand-surface)',
         flexShrink: 0, height: 44,
       }}>
-        {/* Logo */}
         <Link
           to="/dashboard"
           style={{
@@ -278,7 +270,6 @@ export default function PreviewScreen({
 
         <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.08)', marginRight: 16, flexShrink: 0 }} />
 
-        {/* Panel toggle */}
         <button
           onClick={() => setIsPanelOpen(v => !v)}
           title={`${isPanelOpen ? 'Hide' : 'Show'} Prompt Panel (Ctrl+B)`}
@@ -296,7 +287,6 @@ export default function PreviewScreen({
 
         <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.08)', marginRight: 12, flexShrink: 0 }} />
 
-        {/* Undo/Redo */}
         {[
           { icon: <Undo2 size={13} />, action: onUndo, disabled: !canUndo, title: 'Undo (Ctrl+Z)' },
           { icon: <Redo2 size={13} />, action: onRedo, disabled: !canRedo, title: 'Redo (Ctrl+Y)' },
@@ -323,7 +313,6 @@ export default function PreviewScreen({
 
         <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.08)', margin: '0 12px', flexShrink: 0 }} />
 
-        {/* Viewport switcher */}
         <div style={{ display: 'flex', gap: 2 }}>
           {([
             { v: 'desktop' as ViewportSize, icon: <Monitor size={13} /> },
@@ -347,7 +336,6 @@ export default function PreviewScreen({
           ))}
         </div>
 
-        {/* Preview method badge */}
         <div style={{
           marginLeft: 12,
           fontSize: 9, letterSpacing: 1.5, textTransform: 'uppercase',
@@ -360,7 +348,6 @@ export default function PreviewScreen({
 
         <div style={{ flex: 1 }} />
 
-        {/* Regenerate */}
         {lastPrompt && (
           <button
             onClick={onRegenerate}
@@ -379,7 +366,6 @@ export default function PreviewScreen({
           </button>
         )}
 
-        {/* Reset */}
         <button
           onClick={onReset}
           style={{
@@ -396,7 +382,6 @@ export default function PreviewScreen({
           Reset
         </button>
 
-        {/* Export */}
         <button
           onClick={() => exportHtml(html)}
           style={{
@@ -413,7 +398,6 @@ export default function PreviewScreen({
           Export
         </button>
 
-        {/* Code toggle */}
         <button
           onClick={() => setShowMonaco(v => !v)}
           style={{
@@ -431,184 +415,176 @@ export default function PreviewScreen({
         </button>
       </div>
 
-      {/* ── BODY ── */}
+      {/* Body */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-
         {panelSide === 'left' && promptPanel}
 
-        {/* Center */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'row', overflow: 'hidden', minWidth: 0 }}>
-
-          {/* Browser chrome wrapper */}
-          <div style={{
-            flex: 1, display: 'flex', flexDirection: 'column',
-            overflow: 'hidden', minHeight: 0,
-            padding: 12, gap: 8,
-            background: 'var(--brand-dark)',
-          }}>
-            {/* Browser address bar */}
+          {/* Browser chrome wrapper with gradient border */}
+          <div className="gradient-border-preview" style={{ flex: 1, display: 'flex', flexDirection: 'column', margin: 2 }}>
             <div style={{
-              display: 'flex', alignItems: 'center', gap: 12,
-              flexShrink: 0, padding: '8px 14px',
-              background: 'var(--brand-surface-hover)',
-              border: '1px solid rgba(255,255,255,0.05)',
+              flex: 1, display: 'flex', flexDirection: 'column',
+              overflow: 'hidden', minHeight: 0,
+              padding: 12, gap: 8,
+              background: 'var(--brand-dark)',
             }}>
-              {/* Traffic lights */}
-              <div style={{ display: 'flex', gap: 6 }}>
-                {['#ff5f57', '#febc2e', '#28c840'].map(c => (
-                  <div key={c} style={{ width: 9, height: 9, borderRadius: '50%', background: c }} />
-                ))}
-              </div>
-
-              {/* Navigation controls */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: 'rgba(240,237,230,0.65)', marginLeft: 8 }}>
-                <ArrowLeft size={13} style={{ cursor: 'not-allowed', opacity: 0.5 }} />
-                <ArrowLeft size={13} style={{ cursor: 'not-allowed', opacity: 0.5, transform: 'rotate(180deg)' }} />
-                <motion.div
-                  animate={!isReady ? { rotate: 360 } : {}}
-                  transition={{ repeat: Infinity, duration: 1.2, ease: 'linear' }}
-                  style={{ display: 'inline-flex' }}
-                  onClick={() => { if (isReady) setRefreshTrigger(prev => prev + 1); }}
-                >
-                  <RotateCcw size={12} style={{ cursor: isReady ? 'pointer' : 'not-allowed', opacity: isReady ? 0.7 : 1 }} />
-                </motion.div>
-              </div>
-
-              {/* URL bar */}
+              {/* Browser address bar */}
               <div style={{
-                flex: 1, padding: '4px 12px',
-                background: 'rgba(255,255,255,0.03)',
-                border: '1px solid rgba(255,255,255,0.06)',
-                borderRadius: 4,
-                fontSize: 11, color: 'rgba(240,237,230,0.75)',
-                fontFamily: 'monospace', letterSpacing: 0.3,
-                display: 'flex', alignItems: 'center',
+                display: 'flex', alignItems: 'center', gap: 12,
+                flexShrink: 0, padding: '8px 14px',
+                background: 'var(--brand-surface-hover)',
+                border: '1px solid rgba(255,255,255,0.05)',
               }}>
-                {/* iframe mode mein spinner nahi dikhna chahiye */}
-                {previewMethod === 'webcontainer' && (
-                  <Loader2 size={10} style={{ color: '#D4FF57', marginRight: 8, opacity: 0.8, animation: isReady ? 'none' : 'spin 1s linear infinite' }} />
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {['#ff5f57', '#febc2e', '#28c840'].map(c => (
+                    <div key={c} style={{ width: 9, height: 9, borderRadius: '50%', background: c }} />
+                  ))}
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: 'rgba(240,237,230,0.65)', marginLeft: 8 }}>
+                  <ArrowLeft size={13} style={{ cursor: 'not-allowed', opacity: 0.5 }} />
+                  <ArrowLeft size={13} style={{ cursor: 'not-allowed', opacity: 0.5, transform: 'rotate(180deg)' }} />
+                  <motion.div
+                    animate={!isReady ? { rotate: 360 } : {}}
+                    transition={{ repeat: Infinity, duration: 1.2, ease: 'linear' }}
+                    style={{ display: 'inline-flex' }}
+                    onClick={() => { if (isReady) setRefreshTrigger(prev => prev + 1); }}
+                  >
+                    <RotateCcw size={12} style={{ cursor: isReady ? 'pointer' : 'not-allowed', opacity: isReady ? 0.7 : 1 }} />
+                  </motion.div>
+                </div>
+
+                <div style={{
+                  flex: 1, padding: '4px 12px',
+                  background: 'rgba(255,255,255,0.03)',
+                  border: '1px solid rgba(255,255,255,0.06)',
+                  borderRadius: 4,
+                  fontSize: 11, color: 'rgba(240,237,230,0.75)',
+                  fontFamily: 'monospace', letterSpacing: 0.3,
+                  display: 'flex', alignItems: 'center',
+                }}>
+                  {previewMethod === 'webcontainer' && (
+                    <Loader2 size={10} style={{ color: '#D4FF57', marginRight: 8, opacity: 0.8, animation: isReady ? 'none' : 'spin 1s linear infinite' }} />
+                  )}
+                  <span style={{ color: 'rgba(240,237,230,0.95)' }}>
+                    {previewMethod === 'webcontainer' ? 'localhost:3001' : 'srcdoc'}
+                  </span>
+                  <span style={{ color: 'rgba(240,237,230,0.6)' }}>/index.html</span>
+                  <span style={{ marginLeft: 'auto', color: 'rgba(240,237,230,0.45)' }}>· {vpLabel}</span>
+                </div>
+
+                {selectedSection && (
+                  <div style={{
+                    fontSize: 10, letterSpacing: 1, textTransform: 'uppercase',
+                    color: '#D4FF57', border: '1px solid rgba(212,255,87,0.2)',
+                    padding: '3px 10px',
+                  }}>
+                    ◈ {selectedSection}
+                  </div>
                 )}
-                <span style={{ color: 'rgba(240,237,230,0.95)' }}>
-                  {previewMethod === 'webcontainer' ? 'localhost:3001' : 'srcdoc'}
-                </span>
-                <span style={{ color: 'rgba(240,237,230,0.6)' }}>/index.html</span>
-                <span style={{ marginLeft: 'auto', color: 'rgba(240,237,230,0.45)' }}>· {vpLabel}</span>
               </div>
 
-              {selectedSection && (
-                <div style={{
-                  fontSize: 10, letterSpacing: 1, textTransform: 'uppercase',
-                  color: '#D4FF57', border: '1px solid rgba(212,255,87,0.2)',
-                  padding: '3px 10px',
-                }}>
-                  ◈ {selectedSection}
-                </div>
-              )}
-            </div>
+              {/* Preview pane */}
+              <div style={{ position: 'relative', flex: 1, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.04)' }}>
+                <PreviewPane
+                  html={html}
+                  onSectionClick={(id) => onSectionSelect(id)}
+                  onConsoleError={(msg) => setConsoleErrors(prev => [...prev, msg])}
+                  viewport={viewport}
+                  selectedSectionId={selectedSection}
+                  hideHeader={true}
+                  refreshTrigger={refreshTrigger}
+                  previewMethod={previewMethod}
+                />
 
-            {/* Preview pane */}
-            <div style={{ position: 'relative', flex: 1, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.04)' }}>
-              {/* ✅ FIXED: previewMethod prop pass ho raha hai ab */}
-              <PreviewPane
-                html={html}
-                onSectionClick={(id) => onSectionSelect(id)}
-                onConsoleError={(msg) => setConsoleErrors(prev => [...prev, msg])}
-                viewport={viewport}
-                selectedSectionId={selectedSection}
-                hideHeader={true}
-                refreshTrigger={refreshTrigger}
-                previewMethod={previewMethod}
-              />
-
-              {/* Loading overlay — sirf WebContainer mode mein */}
-              <AnimatePresence>
-                {!isReady && previewMethod === 'webcontainer' && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    style={{
-                      position: 'absolute', inset: 0,
-                      display: 'flex', flexDirection: 'column',
-                      alignItems: 'center', justifyContent: 'center',
-                      gap: 16, zIndex: 20,
-                      background: 'rgba(7,7,7,0.88)',
-                      backdropFilter: 'blur(4px)',
-                    }}
-                  >
-                    <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1.2, ease: 'linear' }}>
-                      <Loader2 size={24} style={{ color: '#D4FF57' }} />
+                <AnimatePresence>
+                  {!isReady && previewMethod === 'webcontainer' && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      style={{
+                        position: 'absolute', inset: 0,
+                        display: 'flex', flexDirection: 'column',
+                        alignItems: 'center', justifyContent: 'center',
+                        gap: 16, zIndex: 20,
+                        background: 'rgba(7,7,7,0.88)',
+                        backdropFilter: 'blur(4px)',
+                      }}
+                    >
+                      <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1.2, ease: 'linear' }}>
+                        <Loader2 size={24} style={{ color: '#D4FF57' }} />
+                      </motion.div>
+                      <p style={{ fontSize: 12, color: 'rgba(240,237,230,0.75)', letterSpacing: 1.5, textTransform: 'uppercase' }}>
+                        {status.status === 'booting' ? 'Booting sandbox...' :
+                         status.status === 'installing' ? 'Installing dependencies...' : 'Starting server...'}
+                      </p>
                     </motion.div>
-                    <p style={{ fontSize: 12, color: 'rgba(240,237,230,0.75)', letterSpacing: 1.5, textTransform: 'uppercase' }}>
-                      {status.status === 'booting' ? 'Booting sandbox...' :
-                       status.status === 'installing' ? 'Installing dependencies...' : 'Starting server...'}
-                    </p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                  )}
+                </AnimatePresence>
 
-              {/* Section clear */}
-              <AnimatePresence>
-                {selectedSection && (
-                  <motion.button
-                    initial={{ opacity: 0, y: -8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                    onClick={() => onSectionSelect(null)}
-                    style={{
-                      position: 'absolute', top: 10, right: 10,
-                      display: 'flex', alignItems: 'center', gap: 6,
-                      padding: '5px 12px',
-                      background: 'rgba(212,255,87,0.08)',
-                      border: '1px solid rgba(212,255,87,0.2)',
-                      color: '#D4FF57', fontSize: 10,
-                      letterSpacing: 1.5, textTransform: 'uppercase',
-                      fontWeight: 500, cursor: 'pointer', zIndex: 30,
-                      fontFamily: 'DM Sans, sans-serif',
-                    }}
-                  >
-                    ◈ {selectedSection} · clear
-                  </motion.button>
-                )}
-              </AnimatePresence>
+                <AnimatePresence>
+                  {selectedSection && (
+                    <motion.button
+                      initial={{ opacity: 0, y: -8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      onClick={() => onSectionSelect(null)}
+                      style={{
+                        position: 'absolute', top: 10, right: 10,
+                        display: 'flex', alignItems: 'center', gap: 6,
+                        padding: '5px 12px',
+                        background: 'rgba(212,255,87,0.08)',
+                        border: '1px solid rgba(212,255,87,0.2)',
+                        color: '#D4FF57', fontSize: 10,
+                        letterSpacing: 1.5, textTransform: 'uppercase',
+                        fontWeight: 500, cursor: 'pointer', zIndex: 30,
+                        fontFamily: 'DM Sans, sans-serif',
+                      }}
+                    >
+                      ◈ {selectedSection} · clear
+                    </motion.button>
+                  )}
+                </AnimatePresence>
 
-              {/* Floating panel toggle */}
-              <AnimatePresence>
-                {!isPanelOpen && (
-                  <motion.button
-                    initial={{ opacity: 0, scale: 0.85 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.85 }}
-                    transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-                    onClick={() => setIsPanelOpen(true)}
-                    title="Show Prompt Panel (Ctrl+B)"
-                    style={{
-                      position: 'absolute',
-                      top: '50%',
-                      [panelSide === 'left' ? 'left' : 'right']: 12,
-                      transform: 'translateY(-50%)',
-                      display: 'flex', alignItems: 'center', gap: 6,
-                      padding: '10px 6px',
-                      background: 'rgba(212,255,87,0.08)',
-                      border: '1px solid rgba(212,255,87,0.25)',
-                      color: '#D4FF57',
-                      cursor: 'pointer', zIndex: 30,
-                      borderRadius: 4,
-                      flexDirection: 'column',
-                      fontFamily: 'DM Sans, sans-serif',
-                    }}
-                  >
-                    <PanelToggleIcon size={14} />
-                    <span style={{
-                      fontSize: 9, letterSpacing: 2, textTransform: 'uppercase',
-                      writingMode: 'vertical-rl', textOrientation: 'mixed',
-                      color: 'rgba(212,255,87,0.7)', marginTop: 4,
-                    }}>
-                      Panel
-                    </span>
-                  </motion.button>
-                )}
-              </AnimatePresence>
+                {/* Floating panel toggle */}
+                <AnimatePresence>
+                  {!isPanelOpen && (
+                    <motion.button
+                      initial={{ opacity: 0, scale: 0.85 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.85 }}
+                      transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                      onClick={() => setIsPanelOpen(true)}
+                      title="Show Prompt Panel (Ctrl+B)"
+                      style={{
+                        position: 'absolute',
+                        top: '50%',
+                        [panelSide === 'left' ? 'left' : 'right']: 12,
+                        transform: 'translateY(-50%)',
+                        display: 'flex', alignItems: 'center', gap: 6,
+                        padding: '10px 6px',
+                        background: 'rgba(212,255,87,0.08)',
+                        border: '1px solid rgba(212,255,87,0.25)',
+                        color: '#D4FF57',
+                        cursor: 'pointer', zIndex: 30,
+                        borderRadius: 4,
+                        flexDirection: 'column',
+                        fontFamily: 'DM Sans, sans-serif',
+                      }}
+                    >
+                      <PanelToggleIcon size={14} />
+                      <span style={{
+                        fontSize: 9, letterSpacing: 2, textTransform: 'uppercase',
+                        writingMode: 'vertical-rl', textOrientation: 'mixed',
+                        color: 'rgba(212,255,87,0.7)', marginTop: 4,
+                      }}>
+                        Panel
+                      </span>
+                    </motion.button>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
           </div>
 
@@ -667,7 +643,7 @@ export default function PreviewScreen({
         {panelSide === 'right' && promptPanel}
       </div>
 
-      {/* ── STATUS BAR ── */}
+      {/* Status bar */}
       <div style={{
         background: 'var(--brand-surface)', padding: '6px 16px',
         display: 'flex', alignItems: 'center', gap: 20,
@@ -709,11 +685,74 @@ export default function PreviewScreen({
         </span>
       </div>
 
+      {/* Floating Action Button (FAB) for Generate */}
+      <AnimatePresence>
+        {!isPanelOpen && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 20 }}
+            whileHover={{ scale: 1.05, boxShadow: '0 0 25px rgba(212,255,87,0.6)' }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => {
+              setIsPanelOpen(true);
+              setTimeout(() => {
+                const input = document.querySelector('.prompt-input') as HTMLTextAreaElement;
+                if (input) input.focus();
+              }, 200);
+            }}
+            style={{
+              position: 'fixed',
+              bottom: 24,
+              right: 24,
+              width: 56,
+              height: 56,
+              borderRadius: '50%',
+              background: '#D4FF57',
+              border: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              boxShadow: '0 0 20px rgba(212,255,87,0.4)',
+              zIndex: 100,
+            }}
+          >
+            <Sparkles size={24} color="#080808" />
+          </motion.button>
+        )}
+      </AnimatePresence>
+
       <style>{`
-  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap');
-  .glow-divider { transition: background 0.15s, box-shadow 0.15s; }
-  .glow-divider:hover { background: #D4FF57 !important; box-shadow: 0 0 10px rgba(212, 255, 87, 0.8) !important; }
-`}</style>
+        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap');
+        @keyframes rotateBorder {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        .gradient-border-preview {
+          position: relative;
+          border-radius: 0;
+          overflow: hidden;
+        }
+        .gradient-border-preview::before {
+          content: '';
+          position: absolute;
+          top: -2px;
+          left: -2px;
+          right: -2px;
+          bottom: -2px;
+          background: linear-gradient(90deg, #6C63FF, #D4FF57, #6C63FF);
+          background-size: 200% 200%;
+          animation: rotateBorder 3s linear infinite;
+          z-index: -1;
+          filter: blur(4px);
+          opacity: 0.4;
+          pointer-events: none;
+        }
+        .glow-divider { transition: background 0.15s, box-shadow 0.15s; }
+        .glow-divider:hover { background: #D4FF57 !important; box-shadow: 0 0 10px rgba(212, 255, 87, 0.8) !important; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+      `}</style>
     </div>
   );
 }

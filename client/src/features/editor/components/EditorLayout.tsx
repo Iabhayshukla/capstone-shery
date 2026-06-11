@@ -14,7 +14,7 @@ import StreamingView from './StreamingView';
 import PreviewScreen from './PreviewScreen';
 import { Sparkles } from 'lucide-react';
 import type { Message } from './PromptPanel';
-import type { PreviewMethod } from '@/shared/classifier'; // ✅ ADDED
+import type { PreviewMethod } from '@/shared/classifier';
 
 interface StreamingFile {
   name: string;
@@ -36,10 +36,8 @@ function parseFilesFromHtml(rawHtml: string): StreamingFile[] {
 
 function decodeEscapedHtml(html: string): string {
   if (!html) return html;
-  // Check if it is HTML-entity escaped
   if (html.includes('&lt;') || html.includes('&gt;')) {
     let decoded = html;
-    // Replace JSON-escaped newlines and double quotes if they exist
     if (decoded.includes('\\n') || decoded.includes('\\"')) {
       decoded = decoded
         .replace(/\\n/g, '\n')
@@ -70,7 +68,7 @@ export default function EditorLayout() {
     streamingHtml,
     error: generateError,
     generate,
-    classification, // ✅ ADDED — classifier result se previewMethod milega
+    classification,
   } = useGenerate({
     projectId,
     selectedSection,
@@ -84,37 +82,29 @@ export default function EditorLayout() {
   const initialCodeRef = useRef<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const generatingSectionRef = useRef<string | null>(null);
-
-  // ✅ ADDED — previewMethod state: generate hone ke baad set hota hai, project load pe 'iframe' rehta hai
   const [previewMethod, setPreviewMethod] = useState<PreviewMethod>('iframe');
 
-  // Reset session state when projectId changes
   useEffect(() => {
     initialCodeRef.current = null;
     setLastPrompt('');
     setMessages([]);
-    setPreviewMethod('iframe'); // ✅ project change pe reset
+    setPreviewMethod('iframe');
   }, [projectId]);
 
-  // Sync streamingHtml → preview files in real time
   useEffect(() => {
     if (streamingHtml) {
       setStreamingFiles(parseFilesFromHtml(streamingHtml));
     }
   }, [streamingHtml]);
 
-  // Push final HTML into edit history once generation is fully done
   const wasGenerating = useRef(false);
   useEffect(() => {
     if (wasGenerating.current && !isGenerating && streamingHtml) {
       push(streamingHtml);
       initialCodeRef.current = streamingHtml;
-
-      // ✅ ADDED — generation complete hone ke baad classification se previewMethod set karo
       if (classification?.previewMethod) {
         setPreviewMethod(classification.previewMethod);
       }
-
       const targetSec = generatingSectionRef.current;
       const aiMsg: Message = {
         id: `msg-${Date.now()}`,
@@ -129,7 +119,6 @@ export default function EditorLayout() {
     wasGenerating.current = isGenerating;
   }, [isGenerating, streamingHtml, push, classification]);
 
-  // Load project
   useEffect(() => {
     if (!accessToken || !projectId) return;
     const load = async () => {
@@ -145,7 +134,6 @@ export default function EditorLayout() {
           }
           reset(proj.currentCode);
           setStreamingFiles(parseFilesFromHtml(proj.currentCode));
-          // ✅ Saved project ka code hamesha iframe se load hoga — safe default
           setPreviewMethod('iframe');
           setPhase('preview');
         } else {
@@ -162,13 +150,10 @@ export default function EditorLayout() {
     load();
   }, [accessToken, projectId, reset]);
 
-  // Auto-save
   useEffect(() => {
     if (!accessToken || !projectId || phase === 'loading') return;
-
     const dbCode = project?.currentCode || '';
     if (dbCode === html) return;
-
     const timer = setTimeout(async () => {
       try {
         const updated = await apiUpdateProject(accessToken, projectId, { currentCode: html });
@@ -178,29 +163,23 @@ export default function EditorLayout() {
         console.error('Auto-save failed:', err);
       }
     }, 1000);
-
     return () => clearTimeout(timer);
   }, [html, accessToken, projectId, project, phase]);
 
-  // Generate
   const handleGenerate = useCallback(async (prompt: string) => {
     setLastPrompt(prompt);
     setStreamingFiles([]);
     setPhase('streaming');
     generatingSectionRef.current = selectedSection;
-
     await generate(prompt);
-
     setSelectedSection(null);
   }, [generate, selectedSection]);
 
-  // Regenerate
   const handleRegenerate = useCallback(async () => {
     if (!lastPrompt) return;
     setStreamingFiles([]);
     setPhase('streaming');
     generatingSectionRef.current = null;
-
     setMessages(prev => [
       ...prev,
       {
@@ -209,30 +188,26 @@ export default function EditorLayout() {
         content: 'Regenerate',
       },
     ]);
-
     await generate(lastPrompt);
     setSelectedSection(null);
   }, [generate, lastPrompt]);
 
-  // Go to preview after streaming
   const handleGoToPreview = useCallback(() => {
     setPhase('preview');
   }, []);
 
-  // Code change from Monaco
   const handleCodeChange = useCallback((newHtml: string) => {
     push(newHtml);
     setStreamingFiles(parseFilesFromHtml(newHtml));
   }, [push]);
 
-  // Reset code
   const handleReset = useCallback(() => {
     if (window.confirm("Are you sure you want to reset the code? All your unsaved changes will be lost.")) {
       const targetCode = initialCodeRef.current ?? '';
       reset(targetCode);
       if (targetCode) {
         setStreamingFiles(parseFilesFromHtml(targetCode));
-        setPreviewMethod('iframe'); // ✅ reset pe iframe mode
+        setPreviewMethod('iframe');
         setPhase('preview');
       } else {
         setStreamingFiles([]);
@@ -241,17 +216,29 @@ export default function EditorLayout() {
     }
   }, [reset]);
 
+  // Animation variants
+  const slideUp = {
+    initial: { opacity: 0, y: 20, scale: 0.98 },
+    animate: { opacity: 1, y: 0, scale: 1 },
+    exit: { opacity: 0, y: -20, scale: 0.98 },
+  };
+  const fade = {
+    initial: { opacity: 0 },
+    animate: { opacity: 1 },
+    exit: { opacity: 0 },
+  };
+
   return (
     <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: 'var(--brand-dark)' }}>
       <AnimatePresence mode="wait">
 
-        {/* LOADING */}
         {phase === 'loading' && (
           <motion.div
             key="loading"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            variants={fade}
+            initial="initial"
+            animate="animate"
+            exit="exit"
             transition={{ duration: 0.25 }}
             style={{
               width: '100%', height: '100%',
@@ -300,14 +287,14 @@ export default function EditorLayout() {
           </motion.div>
         )}
 
-        {/* WELCOME */}
         {phase === 'welcome' && (
           <motion.div
             key="welcome"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.35 }}
+            variants={slideUp}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
             style={{ width: '100%', height: '100%' }}
           >
             <WelcomeScreen
@@ -317,14 +304,14 @@ export default function EditorLayout() {
           </motion.div>
         )}
 
-        {/* STREAMING */}
         {phase === 'streaming' && (
           <motion.div
             key="streaming"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.35 }}
+            variants={fade}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={{ duration: 0.3 }}
             style={{ width: '100%', height: '100%' }}
           >
             <StreamingView
@@ -336,14 +323,14 @@ export default function EditorLayout() {
           </motion.div>
         )}
 
-        {/* PREVIEW */}
         {phase === 'preview' && (
           <motion.div
             key="preview"
-            initial={{ opacity: 0, scale: 0.99 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.35 }}
+            variants={slideUp}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={{ duration: 0.35, delay: 0.05 }}
             style={{ width: '100%', height: '100%' }}
           >
             <PreviewScreen
@@ -364,7 +351,7 @@ export default function EditorLayout() {
               onReset={handleReset}
               messages={messages}
               setMessages={setMessages}
-              previewMethod={previewMethod} // ✅ ADDED — classifier result pass ho raha hai
+              previewMethod={previewMethod}
             />
           </motion.div>
         )}
