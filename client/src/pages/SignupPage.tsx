@@ -223,12 +223,12 @@ const SignupPage = () => {
                 {passwordsMatch && (
                   <CheckCircle
                     size={16}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-400"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-600 dark:text-emerald-400"
                   />
                 )}
               </div>
               {confirmPassword.length > 0 && !passwordsMatch && (
-                <p className="text-[10px] text-red-400">Passwords do not match</p>
+                <p className="text-[10px] text-red-600 dark:text-red-400">Passwords do not match</p>
               )}
             </div>
 

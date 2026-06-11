@@ -21,6 +21,7 @@ import {
   Camera,
   AlertTriangle,
   Loader2,
+  ArrowLeft,
 } from "lucide-react";
 
 const AccountPage = () => {
@@ -66,7 +67,7 @@ const AccountPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-brand-dark">
+    <div className="min-h-screen bg-[var(--background)]">
       <Navbar />
 
       {/* Background */}
@@ -81,6 +82,15 @@ const AccountPage = () => {
         animate="animate"
         className="relative max-w-2xl mx-auto px-4 sm:px-6 pt-24 pb-12"
       >
+        {/* Back Button */}
+        <button
+          onClick={() => navigate("/dashboard")}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-elevated)] text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all mb-6 cursor-pointer"
+        >
+          <ArrowLeft size={14} />
+          Back to Dashboard
+        </button>
+
         {/* Header */}
         <motion.div
           variants={fadeUp}
@@ -184,7 +194,7 @@ const AccountPage = () => {
           </h2>
 
           {/* Theme Toggle */}
-          <div className="flex items-center justify-between py-3 border-b border-[var(--brand-border)]">
+          <div className="flex items-center justify-between py-3 border-b border-[var(--border)]">
             <div>
               <p className="text-sm font-medium text-[var(--text-secondary)]">Theme</p>
               <p className="text-xs text-[var(--text-faint)]">
@@ -202,7 +212,7 @@ const AccountPage = () => {
                 </>
               ) : (
                 <>
-                  <Sun size={15} className="text-amber-400" />
+                  <Sun size={15} className="text-amber-600 dark:text-amber-400" />
                   Light Mode
                 </>
               )}
@@ -240,7 +250,7 @@ const AccountPage = () => {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-base font-semibold text-[var(--text-secondary)] flex items-center gap-2">
-                <LogOut size={16} className="text-amber-400" />
+                <LogOut size={16} className="text-[var(--text-muted)]" />
                 Session
               </h2>
               <p className="text-xs text-[var(--text-faint)] mt-1">
@@ -249,7 +259,7 @@ const AccountPage = () => {
             </div>
             <Button
               variant="ghost"
-              className="text-red-400/60 hover:text-red-400 hover:bg-red-500/10 gap-2"
+              className="text-red-600 dark:text-red-400/70 hover:text-red-700 dark:hover:text-red-400 hover:bg-red-500/10 gap-2"
               onClick={handleLogout}
             >
               <LogOut size={15} />
@@ -270,7 +280,7 @@ const AccountPage = () => {
             className="flex items-center justify-between w-full text-left"
           >
             <div>
-              <h2 className="text-base font-semibold text-red-400/70 flex items-center gap-2">
+              <h2 className="text-base font-semibold text-red-600 dark:text-red-400/70 flex items-center gap-2">
                 <AlertTriangle size={16} />
                 Danger Zone
               </h2>
@@ -294,7 +304,7 @@ const AccountPage = () => {
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-red-400/70 font-medium">
+                  <p className="text-sm text-red-600 dark:text-red-400/70 font-medium">
                     Delete Account
                   </p>
                   <p className="text-xs text-[var(--text-faint)] mt-0.5">
@@ -303,7 +313,7 @@ const AccountPage = () => {
                 </div>
                 <Button
                   variant="ghost"
-                  className="text-red-400 hover:bg-red-500/10 border border-red-500/20 gap-2"
+                  className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-400 hover:bg-red-500/10 border border-red-500/20 gap-2"
                   onClick={() =>
                     addToast(
                       "Account deletion is not available in demo mode",

@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '../../lib/supabase';
 import { createError } from '../../middleware/errorHandler';
 import { CreateProjectBody, UpdateProjectBody, Project } from './projects.types';
+import { PORTFOLIO_TEMPLATE, LANDING_TEMPLATE } from './templates';
 
 /**
  * Fetch all projects belonging to a user, ordered newest-first.
@@ -24,12 +25,19 @@ export async function getUserProjects(userId: string): Promise<Project[]> {
  * Create a new project for the given user.
  */
 export async function createProject(userId: string, body: CreateProjectBody): Promise<Project> {
+  let initialCode = null;
+  if (body.template === 'portfolio') {
+    initialCode = PORTFOLIO_TEMPLATE;
+  } else if (body.template === 'landing') {
+    initialCode = LANDING_TEMPLATE;
+  }
+
   const { data, error } = await supabaseAdmin
     .from('projects')
     .insert({
       user_id: userId,
       name: body.name.trim(),
-      current_code: null,
+      current_code: initialCode,
     })
     .select()
     .single();

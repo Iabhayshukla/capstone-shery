@@ -38,7 +38,7 @@ const PROJECT_IMAGES = [
 
 const RevealTextLine = ({
   words,
-  baseGradient = "linear-gradient(135deg, #ffffff 0%, #c8c2ff 50%, #6c63ff 100%)",
+  baseGradient = "var(--heading-gradient-1)",
   images = PROJECT_IMAGES,
   letterDelay = 0.07,
   entranceDelay = 0,
@@ -405,7 +405,7 @@ const AnimatedSubHeading = ({
                 className="sub-highlight-text relative z-10"
                 style={{
                   background:
-                    "linear-gradient(135deg, #a89fff 0%, #6c63ff 50%, #ff6584 100%)",
+                    "var(--heading-gradient-2)",
                   backgroundClip: "text",
                   WebkitBackgroundClip: "text",
                   WebkitTextFillColor: "transparent",
@@ -468,7 +468,7 @@ export const RevealText = ({
           cursor="_"
           className=""
           style={{
-            background: "linear-gradient(135deg, #ffffff 0%, #c8c2ff 60%, #a89fff 100%)",
+            background: "var(--heading-gradient-1)",
             backgroundClip: "text",
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
@@ -479,7 +479,7 @@ export const RevealText = ({
       {/* Line 2 */}
       <RevealTextLine
         words={["LET", "AI", "BUILD", "IT."]}
-        baseGradient="linear-gradient(135deg, #6c63ff 0%, #a89fff 40%, #ff6584 80%, #6c63ff 100%)"
+        baseGradient="var(--heading-gradient-2)"
         images={images}
         letterDelay={0.07}
         entranceDelay={0.55}

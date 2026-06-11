@@ -37,13 +37,13 @@ const DeleteConfirmModal = ({
       <div className="space-y-5">
         {/* Warning */}
         <div className="flex items-start gap-3 p-3.5 rounded-xl bg-red-500/10 border border-red-500/20">
-          <AlertTriangle size={20} className="text-red-400 shrink-0 mt-0.5" />
+          <AlertTriangle size={20} className="text-red-500 dark:text-red-400 shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm text-red-300 font-medium">
+            <p className="text-sm text-red-700 dark:text-red-300 font-medium">
               Are you sure you want to delete this project?
             </p>
-            <p className="text-xs text-red-300/60 mt-1">
-              This will permanently delete the project <span className="font-semibold text-red-200">"{projectName}"</span> and all of its generated code. This action cannot be undone.
+            <p className="text-xs text-red-600/70 dark:text-red-300/60 mt-1">
+              This will permanently delete the project <span className="font-semibold text-red-700 dark:text-red-200">"{projectName}"</span> and all of its generated code. This action cannot be undone.
             </p>
           </div>
         </div>

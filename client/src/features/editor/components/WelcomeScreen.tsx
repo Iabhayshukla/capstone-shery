@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, KeyboardEvent, MouseEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Sparkles } from 'lucide-react';
 import { createPortal } from 'react-dom';
 

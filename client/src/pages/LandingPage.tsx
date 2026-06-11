@@ -272,7 +272,7 @@ const LandingPage = ({ isAppLoading = false }: LandingPageProps) => {
   return (
     <div
       ref={pageRef}
-      className="landing-page min-h-screen bg-brand-dark text-[var(--text-primary)] overflow-hidden relative"
+      className="landing-page min-h-screen bg-[var(--background)] text-[var(--text-primary)] overflow-hidden relative"
     >
       {/* Custom cursor elements */}
       <div id="cur" />
@@ -281,11 +281,11 @@ const LandingPage = ({ isAppLoading = false }: LandingPageProps) => {
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
         <div
           ref={orb1Ref}
-          className="absolute top-[-100px] left-[-100px] w-[500px] h-[500px] rounded-full bg-[#6C63FF]/20 blur-[120px] animate-float-orb-1"
+          className="absolute top-[-100px] left-[-100px] w-[500px] h-[500px] rounded-full bg-brand-primary/10 blur-[120px] animate-float-orb-1"
         />
         <div
           ref={orb2Ref}
-          className="absolute bottom-[-100px] right-[-100px] w-[500px] h-[500px] rounded-full bg-[#FF6584]/20 blur-[120px] animate-float-orb-2"
+          className="absolute bottom-[-100px] right-[-100px] w-[500px] h-[500px] rounded-full bg-brand-accent/10 blur-[120px] animate-float-orb-2"
         />
         <div className="absolute inset-0 w-full h-full opacity-80 pointer-events-none">
           <DotField
@@ -300,7 +300,7 @@ const LandingPage = ({ isAppLoading = false }: LandingPageProps) => {
             bulgeOnly
             gradientFrom="#A855F7"
             gradientTo="#B497CF"
-            glowColor="#120F17"
+            glowColor="var(--background)"
           />
         </div>
       </div>
@@ -313,7 +313,7 @@ const LandingPage = ({ isAppLoading = false }: LandingPageProps) => {
         {/* Badge — magnetic shimmer */}
         <div
           ref={heroBadgeRef}
-          className="px-4 py-1.5 rounded-full glass text-[#6C63FF] text-sm font-medium flex items-center gap-2 cursor-default select-none"
+          className="px-4 py-1.5 rounded-full bg-[var(--surface)] border border-[var(--border)] text-brand-primary text-sm font-medium flex items-center gap-2 cursor-default select-none"
           style={{ opacity: 0 }}
         >
           <Sparkles size={14} />
@@ -361,7 +361,7 @@ const LandingPage = ({ isAppLoading = false }: LandingPageProps) => {
           {isAuthenticated ? (
             <motion.div whileHover={{ scale: 1.04, y: -2 }} whileTap={{ scale: 0.98 }} className="hero-btn inline-block">
               <Link to="/dashboard">
-                <Button size="lg" className="bg-[#6C63FF] hover:bg-[#5A52E0] text-white px-8 gap-2 glow">
+                <Button size="lg" className="bg-brand-primary hover:bg-brand-primary-hover text-white px-8 gap-2 glow">
                   Go to Dashboard <ArrowRight size={16} />
                 </Button>
               </Link>
@@ -370,14 +370,14 @@ const LandingPage = ({ isAppLoading = false }: LandingPageProps) => {
             <>
               <motion.div whileHover={{ scale: 1.04, y: -2 }} whileTap={{ scale: 0.98 }} className="hero-btn inline-block">
                 <Link to="/signup">
-                  <Button size="lg" className="bg-[#6C63FF] hover:bg-[#5A52E0] text-white px-8 gap-2 glow">
+                  <Button size="lg" className="bg-brand-primary hover:bg-brand-primary-hover text-white px-8 gap-2 glow">
                     Start Building Free <ArrowRight size={16} />
                   </Button>
                 </Link>
               </motion.div>
               <motion.div whileHover={{ scale: 1.04, y: -2 }} whileTap={{ scale: 0.98 }} className="hero-btn inline-block">
                 <Link to="/login">
-                  <Button size="lg" variant="outline" className="border-[var(--brand-border)] text-[var(--text-secondary)] hover:bg-[var(--brand-glass-hover)] px-8">
+                  <Button size="lg" variant="outline" className="border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--surface-elevated)] px-8">
                     Login
                   </Button>
                 </Link>
@@ -390,7 +390,7 @@ const LandingPage = ({ isAppLoading = false }: LandingPageProps) => {
         <motion.div
           ref={heroPreviewRef}
           variants={fadeUp} initial="hidden" animate={isAppLoading ? "hidden" : "show"} custom={4}
-          className="w-full max-w-4xl mt-8 glass rounded-2xl p-2 glow"
+          className="w-full max-w-4xl mt-8 bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--border-hover)] rounded-2xl p-2 transition-all duration-300 shadow-md"
         >
           <div className="w-full h-64 rounded-xl overflow-hidden">
             <BrowserMockup />
@@ -400,8 +400,8 @@ const LandingPage = ({ isAppLoading = false }: LandingPageProps) => {
 
       {/* ─── MARQUEE ────────────────────────────────────────────────── */}
       <div ref={marqueeWrapRef} className="relative py-6 overflow-hidden">
-        <div className="absolute left-0 top-0 bottom-0 w-24 z-10 bg-gradient-to-r from-brand-dark to-transparent pointer-events-none" />
-        <div className="absolute right-0 top-0 bottom-0 w-24 z-10 bg-gradient-to-l from-brand-dark to-transparent pointer-events-none" />
+        <div className="absolute left-0 top-0 bottom-0 w-24 z-10 pointer-events-none" style={{ background: 'linear-gradient(to right, var(--background), transparent)' }} />
+        <div className="absolute right-0 top-0 bottom-0 w-24 z-10 pointer-events-none" style={{ background: 'linear-gradient(to left, var(--background), transparent)' }} />
         <Marquee speed={40} gradient={false} pauseOnHover>
           {[
             { icon: <Sparkles size={16} />, label: "Claude AI" },
@@ -417,9 +417,9 @@ const LandingPage = ({ isAppLoading = false }: LandingPageProps) => {
           ].map((item, i) => (
             <div
               key={i}
-              className="flex items-center gap-2 mx-6 px-4 py-2 glass rounded-full text-[var(--text-muted)] text-sm hover:text-[#6C63FF] transition-colors cursor-default"
+              className="flex items-center gap-2 mx-6 px-4 py-2 bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--border-hover)] rounded-full text-[var(--text-muted)] text-sm hover:text-brand-primary transition-all duration-300 cursor-default"
             >
-              <span className="text-[#6C63FF]">{item.icon}</span>
+              <span className="text-brand-primary">{item.icon}</span>
               {item.label}
             </div>
           ))}
@@ -445,7 +445,7 @@ const LandingPage = ({ isAppLoading = false }: LandingPageProps) => {
               className="hidden md:block absolute top-[52px] left-[20%] right-[20%] h-px z-0"
               style={{
                 background:
-                  "linear-gradient(90deg, transparent, rgba(108,99,255,0.4), rgba(108,99,255,0.4), transparent)",
+                  "linear-gradient(90deg, transparent, var(--brand-primary-light), var(--brand-primary-light), transparent)",
               }}
             />
           </div>
@@ -474,16 +474,16 @@ const LandingPage = ({ isAppLoading = false }: LandingPageProps) => {
               <div
                 key={i}
                 ref={(el) => (howCardsRef.current[i] = el)}
-                className="glass rounded-2xl p-6 flex flex-col gap-4 cursor-default"
+                className="bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--border-hover)] rounded-2xl p-6 flex flex-col gap-4 cursor-default shadow-md hover:shadow-lg transition-all duration-300"
                 style={{ transformStyle: "preserve-3d" }}
               >
                 <div className="flex items-center justify-between">
-                  <div className="step-icon w-12 h-12 rounded-xl bg-[#6C63FF]/20 flex items-center justify-center text-[#6C63FF]">
+                  <div className="step-icon w-12 h-12 rounded-xl bg-brand-primary/10 flex items-center justify-center text-brand-primary">
                     {item.icon}
                   </div>
                   <span
                     ref={(el) => (stepNumRefs.current[i] = el)}
-                    className="text-4xl font-bold text-[var(--text-faint)]"
+                    className="text-4xl font-bold text-[var(--text-muted)]"
                   >
                     {item.step}
                   </span>
@@ -500,7 +500,7 @@ const LandingPage = ({ isAppLoading = false }: LandingPageProps) => {
       <section className="py-16 px-6">
         <div
           ref={ctaBannerRef}
-          className="max-w-3xl mx-auto glass rounded-3xl p-12 text-center flex flex-col items-center gap-6"
+          className="max-w-3xl mx-auto bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--border-hover)] rounded-3xl p-12 text-center flex flex-col items-center gap-6 shadow-xl transition-all duration-300"
         >
           <h2
             ref={ctaHeadingRef}
@@ -514,7 +514,7 @@ const LandingPage = ({ isAppLoading = false }: LandingPageProps) => {
             Join thousands of creators building websites with AI.
           </p>
           <Link to={isAuthenticated ? "/dashboard" : "/signup"}>
-            <Button size="lg" className="bg-[#6C63FF] hover:bg-[#5A52E0] text-white px-10 gap-2">
+            <Button size="lg" className="bg-brand-primary hover:bg-brand-primary-hover text-white px-10 gap-2">
               {isAuthenticated ? "Go to Dashboard" : "Get Started Free"}{" "}
               <ArrowRight size={16} />
             </Button>
@@ -523,7 +523,7 @@ const LandingPage = ({ isAppLoading = false }: LandingPageProps) => {
       </section>
 
       {/* ─── FOOTER ─────────────────────────────────────────────────── */}
-      <footer className="py-6 text-center text-[var(--text-faint)] text-sm border-t border-[var(--brand-border)]">
+      <footer className="py-6 text-center text-[var(--text-secondary)] text-sm border-t border-[var(--border)] bg-[var(--surface)]">
         © 2026 Capstone-Shery · CAPSTONE-SHERY
       </footer>
     </div>

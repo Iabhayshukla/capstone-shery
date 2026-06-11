@@ -222,12 +222,12 @@ const ResetPasswordPage = () => {
                     {passwordsMatch && (
                       <CheckCircle
                         size={16}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-400"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-600 dark:text-emerald-400"
                       />
                     )}
                   </div>
                   {confirmPassword.length > 0 && !passwordsMatch && (
-                    <p className="text-[10px] text-red-400 font-medium">Passwords do not match</p>
+                    <p className="text-[10px] text-red-600 dark:text-red-400 font-medium">Passwords do not match</p>
                   )}
                 </div>
 
@@ -265,7 +265,7 @@ const ResetPasswordPage = () => {
 
               {emailSent ? (
                 <div className="text-center space-y-6">
-                  <div className="mx-auto w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+                  <div className="mx-auto w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
                     <CheckCircle size={24} />
                   </div>
                   <div className="space-y-2">

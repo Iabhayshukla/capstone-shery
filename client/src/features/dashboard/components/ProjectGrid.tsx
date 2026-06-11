@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import ProjectCard, { type Project } from "./ProjectCard";
 import EmptyState from "@/components/ui/EmptyState";
-import { ProjectCardSkeleton } from "@/components/ui/Skeleton";
+import Skeleton, { ProjectCardSkeleton } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/button";
 import { staggerContainer } from "@/lib/animations";
 import { Plus, Sparkles } from "lucide-react";
@@ -40,15 +40,15 @@ const ProjectGrid = ({
           viewMode === "grid" ? (
             <ProjectCardSkeleton key={i} />
           ) : (
-            <div key={i} className="p-4 bg-zinc-950/40 border border-zinc-900 rounded-xl flex items-center justify-between gap-4 animate-pulse">
+            <div key={i} className="p-4 glass-card flex items-center justify-between gap-4">
               <div className="flex items-center gap-4 flex-1">
-                <div className="w-9 h-9 rounded-lg bg-zinc-900" />
+                <Skeleton variant="avatar" className="rounded-lg shrink-0" />
                 <div className="space-y-2 flex-1">
-                  <div className="h-4 bg-zinc-900 rounded w-1/4" />
-                  <div className="h-3 bg-zinc-900 rounded w-1/2" />
+                  <Skeleton variant="text" className="w-1/4 h-4" />
+                  <Skeleton variant="text" className="w-1/2 h-3" />
                 </div>
               </div>
-              <div className="w-16 h-8 bg-zinc-900 rounded" />
+              <Skeleton variant="button" className="w-16 h-8" />
             </div>
           )
         ))}
@@ -59,7 +59,7 @@ const ProjectGrid = ({
   if (projects.length === 0) {
     return (
       <EmptyState
-        icon={<Sparkles size={40} className="text-zinc-650" />}
+        icon={<Sparkles size={40} className="text-[var(--text-muted)]" />}
         title="No projects found"
         description="Create a new AI-powered website project to get started."
         action={
