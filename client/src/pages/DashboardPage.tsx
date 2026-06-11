@@ -114,13 +114,15 @@ const DashboardPage = () => {
     if (!accessToken) return;
     setIsLoading(true);
     try {
+      // Create project with empty code (null in DB)
       const proj = await apiCreateProject(accessToken, name);
-      let finalProj = proj;
-      if (template && template !== "blank") {
-        const defaultCode = `<!-- ${template} template -->\n<div class="p-8 text-center">\n  <h1 class="text-3xl font-bold">${name}</h1>\n  <p class="text-gray-600">Generated from the ${template} template.</p>\n</div>`;
-        finalProj = await apiUpdateProject(accessToken, proj.id, { currentCode: defaultCode });
-      }
-      setProjects((prev) => [finalProj, ...prev]);
+
+      // (Optional) You can still store the selected template preference somewhere,
+      // but do NOT inject any default HTML.
+      // For example, you could save template in a separate column, or pass it to editor via route state.
+      // For now, just ignore `template` – all projects start blank.
+
+      setProjects((prev) => [proj, ...prev]);
       addToast(`"${name}" created successfully!`, "success");
       setIsNewModalOpen(false);
     } catch (err: any) {
@@ -292,11 +294,10 @@ const DashboardPage = () => {
                     <button
                       key={tab}
                       onClick={() => setActiveTab(tab)}
-                      className={`px-3 py-1.5 text-xs font-medium rounded-lg capitalize transition-all duration-200 shrink-0 ${
-                        activeTab === tab
+                      className={`px-3 py-1.5 text-xs font-medium rounded-lg capitalize transition-all duration-200 shrink-0 ${activeTab === tab
                           ? "bg-zinc-200/60 dark:bg-zinc-900 text-zinc-900 dark:text-white border border-zinc-300 dark:border-zinc-800"
                           : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300 hover:bg-zinc-100/50 dark:hover:bg-zinc-900/40 border border-transparent"
-                      }`}
+                        }`}
                     >
                       {tab}
                       <span className="ml-1.5 px-1.5 py-0.5 text-[9px] font-mono rounded bg-zinc-100 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-850 text-zinc-500">
@@ -339,22 +340,20 @@ const DashboardPage = () => {
                 <div className="flex rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-900 p-0.5 bg-white dark:bg-zinc-950/40 shrink-0">
                   <button
                     onClick={() => setViewMode("grid")}
-                    className={`p-1 rounded-md transition-all ${
-                      viewMode === "grid"
+                    className={`p-1 rounded-md transition-all ${viewMode === "grid"
                         ? "bg-zinc-100 dark:bg-zinc-900 text-zinc-950 dark:text-white border border-zinc-200 dark:border-zinc-800 shadow-sm"
                         : "text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 border border-transparent"
-                    }`}
+                      }`}
                     title="Grid view"
                   >
                     <LayoutGrid size={13} />
                   </button>
                   <button
                     onClick={() => setViewMode("list")}
-                    className={`p-1 rounded-md transition-all ${
-                      viewMode === "list"
+                    className={`p-1 rounded-md transition-all ${viewMode === "list"
                         ? "bg-zinc-100 dark:bg-zinc-900 text-zinc-950 dark:text-white border border-zinc-200 dark:border-zinc-800 shadow-sm"
                         : "text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 border border-transparent"
-                    }`}
+                      }`}
                     title="List view"
                   >
                     <List size={13} />

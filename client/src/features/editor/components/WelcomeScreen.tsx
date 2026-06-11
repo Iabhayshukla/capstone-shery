@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, KeyboardEvent, MouseEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Sparkles } from 'lucide-react';
+import { createPortal } from 'react-dom';
 
 interface WelcomeScreenProps {
   onGenerate: (prompt: string) => void;
@@ -27,6 +28,7 @@ export default function WelcomeScreen({ onGenerate, isGenerating }: WelcomeScree
   const [prompt, setPrompt] = useState('');
   const [focused, setFocused] = useState(false);
   const [charCount, setCharCount] = useState(0);
+  const [particles, setParticles] = useState<{ id: number; x: number; y: number }[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -41,8 +43,20 @@ export default function WelcomeScreen({ onGenerate, isGenerating }: WelcomeScree
     setCharCount(prompt.length);
   }, [prompt]);
 
+  const emitParticles = (buttonRect: DOMRect) => {
+    const newParticles = Array.from({ length: 16 }, (_, i) => ({
+      id: Date.now() + i,
+      x: buttonRect.left + buttonRect.width / 2 + (Math.random() - 0.5) * 50,
+      y: buttonRect.top + buttonRect.height / 2,
+    }));
+    setParticles(newParticles);
+    setTimeout(() => setParticles([]), 800);
+  };
+
   const handleSubmit = () => {
     if (!prompt.trim() || isGenerating) return;
+    const btn = document.querySelector('.generate-btn') as HTMLElement;
+    if (btn) emitParticles(btn.getBoundingClientRect());
     onGenerate(prompt.trim());
   };
 
@@ -66,7 +80,7 @@ export default function WelcomeScreen({ onGenerate, isGenerating }: WelcomeScree
         fontFamily: 'DM Sans, sans-serif',
       }}
     >
-      {/* — grid bg — */}
+      {/* grid bg */}
       <div style={{
         position: 'absolute', inset: 0, zIndex: 0,
         backgroundImage: `linear-gradient(rgba(255,255,255,0.028) 1px, transparent 1px),
@@ -76,7 +90,7 @@ export default function WelcomeScreen({ onGenerate, isGenerating }: WelcomeScree
         pointerEvents: 'none',
       }} />
 
-      {/* — aurora blobs — */}
+      {/* aurora blobs */}
       <div style={{ position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none', overflow: 'hidden' }}>
         <div style={{
           position: 'absolute', width: 700, height: 400,
@@ -94,7 +108,7 @@ export default function WelcomeScreen({ onGenerate, isGenerating }: WelcomeScree
         }} />
       </div>
 
-      {/* — ticker — */}
+      {/* ticker */}
       <div style={{
         position: 'relative', zIndex: 2,
         borderBottom: '1px solid rgba(255,255,255,0.05)',
@@ -157,7 +171,7 @@ export default function WelcomeScreen({ onGenerate, isGenerating }: WelcomeScree
         Back to Dashboard
       </Link>
 
-      {/* — main content — */}
+      {/* main content */}
       <div style={{
         flex: 1, display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center',
@@ -221,7 +235,7 @@ export default function WelcomeScreen({ onGenerate, isGenerating }: WelcomeScree
           </motion.p>
         </div>
 
-        {/* — input box — */}
+        {/* input box */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -273,6 +287,7 @@ export default function WelcomeScreen({ onGenerate, isGenerating }: WelcomeScree
                 whileTap={{ scale: 0.97 }}
                 onClick={handleSubmit}
                 disabled={!prompt.trim() || isGenerating}
+                className="generate-btn"
                 style={{
                   display: 'flex', alignItems: 'center', gap: 8,
                   fontSize: 11, fontWeight: 500, letterSpacing: 2,
@@ -306,7 +321,7 @@ export default function WelcomeScreen({ onGenerate, isGenerating }: WelcomeScree
           </div>
         </motion.div>
 
-        {/* — sample prompts — */}
+        {/* sample prompts */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -346,7 +361,7 @@ export default function WelcomeScreen({ onGenerate, isGenerating }: WelcomeScree
         </motion.div>
       </div>
 
-      {/* — bottom stats bar — */}
+      {/* bottom stats bar */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -378,6 +393,29 @@ export default function WelcomeScreen({ onGenerate, isGenerating }: WelcomeScree
           </div>
         ))}
       </motion.div>
+
+      {/* Particles portal */}
+      {particles.map(p => (
+        createPortal(
+          <motion.div
+            key={p.id}
+            initial={{ opacity: 0.8, scale: 0.5, x: p.x, y: p.y }}
+            animate={{ opacity: 0, y: p.y - 100, x: p.x + (Math.random() - 0.5) * 80 }}
+            transition={{ duration: 0.7, ease: 'easeOut' }}
+            style={{
+              position: 'fixed',
+              width: 5,
+              height: 5,
+              background: '#D4FF57',
+              borderRadius: '50%',
+              pointerEvents: 'none',
+              zIndex: 9999,
+              boxShadow: '0 0 6px #D4FF57',
+            }}
+          />,
+          document.body
+        )
+      ))}
 
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap');

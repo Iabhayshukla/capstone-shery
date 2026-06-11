@@ -58,26 +58,56 @@ export default function StreamingView({ files, isStreaming, onPreview, error }: 
   const [copied, setCopied] = useState(false);
   const codeBodyRef = useRef<HTMLDivElement>(null);
   const activeFile = files[0];
-  const lines = activeFile?.content.split('\n') ?? [];
+  const allLines = activeFile?.content.split('\n') ?? [];
 
-  const isDone = !isStreaming && lines.length > 0 && !error;
+  const [visibleLineCount, setVisibleLineCount] = useState(0);
+  const prevLinesLength = useRef(0);
+  const animationRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (animationRef.current) clearInterval(animationRef.current);
+    const newLength = allLines.length;
+    if (newLength > prevLinesLength.current) {
+      let current = prevLinesLength.current;
+      const interval = setInterval(() => {
+        current++;
+        setVisibleLineCount(current);
+        if (current >= newLength) clearInterval(interval);
+      }, 25);
+      animationRef.current = interval;
+    } else if (newLength < prevLinesLength.current) {
+      setVisibleLineCount(newLength);
+    }
+    prevLinesLength.current = newLength;
+    return () => {
+      if (animationRef.current) clearInterval(animationRef.current);
+    };
+  }, [allLines.length]);
+
+  useEffect(() => {
+    if (codeBodyRef.current && visibleLineCount > 0) {
+      codeBodyRef.current.scrollTo({
+        top: codeBodyRef.current.scrollHeight,
+        behavior: 'smooth',
+      });
+    }
+  }, [visibleLineCount]);
+
+  const visibleLines = allLines.slice(0, visibleLineCount);
+  const isDone = !isStreaming && allLines.length > 0 && !error;
+  const maxExpectedLines = 300;
   const progress = isStreaming
-    ? Math.min(lines.length / 300, 0.95)
+    ? Math.min(visibleLineCount / maxExpectedLines, 0.95)
     : isDone ? 1 : 0;
+  const percentComplete = Math.floor(progress * 100);
+
   const msgIdx = Math.min(Math.floor(progress * AI_MESSAGES.length), AI_MESSAGES.length - 1);
   const currentAiMsg = isStreaming
     ? AI_MESSAGES[msgIdx]
-    : error ? 'Generation failed.' : lines.length > 0
+    : error ? 'Generation failed.' : allLines.length > 0
       ? '✦ Your website is ready — open preview to see it live.'
       : AI_MESSAGES[0];
-
   const displayedMsg = useTypewriter(currentAiMsg, 18);
-
-  useEffect(() => {
-    if (isStreaming && codeBodyRef.current) {
-      codeBodyRef.current.scrollTop = codeBodyRef.current.scrollHeight;
-    }
-  }, [lines.length, isStreaming]);
 
   const handleCopy = async () => {
     if (!activeFile) return;
@@ -93,12 +123,10 @@ export default function StreamingView({ files, isStreaming, onPreview, error }: 
       background: 'var(--brand-darker)',
       display: 'flex',
       flexDirection: 'column',
-      // ── KEY FIX: contain all children, no bleed ──
       overflow: 'hidden',
       fontFamily: 'DM Sans, sans-serif',
       position: 'relative',
     }}>
-      {/* grid bg */}
       <div style={{
         position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none',
         backgroundImage: `linear-gradient(rgba(255,255,255,0.022) 1px, transparent 1px),
@@ -133,7 +161,7 @@ export default function StreamingView({ files, isStreaming, onPreview, error }: 
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 11, color: 'rgba(240,237,230,0.65)', letterSpacing: 0.5 }}>
             {activeFile?.name ?? 'index.html'}
-            {lines.length > 0 && ` · ${lines.length} lines`}
+            {allLines.length > 0 && ` · ${percentComplete}%`}
           </span>
           <div style={{
             display: 'flex', alignItems: 'center', gap: 5,
@@ -157,7 +185,6 @@ export default function StreamingView({ files, isStreaming, onPreview, error }: 
       <div style={{
         flex: 1,
         display: 'flex',
-        // ── KEY FIX: overflow hidden so children can't push height ──
         overflow: 'hidden',
         position: 'relative', zIndex: 2,
         minHeight: 0,
@@ -247,20 +274,20 @@ export default function StreamingView({ files, isStreaming, onPreview, error }: 
             })}
           </div>
 
-          {lines.length > 0 && (
+          {allLines.length > 0 && (
             <div style={{ background: 'var(--brand-glass)', border: '1px solid var(--brand-border)', borderRadius: 12, padding: 16, display: 'flex', flexDirection: 'column', gap: 4 }}>
               <div style={{ fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', color: 'rgba(240,237,230,0.7)', marginBottom: 4 }}>
-                Lines Generated
+                Generation Progress
               </div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
                 <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 44, color: '#D4FF57', lineHeight: 1, letterSpacing: 1, textShadow: '0 0 12px rgba(212,255,87,0.15)' }}>
-                  {lines.length}
+                  {percentComplete}%
                 </span>
-                <span style={{ fontSize: 11, color: 'rgba(240,237,230,0.7)', letterSpacing: 0.5 }}>lines parsed successfully</span>
+                <span style={{ fontSize: 11, color: 'rgba(240,237,230,0.7)', letterSpacing: 0.5 }}>complete</span>
               </div>
               <div style={{ height: 3, background: 'rgba(255,255,255,0.05)', borderRadius: 2, overflow: 'hidden', marginTop: 8 }}>
                 <motion.div
-                  animate={{ width: `${Math.min(progress * 100, 100)}%` }}
+                  animate={{ width: `${percentComplete}%` }}
                   transition={{ duration: 0.4 }}
                   style={{ height: '100%', background: 'linear-gradient(90deg, #6C63FF, #D4FF57)', borderRadius: 2 }}
                 />
@@ -314,103 +341,102 @@ export default function StreamingView({ files, isStreaming, onPreview, error }: 
           </div>
         </div>
 
-        {/* RIGHT — Code panel */}
-        <div style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          // ── KEY FIX: must not grow beyond parent ──
-          overflow: 'hidden',
-          minWidth: 0,
-          background: 'var(--brand-surface)',
-        }}>
-          {/* code header */}
-          <div style={{
-            padding: '8px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            borderBottom: '1px solid var(--brand-border)',
-            background: 'var(--brand-dark)', flexShrink: 0,
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ display: 'flex', gap: 5 }}>
-                {['#ff5f57', '#febc2e', '#28c840'].map(c => (
-                  <div key={c} style={{ width: 9, height: 9, borderRadius: '50%', background: c }} />
-                ))}
-              </div>
-              <span style={{ fontSize: 11, color: 'rgba(240,237,230,0.7)', letterSpacing: 0.5 }}>
-                {activeFile?.name ?? 'index.html'}
-              </span>
-            </div>
-            <button
-              onClick={handleCopy}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 5,
-                fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase',
-                color: copied ? '#22c55e' : 'rgba(240,237,230,0.7)',
-                background: 'transparent', border: '1px solid var(--brand-border)',
-                padding: '4px 10px', cursor: 'pointer', transition: 'all 0.2s',
-              }}
-            >
-              {copied ? <Check size={10} /> : <Copy size={10} />}
-              {copied ? 'Copied!' : 'Copy'}
-            </button>
-          </div>
-
-          {/* code body — ── KEY FIX: overflow-y scroll, overflow-x hidden, wrap lines ── */}
-          <div
-            ref={codeBodyRef}
-            style={{
-              flex: 1,
-              overflowY: 'auto',
-              overflowX: 'hidden',   // no horizontal scroll
-              padding: '16px 0',
-              fontFamily: '"Cascadia Code", "Fira Code", "Consolas", monospace',
-              minHeight: 0,
-            }}
-          >
-            {lines.length === 0 ? (
-              <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12 }}>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  {[0, 1, 2].map(i => (
-                    <motion.div key={i} animate={{ y: [0, -8, 0] }} transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.15 }}
-                      style={{ width: 6, height: 6, borderRadius: '50%', background: '#D4FF57', opacity: 0.5 }} />
+        {/* RIGHT — Code panel with gradient border */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0, margin: 2 }}>
+          <div className="gradient-border" style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--brand-surface)', overflow: 'hidden' }}>
+            {/* code header */}
+            <div style={{
+              padding: '8px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              borderBottom: '1px solid var(--brand-border)',
+              background: 'var(--brand-dark)', flexShrink: 0,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 5 }}>
+                  {['#ff5f57', '#febc2e', '#28c840'].map(c => (
+                    <div key={c} style={{ width: 9, height: 9, borderRadius: '50%', background: c }} />
                   ))}
                 </div>
-                <span style={{ fontSize: 11, color: 'rgba(240,237,230,0.65)', letterSpacing: 1.5, textTransform: 'uppercase' }}>
-                  Waiting for output...
+                <span style={{ fontSize: 11, color: 'rgba(240,237,230,0.7)', letterSpacing: 0.5 }}>
+                  {activeFile?.name ?? 'index.html'}
                 </span>
               </div>
-            ) : (
-              lines.map((line, i) => (
-                <div key={i} style={{ display: 'flex', minHeight: 20, paddingRight: 16 }}>
-                  <span style={{
-                    minWidth: 40, paddingRight: 16, textAlign: 'right',
-                    color: 'rgba(255,255,255,0.1)', fontSize: 11.5, lineHeight: '20px',
-                    userSelect: 'none', flexShrink: 0, fontFamily: 'monospace',
-                  }}>
-                    {i + 1}
+              <button
+                onClick={handleCopy}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 5,
+                  fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase',
+                  color: copied ? '#22c55e' : 'rgba(240,237,230,0.7)',
+                  background: 'transparent', border: '1px solid var(--brand-border)',
+                  padding: '4px 10px', cursor: 'pointer', transition: 'all 0.2s',
+                }}
+              >
+                {copied ? <Check size={10} /> : <Copy size={10} />}
+                {copied ? 'Copied!' : 'Copy'}
+              </button>
+            </div>
+
+            {/* code body */}
+            <div
+              ref={codeBodyRef}
+              style={{
+                flex: 1,
+                overflowY: 'auto',
+                overflowX: 'hidden',
+                padding: '16px 0',
+                fontFamily: '"Cascadia Code", "Fira Code", "Consolas", monospace',
+                minHeight: 0,
+              }}
+            >
+              {visibleLines.length === 0 ? (
+                <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    {[0, 1, 2].map(i => (
+                      <motion.div key={i} animate={{ y: [0, -8, 0] }} transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.15 }}
+                        style={{ width: 6, height: 6, borderRadius: '50%', background: '#D4FF57', opacity: 0.5 }} />
+                    ))}
+                  </div>
+                  <span style={{ fontSize: 11, color: 'rgba(240,237,230,0.65)', letterSpacing: 1.5, textTransform: 'uppercase' }}>
+                    Waiting for output...
                   </span>
-                  {/* ── KEY FIX: pre-wrap wraps long lines, no horizontal overflow ── */}
-                  <span style={{
-                    fontSize: 12.5,
-                    lineHeight: '20px',
-                    whiteSpace: 'pre-wrap',   // was 'pre' — this is the main fix
-                    wordBreak: 'break-all',   // break very long tokens too
-                    color: '#d4d4d4',
-                    flex: 1,
-                    minWidth: 0,
-                  }}>
-                    {colorize(line || ' ')}
-                  </span>
-                  {isStreaming && i === lines.length - 1 && (
-                    <motion.span
-                      animate={{ opacity: [1, 0, 1] }}
-                      transition={{ repeat: Infinity, duration: 0.7 }}
-                      style={{ display: 'inline-block', width: 2, height: 14, background: '#D4FF57', borderRadius: 1, verticalAlign: 'middle', marginLeft: 1, alignSelf: 'center' }}
-                    />
-                  )}
                 </div>
-              ))
-            )}
+              ) : (
+                visibleLines.map((line, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.1, delay: 0 }}
+                    style={{ display: 'flex', minHeight: 20, paddingRight: 16 }}
+                  >
+                    <span style={{
+                      minWidth: 40, paddingRight: 16, textAlign: 'right',
+                      color: 'rgba(255,255,255,0.1)', fontSize: 11.5, lineHeight: '20px',
+                      userSelect: 'none', flexShrink: 0, fontFamily: 'monospace',
+                    }}>
+                      {i + 1}
+                    </span>
+                    <span style={{
+                      fontSize: 12.5,
+                      lineHeight: '20px',
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-all',
+                      color: '#d4d4d4',
+                      flex: 1,
+                      minWidth: 0,
+                    }}>
+                      {colorize(line || ' ')}
+                    </span>
+                    {isStreaming && i === visibleLines.length - 1 && visibleLineCount < allLines.length && (
+                      <motion.span
+                        animate={{ opacity: [1, 0, 1] }}
+                        transition={{ repeat: Infinity, duration: 0.4 }}
+                        style={{ display: 'inline-block', width: 2, height: 14, background: '#D4FF57', borderRadius: 1, verticalAlign: 'middle', marginLeft: 1, alignSelf: 'center' }}
+                      />
+                    )}
+                  </motion.div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -457,6 +483,29 @@ export default function StreamingView({ files, isStreaming, onPreview, error }: 
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap');
         @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.15} }
+        @keyframes rotateBorder {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        .gradient-border {
+          position: relative;
+          border-radius: 0;
+          overflow: hidden;
+        }
+        .gradient-border::before {
+          content: '';
+          position: absolute;
+          top: -2px;
+          left: -2px;
+          right: -2px;
+          bottom: -2px;
+          background: linear-gradient(90deg, #6C63FF, #D4FF57, #6C63FF);
+          background-size: 200% 200%;
+          animation: rotateBorder 3s linear infinite;
+          z-index: -1;
+          filter: blur(4px);
+          opacity: 0.4;
+        }
         .hover-glow:hover {
           box-shadow: 0 0 15px rgba(212, 255, 87, 0.45);
           transform: translateY(-1px);
