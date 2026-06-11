@@ -70,14 +70,14 @@ const Avatar = ({
           src={src}
           alt={name}
           className={cn(
-            "rounded-full object-cover ring-2 ring-white/10",
+            "rounded-full object-cover ring-2 ring-black/10 dark:ring-white/10",
             sizeClasses[size]
           )}
         />
       ) : (
         <div
           className={cn(
-            "rounded-full flex items-center justify-center font-semibold bg-gradient-to-br text-white ring-2 ring-white/10",
+            "rounded-full flex items-center justify-center font-semibold bg-gradient-to-br text-white ring-2 ring-black/10 dark:ring-white/10",
             sizeClasses[size],
             getGradient(name)
           )}

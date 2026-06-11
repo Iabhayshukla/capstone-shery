@@ -1,5 +1,6 @@
 export interface CreateProjectBody {
   name: string;
+  template?: string;
 }
 
 export interface UpdateProjectBody {

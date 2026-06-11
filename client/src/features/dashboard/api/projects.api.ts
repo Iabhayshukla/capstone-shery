@@ -30,11 +30,11 @@ export async function fetchProjects(accessToken: string): Promise<Project[]> {
   return (data.projects || []).map(mapDBProjectToFrontend);
 }
 
-export async function createProject(accessToken: string, name: string): Promise<Project> {
+export async function createProject(accessToken: string, name: string, template?: string): Promise<Project> {
   const res = await fetch(`${API_BASE}/projects`, {
     method: 'POST',
     headers: authHeaders(accessToken),
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({ name, template }),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message ?? 'Failed to create project.');

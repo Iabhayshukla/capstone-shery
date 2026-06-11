@@ -47,7 +47,7 @@ const Navbar = () => {
       transition={{ duration: 0.5 }}
       className={`w-full px-6 md:px-8 py-3.5 flex items-center justify-between fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         isScrolled
-          ? "glass border-b border-[var(--brand-border)] shadow-md shadow-black/5"
+          ? "glass border-b border-[var(--border)] shadow-md shadow-black/5"
           : "bg-transparent border-transparent"
       }`}
       role="navigation"
@@ -89,15 +89,15 @@ const Navbar = () => {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 8, scale: 0.95 }}
                   transition={{ duration: 0.15 }}
-                  className="absolute right-0 top-full mt-2 w-56 py-2 rounded-xl bg-[var(--dropdown-bg)] backdrop-blur-xl border border-[var(--brand-border)] shadow-xl"
+                  className="absolute right-0 top-full mt-2 w-56 py-2 rounded-xl bg-[var(--dropdown-bg)] backdrop-blur-xl border border-[var(--border)] shadow-xl"
                 >
-                  <div className="px-4 py-3 border-b border-[var(--brand-border)]">
+                  <div className="px-4 py-3 border-b border-[var(--border)]">
                     <p className="text-sm font-medium text-[var(--text-primary)]">{userName}</p>
                     <p className="text-xs text-[var(--text-muted)]">{userEmail}</p>
                   </div>
                   <Link
                     to="/dashboard"
-                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--brand-glass-hover)] transition-colors"
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-elevated)] transition-colors"
                     onClick={() => setIsProfileOpen(false)}
                   >
                     <LayoutDashboard size={15} />
@@ -105,15 +105,15 @@ const Navbar = () => {
                   </Link>
                   <Link
                     to="/account"
-                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--brand-glass-hover)] transition-colors"
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-elevated)] transition-colors"
                     onClick={() => setIsProfileOpen(false)}
                   >
                     <User size={15} />
                     Account
                   </Link>
-                  <div className="border-t border-[var(--brand-border)] mt-1 pt-1">
+                  <div className="border-t border-[var(--border)] mt-1 pt-1">
                     <button
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-400/70 hover:text-red-400 hover:bg-red-500/5 transition-colors w-full text-left"
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 dark:text-red-400/70 hover:text-red-700 dark:hover:text-red-400 hover:bg-red-500/5 transition-colors w-full text-left"
                       onClick={handleLogout}
                     >
                       <LogOut size={15} />
@@ -161,7 +161,7 @@ const Navbar = () => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
-            className="absolute top-full left-0 right-0 mt-1 mx-3 p-4 rounded-2xl bg-[var(--dropdown-bg)] backdrop-blur-xl border border-[var(--brand-border)] shadow-2xl md:hidden"
+            className="absolute top-full left-0 right-0 mt-1 mx-3 p-4 rounded-2xl bg-[var(--dropdown-bg)] backdrop-blur-xl border border-[var(--border)] shadow-2xl md:hidden"
           >
             <div className="flex flex-col gap-2">
               <ThemeToggle />
@@ -169,7 +169,7 @@ const Navbar = () => {
                 <>
                   <Link
                     to="/dashboard"
-                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--brand-glass-hover)] transition-colors"
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-elevated)] transition-colors"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     <LayoutDashboard size={18} />
@@ -177,14 +177,14 @@ const Navbar = () => {
                   </Link>
                   <Link
                     to="/account"
-                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--brand-glass-hover)] transition-colors"
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-elevated)] transition-colors"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     <User size={18} />
                     Account
                   </Link>
                   <button
-                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-red-400/70 hover:text-red-400 hover:bg-red-500/5 transition-colors w-full text-left"
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-red-600 dark:text-red-400/70 hover:text-red-700 dark:hover:text-red-400 hover:bg-red-500/5 transition-colors w-full text-left"
                     onClick={handleLogout}
                   >
                     <LogOut size={18} />
@@ -195,7 +195,7 @@ const Navbar = () => {
                 <>
                   <Link
                     to="/login"
-                    className="px-4 py-3 rounded-xl text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--brand-glass-hover)] transition-colors text-center"
+                    className="px-4 py-3 rounded-xl text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-elevated)] transition-colors text-center"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Login

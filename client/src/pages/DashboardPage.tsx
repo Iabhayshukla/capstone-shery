@@ -114,13 +114,7 @@ const DashboardPage = () => {
     if (!accessToken) return;
     setIsLoading(true);
     try {
-      // Create project with empty code (null in DB)
-      const proj = await apiCreateProject(accessToken, name);
-
-      // (Optional) You can still store the selected template preference somewhere,
-      // but do NOT inject any default HTML.
-      // For example, you could save template in a separate column, or pass it to editor via route state.
-      // For now, just ignore `template` – all projects start blank.
+      const proj = await apiCreateProject(accessToken, name, template);
 
       setProjects((prev) => [proj, ...prev]);
       addToast(`"${name}" created successfully!`, "success");
@@ -229,13 +223,13 @@ const DashboardPage = () => {
     : null;
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-[#070709] bg-dot-pattern relative text-zinc-650 dark:text-zinc-300 transition-colors duration-300">
+    <div className="min-h-screen bg-brand-dark bg-dot-pattern relative text-[var(--text-secondary)] transition-colors duration-300">
       <Navbar />
 
       {/* Clean, premium background gradient highlights */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-0 left-1/4 w-[600px] h-[300px] rounded-full bg-indigo-500/[0.03] blur-[150px]" />
-        <div className="absolute bottom-0 right-1/4 w-[500px] h-[300px] rounded-full bg-violet-500/[0.02] blur-[150px]" />
+        <div className="absolute top-0 left-1/4 w-[600px] h-[300px] rounded-full bg-brand-primary/[0.03] blur-[150px]" />
+        <div className="absolute bottom-0 right-1/4 w-[500px] h-[300px] rounded-full bg-brand-accent/[0.02] blur-[150px]" />
       </div>
 
       <motion.main
@@ -245,19 +239,19 @@ const DashboardPage = () => {
         className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-16 z-10"
       >
         {/* Header Section */}
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 border-b border-zinc-200 dark:border-zinc-900 pb-8">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 border-b border-[var(--brand-border)] pb-8">
           <div>
-            <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-white">
+            <h1 className="text-3xl font-bold tracking-tight text-[var(--text-primary)]">
               {getGreeting()}, {userName}
             </h1>
-            <p className="text-zinc-500 text-sm mt-1.5 leading-relaxed">
+            <p className="text-[var(--text-muted)] text-sm mt-1.5 leading-relaxed">
               Create and manage your AI-powered websites.
             </p>
           </div>
 
           <Button
             onClick={() => setIsNewModalOpen(true)}
-            className="group bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-100 dark:text-zinc-950 px-5 py-2.5 shadow-md transition-all duration-200 rounded-xl font-medium text-xs flex items-center gap-2"
+            className="group bg-brand-primary hover:bg-brand-primary-hover text-white px-5 py-2.5 shadow-lg shadow-brand-primary/25 transition-all duration-200 rounded-xl font-medium text-xs flex items-center gap-2"
           >
             <Plus size={15} className="group-hover:scale-110 transition-transform" />
             <span>New Project</span>
@@ -265,17 +259,17 @@ const DashboardPage = () => {
         </div>
 
         {/* Stats Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 border border-zinc-200 dark:border-zinc-900 bg-white dark:bg-zinc-950/20 rounded-xl p-5 mt-8">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 glass-card p-5 mt-8">
           <div className="space-y-1">
-            <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-medium font-sans">Total Projects</span>
-            <div className="text-2xl font-semibold text-zinc-900 dark:text-white tracking-tight">{totalProjects}</div>
+            <span className="text-[10px] uppercase tracking-wider text-[var(--text-muted)] font-medium font-sans">Total Projects</span>
+            <div className="text-2xl font-semibold text-[var(--text-primary)] tracking-tight">{totalProjects}</div>
           </div>
-          <div className="space-y-1 sm:border-l border-zinc-200 dark:border-zinc-900 sm:pl-6">
-            <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-medium font-sans">Active Now</span>
-            <div className="text-2xl font-semibold text-emerald-500 dark:text-emerald-400 tracking-tight">{activeProjects}</div>
+          <div className="space-y-1 sm:border-l border-[var(--brand-border)] sm:pl-6">
+            <span className="text-[10px] uppercase tracking-wider text-[var(--text-muted)] font-medium font-sans">Active Now</span>
+            <div className="text-2xl font-semibold text-emerald-600 dark:text-emerald-400 tracking-tight">{activeProjects}</div>
           </div>
-          <div className="space-y-1 sm:border-l border-zinc-200 dark:border-zinc-900 sm:pl-6">
-            <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-medium font-sans">Favorites</span>
+          <div className="space-y-1 sm:border-l border-[var(--brand-border)] sm:pl-6">
+            <span className="text-[10px] uppercase tracking-wider text-[var(--text-muted)] font-medium font-sans">Favorites</span>
             <div className="text-2xl font-semibold text-yellow-500 tracking-tight">{favorites.length}</div>
           </div>
         </div>
@@ -285,7 +279,7 @@ const DashboardPage = () => {
           {/* Projects Main panel */}
           <div className="lg:col-span-3 space-y-6">
             {/* Filter bar */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200 dark:border-zinc-900/60 pb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--brand-border)] pb-4">
               {/* Tabs */}
               <div className="flex items-center gap-1 overflow-x-auto no-scrollbar scroll-smooth">
                 {(["all", "recent", "active", "archived", "favorites"] as const).map((tab) => {
@@ -295,12 +289,12 @@ const DashboardPage = () => {
                       key={tab}
                       onClick={() => setActiveTab(tab)}
                       className={`px-3 py-1.5 text-xs font-medium rounded-lg capitalize transition-all duration-200 shrink-0 ${activeTab === tab
-                          ? "bg-zinc-200/60 dark:bg-zinc-900 text-zinc-900 dark:text-white border border-zinc-300 dark:border-zinc-800"
-                          : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300 hover:bg-zinc-100/50 dark:hover:bg-zinc-900/40 border border-transparent"
+                          ? "bg-[var(--brand-primary-light)] text-brand-primary border border-brand-primary/30"
+                          : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--brand-glass-hover)] border border-transparent"
                         }`}
                     >
                       {tab}
-                      <span className="ml-1.5 px-1.5 py-0.5 text-[9px] font-mono rounded bg-zinc-100 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-850 text-zinc-500">
+                      <span className="ml-1.5 px-1.5 py-0.5 text-[9px] font-mono rounded bg-[var(--brand-glass-input-bg)] border border-[var(--brand-border)] text-[var(--text-muted)]">
                         {count}
                       </span>
                     </button>
@@ -312,13 +306,13 @@ const DashboardPage = () => {
               <div className="flex items-center gap-2 sm:self-end">
                 {/* Search */}
                 <div className="relative w-full sm:w-52">
-                  <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500" />
+                  <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
                   <input
                     type="text"
                     placeholder="Search projects..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-8 pr-3 py-1.5 text-xs bg-white dark:bg-zinc-950/40 border border-zinc-200 dark:border-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-800 focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/25 rounded-lg text-zinc-800 dark:text-zinc-200 placeholder:text-zinc-500 transition-all outline-none"
+                    className="w-full pl-8 pr-3 py-1.5 text-xs glass-input text-[var(--text-primary)] placeholder:text-[var(--text-faint)]"
                   />
                 </div>
 
@@ -327,22 +321,22 @@ const DashboardPage = () => {
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as any)}
-                    className="appearance-none pl-8 pr-8 py-1.5 text-xs bg-white dark:bg-zinc-950/40 border border-zinc-200 dark:border-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-800 rounded-lg text-zinc-700 dark:text-zinc-300 cursor-pointer focus:ring-1 focus:ring-brand-primary/25 outline-none font-sans"
+                    className="appearance-none pl-8 pr-8 py-1.5 text-xs glass-input text-[var(--text-secondary)] cursor-pointer focus:ring-1 focus:ring-brand-primary/25 font-sans"
                   >
-                    <option value="updated" className="bg-white dark:bg-zinc-955 text-zinc-700 dark:text-zinc-300">Last Modified</option>
-                    <option value="name" className="bg-white dark:bg-zinc-955 text-zinc-700 dark:text-zinc-300">Name</option>
-                    <option value="created" className="bg-white dark:bg-zinc-955 text-zinc-700 dark:text-zinc-300">Date Created</option>
+                    <option value="updated" className="bg-[var(--dropdown-bg)] text-[var(--text-secondary)]">Last Modified</option>
+                    <option value="name" className="bg-[var(--dropdown-bg)] text-[var(--text-secondary)]">Name</option>
+                    <option value="created" className="bg-[var(--dropdown-bg)] text-[var(--text-secondary)]">Date Created</option>
                   </select>
-                  <SlidersHorizontal size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
+                  <SlidersHorizontal size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" />
                 </div>
 
                 {/* View toggles */}
-                <div className="flex rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-900 p-0.5 bg-white dark:bg-zinc-950/40 shrink-0">
+                <div className="flex rounded-lg overflow-hidden border border-[var(--brand-border)] p-0.5 bg-[var(--brand-glass)] shrink-0">
                   <button
                     onClick={() => setViewMode("grid")}
                     className={`p-1 rounded-md transition-all ${viewMode === "grid"
-                        ? "bg-zinc-100 dark:bg-zinc-900 text-zinc-950 dark:text-white border border-zinc-200 dark:border-zinc-800 shadow-sm"
-                        : "text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 border border-transparent"
+                        ? "bg-[var(--brand-glass-hover)] text-[var(--text-primary)] border border-[var(--brand-border-hover)] shadow-sm"
+                        : "text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-transparent"
                       }`}
                     title="Grid view"
                   >
@@ -351,8 +345,8 @@ const DashboardPage = () => {
                   <button
                     onClick={() => setViewMode("list")}
                     className={`p-1 rounded-md transition-all ${viewMode === "list"
-                        ? "bg-zinc-100 dark:bg-zinc-900 text-zinc-950 dark:text-white border border-zinc-200 dark:border-zinc-800 shadow-sm"
-                        : "text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 border border-transparent"
+                        ? "bg-[var(--brand-glass-hover)] text-[var(--text-primary)] border border-[var(--brand-border-hover)] shadow-sm"
+                        : "text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-transparent"
                       }`}
                     title="List view"
                   >
@@ -379,38 +373,38 @@ const DashboardPage = () => {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* AI suggestions */}
-            <div className="border border-zinc-200 dark:border-zinc-900 bg-white dark:bg-zinc-950/20 rounded-xl p-5 space-y-4">
+            <div className="glass-card p-5 space-y-4">
               <div className="flex items-center gap-2">
                 <Lightbulb size={14} className="text-yellow-500" />
-                <h3 className="text-xs font-semibold text-zinc-550 dark:text-zinc-300 uppercase tracking-wider">AI Suggestions</h3>
+                <h3 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">AI Suggestions</h3>
               </div>
               <div className="space-y-3">
                 {recentSuggestedProject ? (
-                  <div className="p-3 bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-850 rounded-lg space-y-2">
+                  <div className="p-3 bg-[var(--brand-glass-input-bg)] border border-[var(--brand-border)] rounded-xl space-y-2">
                     <span className="text-[9px] text-brand-primary font-medium uppercase font-sans tracking-wide">Continue Working</span>
-                    <h4 className="text-xs font-medium text-zinc-900 dark:text-white truncate">{recentSuggestedProject.name}</h4>
-                    <p className="text-[11px] text-zinc-500 leading-relaxed line-clamp-2">
+                    <h4 className="text-xs font-medium text-[var(--text-primary)] truncate">{recentSuggestedProject.name}</h4>
+                    <p className="text-[11px] text-[var(--text-muted)] leading-relaxed line-clamp-2">
                       Resume editing this project. Ask the AI to write more components or style pages.
                     </p>
                     <Button
                       onClick={() => navigate(`/editor/${recentSuggestedProject.id}`)}
-                      className="w-full justify-between bg-white hover:bg-zinc-55 dark:bg-zinc-900 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 text-[10px] h-8 text-zinc-700 dark:text-zinc-300 rounded-lg px-3 mt-1 font-normal shadow-sm"
+                      className="w-full justify-between bg-[var(--brand-glass)] hover:bg-[var(--brand-glass-hover)] border border-[var(--brand-border)] hover:border-[var(--brand-border-hover)] text-[10px] h-8 text-[var(--text-secondary)] rounded-xl px-3 mt-1 font-normal shadow-sm"
                     >
                       <span>Resume in Editor</span>
-                      <ArrowRight size={11} className="text-zinc-450 dark:text-zinc-500" />
+                      <ArrowRight size={11} className="text-[var(--text-muted)]" />
                     </Button>
                   </div>
                 ) : null}
 
-                <div className="p-3 bg-zinc-50 dark:bg-zinc-900/20 border border-zinc-200 dark:border-zinc-900/60 rounded-lg space-y-2">
+                <div className="p-3 bg-[var(--brand-glass-input-bg)] border border-[var(--brand-border)] rounded-xl space-y-2">
                   <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-medium uppercase font-sans tracking-wide">Quick Start</span>
-                  <h4 className="text-xs font-medium text-zinc-900 dark:text-white">SaaS Landing Page</h4>
-                  <p className="text-[11px] text-zinc-505 text-zinc-500 leading-relaxed">
+                  <h4 className="text-xs font-medium text-[var(--text-primary)]">SaaS Landing Page</h4>
+                  <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
                     Generate a modern marketing page with grid components, pricing, and dark layout.
                   </p>
                   <Button
                     onClick={() => handleCreate("SaaS Landing Page", "landing")}
-                    className="w-full justify-between bg-white hover:bg-zinc-55 dark:bg-zinc-900 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 text-[10px] h-8 text-zinc-700 dark:text-zinc-300 rounded-lg px-3 font-normal shadow-sm"
+                    className="w-full justify-between bg-[var(--brand-glass)] hover:bg-[var(--brand-glass-hover)] border border-[var(--brand-border)] hover:border-[var(--brand-border-hover)] text-[10px] h-8 text-[var(--text-secondary)] rounded-xl px-3 font-normal shadow-sm"
                   >
                     <span>Generate Template</span>
                     <Plus size={11} />
@@ -420,24 +414,24 @@ const DashboardPage = () => {
             </div>
 
             {/* Recent Activity */}
-            <div className="border border-zinc-200 dark:border-zinc-900 bg-white dark:bg-zinc-950/20 rounded-xl p-5 space-y-4">
+            <div className="glass-card p-5 space-y-4">
               <div className="flex items-center gap-2">
-                <Activity size={14} className="text-zinc-500 dark:text-zinc-400" />
-                <h3 className="text-xs font-semibold text-zinc-550 dark:text-zinc-300 uppercase tracking-wider">Recent Activity</h3>
+                <Activity size={14} className="text-[var(--text-secondary)]" />
+                <h3 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">Recent Activity</h3>
               </div>
               <div className="space-y-3.5">
                 {recentActivities.length > 0 ? (
                   recentActivities.map((act) => (
                     <div key={act.id} className="flex gap-3 text-xs">
-                      <div className="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-700 shrink-0 mt-1.5" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-[var(--brand-border-hover)] shrink-0 mt-1.5" />
                       <div className="space-y-0.5 min-w-0 flex-1">
-                        <p className="text-zinc-800 dark:text-zinc-300 font-medium truncate">{act.message}</p>
-                        <p className="text-[10px] text-zinc-500 font-mono">{act.time}</p>
+                        <p className="text-[var(--text-secondary)] font-medium truncate">{act.message}</p>
+                        <p className="text-[10px] text-[var(--text-muted)] font-mono">{act.time}</p>
                       </div>
                     </div>
                   ))
                 ) : (
-                  <p className="text-[11px] text-zinc-500">No activity yet.</p>
+                  <p className="text-[11px] text-[var(--text-muted)]">No activity yet.</p>
                 )}
               </div>
             </div>
