@@ -133,7 +133,7 @@ export default function StreamingView({ files, isStreaming, onPreview, error, th
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const getFileIcon = (fileName: string, lang: string) => {
+  const getFileIcon = (_fileName: string, lang: string) => {
     if (lang === 'html') return <FileCode size={14} />;
     if (lang === 'css') return <FileCode size={14} style={{ color: isLight ? '#2563eb' : '#3b82f6' }} />;
     if (lang === 'js' || lang === 'jsx') return <FileCode size={14} style={{ color: isLight ? '#ca8a04' : '#eab308' }} />;
