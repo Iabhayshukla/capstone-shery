@@ -283,4 +283,3 @@ All endpoints are prefixed with `/api`. Protected endpoints require a `Bearer <t
 
 ---
 
-*Capstone Project — Sheryians Coding School, 2025*
