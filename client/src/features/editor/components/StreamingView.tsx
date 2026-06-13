@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Copy, Check, Eye, ArrowLeft, FileCode, FileJson, FileText, Coffee, Sparkles } from 'lucide-react';
+import { Copy, Check, Eye, FileCode, FileJson, FileText, Coffee, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface StreamingFile {
