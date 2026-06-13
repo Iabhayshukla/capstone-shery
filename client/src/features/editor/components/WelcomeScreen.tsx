@@ -41,8 +41,6 @@ export default function WelcomeScreen({ onGenerate, isGenerating }: WelcomeScree
   const mainGroupRef = useRef<THREE.Group | null>(null);
   
   // Mouse tracking for additional offset
-  const mouseX = useRef(0);
-  const mouseY = useRef(0);
   const targetMouseOffsetX = useRef(0);
   const targetMouseOffsetY = useRef(0);
   const currentMouseOffsetX = useRef(0);
@@ -253,7 +251,6 @@ export default function WelcomeScreen({ onGenerate, isGenerating }: WelcomeScree
       time += 0.012;
       
       // Color cycling
-      const hue = (time * 0.08) % 1.0;
       const color = new THREE.Color().setHSL(0.65 + Math.sin(time * 0.25) * 0.08, 0.9, 0.55);
       material.color = color;
       const emissiveColor = new THREE.Color().setHSL(0.7 + Math.sin(time * 0.3) * 0.1, 1.0, 0.35);
@@ -315,11 +312,12 @@ export default function WelcomeScreen({ onGenerate, isGenerating }: WelcomeScree
     };
     window.addEventListener('resize', handleResize);
     
+    const containerNode = threeContainerRef.current;
     return () => {
       window.removeEventListener('resize', handleResize);
       if (animationIdRef.current) cancelAnimationFrame(animationIdRef.current);
-      if (rendererRef.current && threeContainerRef.current) {
-        threeContainerRef.current.removeChild(rendererRef.current.domElement);
+      if (rendererRef.current && containerNode) {
+        containerNode.removeChild(rendererRef.current.domElement);
         rendererRef.current.dispose();
       }
       geometry.dispose();
