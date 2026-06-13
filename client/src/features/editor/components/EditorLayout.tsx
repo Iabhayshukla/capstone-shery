@@ -229,7 +229,7 @@ export default function EditorLayout() {
   };
 
   return (
-    <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: 'var(--brand-dark)' }}>
+    <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: 'var(--background)' }}>
       <AnimatePresence mode="wait">
 
         {phase === 'loading' && (
@@ -244,7 +244,7 @@ export default function EditorLayout() {
               width: '100%', height: '100%',
               display: 'flex', flexDirection: 'column',
               alignItems: 'center', justifyContent: 'center',
-              gap: 16, background: 'var(--brand-dark)',
+              gap: 16, background: 'var(--background)',
             }}
           >
             <div style={{ position: 'relative', width: 50, height: 50 }}>
@@ -255,7 +255,7 @@ export default function EditorLayout() {
                   width: '100%', height: '100%',
                   borderRadius: '50%',
                   border: '3px solid rgba(255, 255, 255, 0.05)',
-                  borderTopColor: '#D4FF57',
+                  borderTopColor: 'var(--brand-primary)',
                   position: 'absolute',
                 }}
               />
@@ -265,7 +265,7 @@ export default function EditorLayout() {
                 style={{
                   width: '100%', height: '100%',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: '#D4FF57',
+                  color: 'var(--brand-primary)',
                 }}
               >
                 <Sparkles size={18} />
@@ -279,7 +279,7 @@ export default function EditorLayout() {
                 fontFamily: 'DM Sans, sans-serif',
                 fontSize: 11, letterSpacing: 2,
                 textTransform: 'uppercase',
-                color: 'rgba(240, 237, 230, 0.6)',
+                color: 'var(--text-muted)',
               }}
             >
               Loading workspace...

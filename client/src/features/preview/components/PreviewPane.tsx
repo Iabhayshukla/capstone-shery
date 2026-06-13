@@ -55,9 +55,12 @@ const SECTION_STYLES = `
   [data-section-id] { cursor: pointer; transition: box-shadow 0.2s ease, outline 0.2s ease; }
   [data-section-id]:hover:not(.section-selected) { outline: 2px dashed rgba(99,102,241,0.6); outline-offset: 0px; }
   [data-section-id].section-selected {
-    outline: 2px solid #6366f1;
-    box-shadow: 0 0 0 4px rgba(99,102,241,0.15), 0 0 20px rgba(99,102,241,0.3), inset 0 0 20px rgba(99,102,241,0.05);
-    animation: sectionGlow 2s ease infinite;
+    outline: 2px solid #6366f1 !important;
+    box-shadow: 0 0 0 4px rgba(99,102,241,0.15), 0 0 20px rgba(99,102,241,0.3), inset 0 0 20px rgba(99,102,241,0.05) !important;
+    animation: sectionGlow 2s ease infinite !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
   }
   @keyframes sectionGlow {
     0%,100% { box-shadow: 0 0 0 4px rgba(99,102,241,0.15), 0 0 20px rgba(99,102,241,0.3), inset 0 0 20px rgba(99,102,241,0.05); }
@@ -116,14 +119,12 @@ export default function PreviewPane({
   const useWC = previewMethod === 'webcontainer';
   const iframeWidth = VIEWPORT_WIDTHS[viewport];
 
-  // IFRAME (srcdoc) mode
   useEffect(() => {
     if (useWC) return;
     if (!iframeRef.current || !html) return;
     iframeRef.current.srcdoc = prepareIframeSrcdoc(html);
   }, [html, useWC]);
 
-  // WEBCONTAINER mode
   useEffect(() => {
     if (!useWC) return;
     if (!html || status.status !== "ready") return;
@@ -140,7 +141,6 @@ export default function PreviewPane({
     run();
   }, [html, status.status, updateHtml, useWC]);
 
-  // Manual refresh
   useEffect(() => {
     if (refreshTrigger <= 0) return;
     handleRefresh();
@@ -230,12 +230,12 @@ export default function PreviewPane({
         </div>
       )}
 
-      {/* Preview area */}
+      {/* Preview area - no scrollbar, fits container */}
       <div
         className={
           hideHeader
             ? "flex-1 relative overflow-hidden bg-transparent"
-            : "flex-1 relative overflow-auto bg-[#2d2d2d] p-4"
+            : "flex-1 relative overflow-hidden bg-[#2d2d2d] p-4"
         }
         style={{ minHeight: 0 }}
       >
@@ -258,40 +258,43 @@ export default function PreviewPane({
           </div>
         )}
 
-        {/* FIX: Always apply viewport width, even when header is hidden */}
-        <div
-          className="mx-auto bg-white shadow-2xl transition-all duration-300 relative"
-          style={{
-            width: iframeWidth,
-            height: '100%',
-            minHeight: 0,
-          }}
-        >
-          {(!useWC || previewUrl) ? (
-            <>
-              <iframe
-                ref={iframeRef}
-                src={useWC ? previewUrl ?? undefined : undefined}
-                title="Live Preview"
-                sandbox={useWC ? "allow-same-origin allow-scripts allow-popups allow-forms allow-modals" : "allow-scripts"}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  border: 'none',
-                  display: 'block',
-                  backgroundColor: 'white',
-                }}
-              />
-              <SectionHighlight
-                selectedSectionId={selectedSectionId}
-                iframeRef={iframeRef}
-              />
-            </>
-          ) : (
-            <div className="flex items-center justify-center h-full text-gray-500 text-sm">
-              Starting preview...
-            </div>
-          )}
+        {/* Preview container that scales to fit without scrollbar */}
+        <div className="w-full h-full flex items-center justify-center overflow-hidden">
+          <div
+            className="bg-white shadow-2xl transition-all duration-300 relative"
+            style={{
+              width: iframeWidth,
+              maxWidth: '100%',
+              height: '100%',
+              minHeight: 0,
+            }}
+          >
+            {(!useWC || previewUrl) ? (
+              <>
+                <iframe
+                  ref={iframeRef}
+                  src={useWC ? previewUrl ?? undefined : undefined}
+                  title="Live Preview"
+                  sandbox={useWC ? "allow-same-origin allow-scripts allow-popups allow-forms allow-modals" : "allow-scripts"}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    border: 'none',
+                    display: 'block',
+                    backgroundColor: 'white',
+                  }}
+                />
+                <SectionHighlight
+                  selectedSectionId={selectedSectionId}
+                  iframeRef={iframeRef}
+                />
+              </>
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-500 text-sm">
+                Starting preview...
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
