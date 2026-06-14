@@ -1,11 +1,3 @@
-/* ═══════════════════════════════════════════════════════════════════════════
-   RESPONSIVE OVERRIDES
-   ═══════════════════════════════════════════════════════════════════════════
-   Purely additive CSS targeting existing class names and inline-style 
-   elements. Breakpoints chosen to NOT conflict with existing queries in 
-   index.css (which uses 768px and 1024px for .hide-mobile / .editor-split).
-   ═══════════════════════════════════════════════════════════════════════════ */
-
 /* ─────────────────────────────────────────────────────────────────────────
    1.  GLOBAL UTILITY IMPROVEMENTS
    ───────────────────────────────────────────────────────────────────────── */
