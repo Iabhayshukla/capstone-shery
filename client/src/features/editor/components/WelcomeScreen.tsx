@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, KeyboardEvent, MouseEvent } from 'react';
+import { useState, useRef, useEffect, KeyboardEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Sparkles } from 'lucide-react';
@@ -10,7 +10,6 @@ interface WelcomeScreenProps {
   isGenerating: boolean;
 }
 
-// New sample prompts – different from original
 const SAMPLE_PROMPTS = [
   'Dark mode dashboard for a crypto exchange',
   'Portfolio for a 3D motion designer',
@@ -19,7 +18,6 @@ const SAMPLE_PROMPTS = [
   'SaaS product page with pricing cards',
 ];
 
-// New ticker items – different tech stack
 const TICKER_ITEMS = [
   'React 18', 'Tailwind CSS', 'GPT-4 Turbo', 'SSE Streaming',
   'TypeScript', 'Framer Motion', 'Radix UI', 'Vercel AI',
@@ -32,6 +30,7 @@ export default function WelcomeScreen({ onGenerate, isGenerating }: WelcomeScree
   const [focused, setFocused] = useState(false);
   const [charCount, setCharCount] = useState(0);
   const [particles, setParticles] = useState<{ id: number; x: number; y: number }[]>([]);
+  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const threeContainerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -40,17 +39,20 @@ export default function WelcomeScreen({ onGenerate, isGenerating }: WelcomeScree
   const animationIdRef = useRef<number | null>(null);
   const mainGroupRef = useRef<THREE.Group | null>(null);
   
-  // Mouse tracking for additional offset
   const targetMouseOffsetX = useRef(0);
   const targetMouseOffsetY = useRef(0);
   const currentMouseOffsetX = useRef(0);
   const currentMouseOffsetY = useRef(0);
-  
-  // Auto-rotation angles
   const autoRotateAngleX = useRef(0);
   const autoRotateAngleY = useRef(0);
   const autoRotateSpeedX = 0.0012;
   const autoRotateSpeedY = 0.0025;
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     textareaRef.current?.focus();
@@ -64,34 +66,29 @@ export default function WelcomeScreen({ onGenerate, isGenerating }: WelcomeScree
     setCharCount(prompt.length);
   }, [prompt]);
 
-  // Track mouse movement for offset (range -0.6 to 0.6)
   useEffect(() => {
     const handleMouseMove = (e: globalThis.MouseEvent) => {
       const normalizedX = (e.clientX / window.innerWidth) * 2 - 1;
       const normalizedY = (e.clientY / window.innerHeight) * 2 - 1;
-      targetMouseOffsetY.current = normalizedX * 0.6;   // Yaw (Y axis rotation)
-      targetMouseOffsetX.current = normalizedY * 0.4;   // Pitch (X axis rotation)
+      targetMouseOffsetY.current = normalizedX * 0.6;
+      targetMouseOffsetX.current = normalizedY * 0.4;
     };
     window.addEventListener('mousemove', handleMouseMove);
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
-  // Initialize Three.js 3D scene – EXACT original logic & colors (purple/blue)
   useEffect(() => {
     if (!threeContainerRef.current) return;
 
-    // Setup scene with transparent background
     const scene = new THREE.Scene();
     scene.background = null;
     sceneRef.current = scene;
 
-    // Camera: fixed position, looking at center
     const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
     camera.position.set(0, 1.2, 5.5);
     camera.lookAt(0, 0, 0);
     cameraRef.current = camera;
 
-    // Renderer with alpha
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
@@ -99,7 +96,6 @@ export default function WelcomeScreen({ onGenerate, isGenerating }: WelcomeScree
     threeContainerRef.current.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
-    // Lighting
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.45);
     scene.add(ambientLight);
     
@@ -119,12 +115,10 @@ export default function WelcomeScreen({ onGenerate, isGenerating }: WelcomeScree
     rimLight.position.set(2, 1, -2);
     scene.add(rimLight);
     
-    // Central object group (rotates with auto + mouse)
     const group = new THREE.Group();
     scene.add(group);
     mainGroupRef.current = group;
     
-    // Main torus knot
     const geometry = new THREE.TorusKnotGeometry(1.1, 0.28, 180, 24, 3, 4);
     const material = new THREE.MeshStandardMaterial({
       color: 0x6c63ff,
@@ -137,7 +131,6 @@ export default function WelcomeScreen({ onGenerate, isGenerating }: WelcomeScree
     torusKnot.castShadow = true;
     group.add(torusKnot);
     
-    // Wireframe shell
     const wireframeGeo = new THREE.TorusKnotGeometry(1.16, 0.3, 150, 20, 3, 4);
     const wireframeMat = new THREE.MeshBasicMaterial({
       color: 0x8a7aff,
@@ -148,7 +141,6 @@ export default function WelcomeScreen({ onGenerate, isGenerating }: WelcomeScree
     const wireframeKnot = new THREE.Mesh(wireframeGeo, wireframeMat);
     group.add(wireframeKnot);
     
-    // Floating particles
     const particleCount = 800;
     const particleGeometry = new THREE.BufferGeometry();
     const particlePositions = new Float32Array(particleCount * 3);
@@ -170,7 +162,6 @@ export default function WelcomeScreen({ onGenerate, isGenerating }: WelcomeScree
     const particleSystem = new THREE.Points(particleGeometry, particleMaterial);
     group.add(particleSystem);
     
-    // Rings
     const ringGeo = new THREE.TorusGeometry(1.45, 0.04, 64, 300);
     const ringMat = new THREE.MeshStandardMaterial({
       color: 0x7d6eff,
@@ -196,7 +187,6 @@ export default function WelcomeScreen({ onGenerate, isGenerating }: WelcomeScree
     ring2.rotation.x = Math.PI / 2.5;
     group.add(ring2);
     
-    // Starfield background
     const starCount = 1800;
     const starGeo = new THREE.BufferGeometry();
     const starPositions = new Float32Array(starCount * 3);
@@ -230,7 +220,6 @@ export default function WelcomeScreen({ onGenerate, isGenerating }: WelcomeScree
     const stars = new THREE.Points(starGeo, starMaterialObj);
     scene.add(stars);
     
-    // Dust particles
     const dustCount = 2500;
     const dustGeo = new THREE.BufferGeometry();
     const dustPositions = new Float32Array(dustCount * 3);
@@ -244,13 +233,11 @@ export default function WelcomeScreen({ onGenerate, isGenerating }: WelcomeScree
     const dustParticles = new THREE.Points(dustGeo, dustMat);
     scene.add(dustParticles);
     
-    // Animation variables
     let time = 0;
     
     const animate = () => {
       time += 0.012;
       
-      // Color cycling
       const color = new THREE.Color().setHSL(0.65 + Math.sin(time * 0.25) * 0.08, 0.9, 0.55);
       material.color = color;
       const emissiveColor = new THREE.Color().setHSL(0.7 + Math.sin(time * 0.3) * 0.1, 1.0, 0.35);
@@ -262,18 +249,15 @@ export default function WelcomeScreen({ onGenerate, isGenerating }: WelcomeScree
       ring2Mat.emissiveIntensity = 0.3 + Math.sin(time * 2.2) * 0.1;
       particleMaterial.color = new THREE.Color().setHSL(0.66 + Math.sin(time * 0.5) * 0.04, 1.0, 0.6);
       
-      // Ring internal rotations
       ring.rotation.z += 0.003;
       ring.rotation.y += 0.002;
       ring2.rotation.x += 0.002;
       ring2.rotation.z += 0.001;
       
-      // Starfield and dust drift
       stars.rotation.y += 0.0002;
       stars.rotation.x += 0.0001;
       dustParticles.rotation.y -= 0.00015;
       
-      // Hybrid Rotation: Auto + Mouse Follow
       autoRotateAngleX.current += autoRotateSpeedX;
       autoRotateAngleY.current += autoRotateSpeedY;
       
@@ -289,12 +273,10 @@ export default function WelcomeScreen({ onGenerate, isGenerating }: WelcomeScree
         mainGroupRef.current.rotation.y = finalRotY;
       }
       
-      // Lighting breathing
       fillLight.intensity = 0.55 + Math.sin(time * 1.2) * 0.1;
       backLight.intensity = 0.45 + Math.cos(time * 1.5) * 0.12;
       rimLight.intensity = 0.5 + Math.sin(time * 1.9) * 0.1;
       
-      // Camera stays fixed, always looking at center
       camera.lookAt(0, 0, 0);
       
       renderer.render(scene, camera);
@@ -303,7 +285,6 @@ export default function WelcomeScreen({ onGenerate, isGenerating }: WelcomeScree
     
     animate();
     
-    // Resize handler
     const handleResize = () => {
       if (!cameraRef.current || !rendererRef.current) return;
       cameraRef.current.aspect = window.innerWidth / window.innerHeight;
@@ -320,20 +301,6 @@ export default function WelcomeScreen({ onGenerate, isGenerating }: WelcomeScree
         containerNode.removeChild(rendererRef.current.domElement);
         rendererRef.current.dispose();
       }
-      geometry.dispose();
-      material.dispose();
-      wireframeGeo.dispose();
-      wireframeMat.dispose();
-      particleGeometry.dispose();
-      particleMaterial.dispose();
-      ringGeo.dispose();
-      ringMat.dispose();
-      ring2Geo.dispose();
-      ring2Mat.dispose();
-      starGeo.dispose();
-      starMaterialObj.dispose();
-      dustGeo.dispose();
-      dustMat.dispose();
     };
   }, []);
 
@@ -361,6 +328,9 @@ export default function WelcomeScreen({ onGenerate, isGenerating }: WelcomeScree
     }
   };
 
+  const isMobile = windowWidth < 768;
+  const isSmallMobile = windowWidth < 480;
+
   return (
     <div
       style={{
@@ -374,7 +344,6 @@ export default function WelcomeScreen({ onGenerate, isGenerating }: WelcomeScree
         fontFamily: 'DM Sans, sans-serif',
       }}
     >
-      {/* 3D Canvas Container */}
       <div
         ref={threeContainerRef}
         style={{
@@ -382,85 +351,100 @@ export default function WelcomeScreen({ onGenerate, isGenerating }: WelcomeScree
           inset: 0,
           zIndex: 0,
           pointerEvents: 'none',
-          opacity: 0.85,
+          opacity: isMobile ? 0.6 : 0.85,
         }}
       />
       
-      {/* Grid bg */}
       <div style={{
         position: 'absolute', inset: 0, zIndex: 1,
         backgroundImage: `linear-gradient(rgba(255,255,255,0.028) 1px, transparent 1px),
                           linear-gradient(90deg, rgba(255,255,255,0.028) 1px, transparent 1px)`,
-        backgroundSize: '72px 72px',
+        backgroundSize: `${isMobile ? '48px' : '72px'} ${isMobile ? '48px' : '72px'}`,
         maskImage: 'radial-gradient(ellipse 80% 80% at 50% 40%, black 20%, transparent 100%)',
         pointerEvents: 'none',
       }} />
 
-      {/* Aurora blobs */}
       <div style={{ position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none', overflow: 'hidden' }}>
         <div style={{
-          position: 'absolute', width: 700, height: 400,
+          position: 'absolute', 
+          width: isMobile ? 400 : 700, 
+          height: isMobile ? 250 : 400,
           background: `linear-gradient(135deg, var(--brand-primary) 0%, transparent 60%)`,
-          borderRadius: '50%', filter: 'blur(90px)',
-          top: -120, left: -200, opacity: 0.1,
+          borderRadius: '50%', 
+          filter: 'blur(90px)',
+          top: -120, 
+          left: -200, 
+          opacity: 0.1,
           animation: 'aFloat1 20s ease-in-out infinite',
         }} />
         <div style={{
-          position: 'absolute', width: 500, height: 500,
+          position: 'absolute', 
+          width: isMobile ? 300 : 500, 
+          height: isMobile ? 300 : 500,
           background: `linear-gradient(225deg, var(--brand-accent) 0%, transparent 60%)`,
-          borderRadius: '50%', filter: 'blur(90px)',
-          bottom: -50, right: -100, opacity: 0.08,
+          borderRadius: '50%', 
+          filter: 'blur(90px)',
+          bottom: -50, 
+          right: -100, 
+          opacity: 0.08,
           animation: 'aFloat2 26s ease-in-out infinite',
         }} />
       </div>
 
-      {/* Ticker – new items */}
       <div style={{
-        position: 'relative', zIndex: 2,
+        position: 'relative', 
+        zIndex: 2,
         borderBottom: '1px solid var(--border)',
-        padding: '10px 0', overflow: 'hidden',
+        padding: `${isMobile ? '6px' : '10px'} 0`, 
+        overflow: 'hidden',
         background: 'rgba(var(--brand-primary-rgb, 108, 99, 255), 0.02)',
         flexShrink: 0,
       }}>
         <div style={{
-          display: 'flex', animation: 'tickScroll 22s linear infinite',
+          display: 'flex', 
+          animation: 'tickScroll 22s linear infinite',
           whiteSpace: 'nowrap',
         }}>
           {TICKER_ITEMS.map((item, i) => (
             <span key={i} style={{
-              display: 'inline-flex', alignItems: 'center', gap: 10,
-              padding: '0 28px', fontSize: 10, letterSpacing: 2,
-              textTransform: 'uppercase', color: 'var(--text-muted)',
+              display: 'inline-flex', 
+              alignItems: 'center', 
+              gap: isMobile ? 6 : 10,
+              padding: `0 ${isMobile ? 16 : 28}px`, 
+              fontSize: isMobile ? 8 : 10, 
+              letterSpacing: isMobile ? 1 : 2,
+              textTransform: 'uppercase', 
+              color: 'var(--text-muted)',
             }}>
               {item}
-              <span style={{ color: 'var(--brand-primary)', opacity: 0.5, fontSize: 14 }}>✦</span>
+              <span style={{ color: 'var(--brand-primary)', opacity: 0.5, fontSize: isMobile ? 10 : 14 }}>✦</span>
             </span>
           ))}
         </div>
       </div>
 
-      {/* Back Button */}
       <Link
         to="/dashboard"
         style={{
           position: 'absolute',
-          top: 60,
-          left: 24,
+          top: isMobile ? 16 : 60,
+          left: isMobile ? 12 : 24,
           zIndex: 10,
           display: 'flex',
           alignItems: 'center',
-          gap: 8,
-          fontSize: 11,
+          gap: isMobile ? 4 : 8,
+          fontSize: isMobile ? 9 : 11,
           fontWeight: 500,
-          letterSpacing: 1.5,
+          letterSpacing: isMobile ? 1 : 1.5,
           textTransform: 'uppercase',
           color: 'var(--text-muted)',
           textDecoration: 'none',
           background: 'var(--surface)',
           border: '1px solid var(--border)',
-          padding: '8px 16px',
+          padding: `${isMobile ? '6px' : '8px'} ${isMobile ? '12px' : '16px'}`,
           transition: 'all 0.2s',
           backdropFilter: 'blur(8px)',
+          whiteSpace: 'nowrap',
         }}
         onMouseEnter={e => {
           (e.currentTarget as HTMLAnchorElement).style.borderColor = 'var(--brand-primary)';
@@ -473,42 +457,51 @@ export default function WelcomeScreen({ onGenerate, isGenerating }: WelcomeScree
           (e.currentTarget as HTMLAnchorElement).style.background = 'var(--surface)';
         }}
       >
-        <ArrowLeft size={13} />
-        Back to Dashboard
+        <ArrowLeft size={isMobile ? 10 : 13} />
+        <span>{isSmallMobile ? 'Back' : 'Back to Dashboard'}</span>
       </Link>
 
-      {/* Main Content */}
       <div style={{
-        flex: 1, display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center',
-        padding: '24px 24px 40px', position: 'relative', zIndex: 2,
+        flex: 1, 
+        display: 'flex', 
+        flexDirection: 'column',
+        alignItems: 'center', 
+        justifyContent: 'center',
+        padding: `${isMobile ? '16px' : '24px'} ${isMobile ? '16px' : '24px'} ${isMobile ? '24px' : '40px'}`,
+        position: 'relative', 
+        zIndex: 2,
         gap: 0,
-        transform: 'translateY(-12px)',
+        transform: `translateY(${isMobile ? '-4px' : '-12px'})`,
       }}>
-
-        {/* Logo badge – new text */}
         <motion.div
           initial={{ opacity: 0, y: -16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
           style={{
-            display: 'inline-flex', alignItems: 'center', gap: 8,
-            fontSize: 11, letterSpacing: 2, textTransform: 'uppercase',
+            display: 'inline-flex', 
+            alignItems: 'center', 
+            gap: isMobile ? 4 : 8,
+            fontSize: isMobile ? 8 : 11, 
+            letterSpacing: isMobile ? 1 : 2, 
+            textTransform: 'uppercase',
             color: 'var(--text-muted)',
             border: '1px solid var(--border)',
-            padding: '7px 16px', marginBottom: 20,
+            padding: `${isMobile ? '4px' : '7px'} ${isMobile ? '12px' : '16px'}`, 
+            marginBottom: isMobile ? 12 : 20,
           }}
         >
           <span style={{
-            width: 6, height: 6, borderRadius: '50%',
-            background: 'var(--brand-primary)', animation: 'blink 1.4s step-end infinite',
+            width: isMobile ? 4 : 6, 
+            height: isMobile ? 4 : 6, 
+            borderRadius: '50%',
+            background: 'var(--brand-primary)', 
+            animation: 'blink 1.4s step-end infinite',
             display: 'inline-block',
           }} />
-          Capstone-Shery AI — Next Gen Builder
+          <span>{isSmallMobile ? 'Shery AI' : 'Capstone-Shery AI — Next Gen Builder'}</span>
         </motion.div>
 
-        {/* Heading – new text */}
-        <div style={{ textAlign: 'center', marginBottom: 28, lineHeight: 0.92 }}>
+        <div style={{ textAlign: 'center', marginBottom: isMobile ? 16 : 28, lineHeight: 0.92 }}>
           {['Create the', 'Impossible'].map((line, li) => (
             <motion.div
               key={li}
@@ -516,10 +509,13 @@ export default function WelcomeScreen({ onGenerate, isGenerating }: WelcomeScree
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 + li * 0.12, ease: [0.22, 1, 0.36, 1] }}
               style={{
-                overflow: 'hidden', display: 'block',
+                overflow: 'hidden', 
+                display: 'block',
                 fontFamily: "'Bebas Neue', sans-serif",
-                fontSize: 'clamp(52px, 8vw, 96px)',
-                letterSpacing: 1,
+                fontSize: isMobile 
+                  ? (li === 1 ? '48px' : '42px')
+                  : `clamp(52px, 8vw, ${li === 1 ? '96px' : '84px'})`,
+                letterSpacing: isMobile ? 0 : 1,
                 color: li === 1 ? 'var(--brand-primary)' : 'var(--text-primary)',
                 lineHeight: 1,
               }}
@@ -532,21 +528,28 @@ export default function WelcomeScreen({ onGenerate, isGenerating }: WelcomeScree
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.5 }}
             style={{
-              marginTop: 16,
-              fontSize: 14, fontWeight: 300, letterSpacing: 0.3,
-              color: 'var(--text-muted)', lineHeight: 1.7,
+              marginTop: isMobile ? 12 : 16,
+              fontSize: isMobile ? 11 : 14, 
+              fontWeight: 300, 
+              letterSpacing: 0.3,
+              color: 'var(--text-muted)', 
+              lineHeight: 1.7,
+              padding: `0 ${isMobile ? 16 : 0}px`,
             }}
           >
             Describe your dream website and AI will build it instantly.
           </motion.p>
         </div>
 
-        {/* Input box – same styling */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.4 }}
-          style={{ width: '100%', maxWidth: 680, marginBottom: 16 }}
+          style={{ 
+            width: '100%', 
+            maxWidth: isMobile ? '90vw' : 680, 
+            marginBottom: isMobile ? 12 : 16 
+          }}
         >
           <div style={{
             position: 'relative',
@@ -567,24 +570,41 @@ export default function WelcomeScreen({ onGenerate, isGenerating }: WelcomeScree
               rows={3}
               disabled={isGenerating}
               style={{
-                width: '100%', background: 'transparent', resize: 'none',
-                outline: 'none', border: 'none',
-                padding: '20px 20px 60px',
-                fontSize: 14, lineHeight: 1.7, fontWeight: 300,
-                color: 'var(--text-primary)', fontFamily: 'DM Sans, sans-serif',
+                width: '100%', 
+                background: 'transparent', 
+                resize: 'none',
+                outline: 'none', 
+                border: 'none',
+                padding: `${isMobile ? '12px' : '20px'} ${isMobile ? '12px' : '20px'} ${isMobile ? '40px' : '60px'}`,
+                fontSize: isMobile ? 12 : 14, 
+                lineHeight: 1.7, 
+                fontWeight: 300,
+                color: 'var(--text-primary)', 
+                fontFamily: 'DM Sans, sans-serif',
                 letterSpacing: 0.2,
               }}
             />
 
-            {/* Bottom bar */}
             <div style={{
-              position: 'absolute', bottom: 0, left: 0, right: 0,
-              padding: '10px 14px', display: 'flex',
-              alignItems: 'center', justifyContent: 'space-between',
+              position: 'absolute', 
+              bottom: 0, 
+              left: 0, 
+              right: 0,
+              padding: `${isMobile ? '6px' : '10px'} ${isMobile ? '8px' : '14px'}`,
+              display: 'flex',
+              alignItems: 'center', 
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '8px',
               borderTop: '1px solid var(--border)',
               background: 'rgba(0,0,0,0.2)',
             }}>
-              <span style={{ fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+              <span style={{ 
+                fontSize: isMobile ? 8 : 10, 
+                letterSpacing: isMobile ? 1 : 1.5, 
+                textTransform: 'uppercase', 
+                color: 'var(--text-muted)',
+              }}>
                 ⏎ Generate · ⇧+⏎ new line
                 {charCount > 0 && ` · ${charCount} chars`}
               </span>
@@ -595,31 +615,41 @@ export default function WelcomeScreen({ onGenerate, isGenerating }: WelcomeScree
                 disabled={!prompt.trim() || isGenerating}
                 className="generate-btn"
                 style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  fontSize: 11, fontWeight: 500, letterSpacing: 2,
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: isMobile ? 4 : 8,
+                  fontSize: isMobile ? 9 : 11, 
+                  fontWeight: 500, 
+                  letterSpacing: isMobile ? 1 : 2,
                   textTransform: 'uppercase',
                   color: !prompt.trim() || isGenerating ? 'rgba(255,255,255,0.5)' : '#ffffff',
                   background: !prompt.trim() || isGenerating ? 'rgba(var(--brand-primary-rgb, 108, 99, 255), 0.4)' : 'var(--brand-primary)',
-                  border: 'none', padding: '9px 20px',
+                  border: 'none', 
+                  padding: `${isMobile ? '6px' : '9px'} ${isMobile ? '12px' : '20px'}`,
                   cursor: !prompt.trim() || isGenerating ? 'not-allowed' : 'pointer',
                   transition: 'all 0.2s',
-                  position: 'relative', overflow: 'hidden',
+                  position: 'relative', 
+                  overflow: 'hidden',
+                  whiteSpace: 'nowrap',
                 }}
               >
                 {isGenerating ? (
                   <>
                     <div style={{
-                      width: 12, height: 12, borderRadius: '50%',
-                      border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#ffffff',
+                      width: isMobile ? 10 : 12, 
+                      height: isMobile ? 10 : 12, 
+                      borderRadius: '50%',
+                      border: '2px solid rgba(255,255,255,0.3)', 
+                      borderTopColor: '#ffffff',
                       animation: 'spin 1s linear infinite',
                     }} />
-                    Generating...
+                    <span>{isSmallMobile ? 'Gen...' : 'Generating...'}</span>
                   </>
                 ) : (
                   <>
-                    <Sparkles size={12} />
-                    Generate
-                    <ArrowRight size={12} />
+                    <Sparkles size={isMobile ? 10 : 12} />
+                    <span>{isSmallMobile ? 'Gen' : 'Generate'}</span>
+                    <ArrowRight size={isMobile ? 10 : 12} />
                   </>
                 )}
               </motion.button>
@@ -627,12 +657,18 @@ export default function WelcomeScreen({ onGenerate, isGenerating }: WelcomeScree
           </div>
         </motion.div>
 
-        {/* Sample prompts – new list */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.6 }}
-          style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', maxWidth: 680 }}
+          style={{ 
+            display: 'flex', 
+            flexWrap: 'wrap', 
+            gap: isMobile ? 6 : 8, 
+            justifyContent: 'center', 
+            maxWidth: isMobile ? '90vw' : 680,
+            padding: `0 ${isMobile ? 8 : 0}px`,
+          }}
         >
           {SAMPLE_PROMPTS.map((p, i) => (
             <motion.button
@@ -644,21 +680,26 @@ export default function WelcomeScreen({ onGenerate, isGenerating }: WelcomeScree
               whileTap={{ scale: 0.97 }}
               onClick={() => setPrompt(p)}
               style={{
-                fontSize: 11, fontWeight: 300, letterSpacing: 0.5,
+                fontSize: isMobile ? 9 : 11, 
+                fontWeight: 300, 
+                letterSpacing: 0.5,
                 color: 'var(--text-muted)',
                 background: 'transparent',
                 border: '1px solid var(--border)',
-                padding: '7px 14px', cursor: 'pointer',
+                padding: `${isMobile ? '4px' : '7px'} ${isMobile ? '10px' : '14px'}`, 
+                cursor: 'pointer',
                 transition: 'all 0.2s',
                 fontFamily: 'DM Sans, sans-serif',
+                whiteSpace: isMobile ? 'normal' : 'nowrap',
+                textAlign: 'center',
               }}
-              onMouseEnter={(e: MouseEvent<HTMLButtonElement>) => {
-                (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--brand-primary)';
-                (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)';
+              onMouseEnter={(e: React.MouseEvent<HTMLButtonElement>) => {
+                e.currentTarget.style.borderColor = 'var(--brand-primary)';
+                e.currentTarget.style.color = 'var(--text-primary)';
               }}
-              onMouseLeave={(e: MouseEvent<HTMLButtonElement>) => {
-                (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)';
-                (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)';
+              onMouseLeave={(e: React.MouseEvent<HTMLButtonElement>) => {
+                e.currentTarget.style.borderColor = 'var(--border)';
+                e.currentTarget.style.color = 'var(--text-muted)';
               }}
             >
               {p}
@@ -667,40 +708,6 @@ export default function WelcomeScreen({ onGenerate, isGenerating }: WelcomeScree
         </motion.div>
       </div>
 
-      {/* Bottom stats bar – new metrics */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.9 }}
-        style={{
-          position: 'relative', zIndex: 2,
-          borderTop: '1px solid var(--border)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          gap: 0, flexShrink: 0,
-        }}
-      >
-        {[
-          { n: '18,247', l: 'Sites Generated' },
-          { n: '~6s',    l: 'Avg Build Time' },
-          { n: 'React+TS', l: 'Clean Code' },
-        ].map((s, i) => (
-          <div key={i} style={{
-            display: 'flex', flexDirection: 'column', gap: 2,
-            padding: '14px 40px', textAlign: 'center',
-            borderRight: i < 2 ? '1px solid var(--border)' : 'none',
-          }}>
-            <span style={{
-              fontFamily: "'Bebas Neue', sans-serif",
-              fontSize: 24, letterSpacing: 1, color: 'var(--text-primary)', lineHeight: 1,
-            }}>{s.n}</span>
-            <span style={{ fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', color: 'var(--text-muted)' }}>
-              {s.l}
-            </span>
-          </div>
-        ))}
-      </motion.div>
-
-      {/* Particles portal */}
       {particles.map(p => (
         createPortal(
           <motion.div

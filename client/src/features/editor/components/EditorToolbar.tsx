@@ -14,7 +14,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { exportHtml } from "../api/export.api";
-import { ViewportSize } from "@/features/preview/types/preview.types";
+import type { ViewportSize } from "@/features/preview/types/preview.types";
 
 interface EditorToolbarProps {
   canUndo: boolean;
@@ -29,9 +29,9 @@ interface EditorToolbarProps {
   html: string;
 }
 
-// ─── Theme Hook (local to toolbar, no extra file needed) ─────────────────────
-function useTheme() {
-  const [isDark, setIsDark] = useState(() => {
+// Theme Hook
+function useTheme(): { isDark: boolean; toggle: () => void } {
+  const [isDark, setIsDark] = useState<boolean>(() => {
     const saved = localStorage.getItem("theme");
     if (saved) return saved === "dark";
     return document.documentElement.classList.contains("dark");
@@ -47,17 +47,26 @@ function useTheme() {
     }
   }, [isDark]);
 
-  return { isDark, toggle: () => setIsDark(v => !v) };
+  const toggle = (): void => {
+    setIsDark((prev: boolean) => !prev);
+  };
+
+  return { isDark, toggle };
 }
 
-// ─── Viewport options ─────────────────────────────────────────────────────────
-const VIEWPORT_OPTIONS: { value: ViewportSize; icon: typeof Monitor; label: string; width: string }[] = [
-  { value: "desktop", icon: Monitor,    label: "Desktop", width: "1280px" },
-  { value: "tablet",  icon: Tablet,     label: "Tablet",  width: "768px"  },
-  { value: "mobile",  icon: Smartphone, label: "Mobile",  width: "375px"  },
-];
+// Viewport options
+const VIEWPORT_OPTIONS: readonly {
+  value: ViewportSize;
+  icon: typeof Monitor;
+  label: string;
+  width: string;
+}[] = [
+  { value: "desktop", icon: Monitor, label: "Desktop", width: "1280px" },
+  { value: "tablet", icon: Tablet, label: "Tablet", width: "768px" },
+  { value: "mobile", icon: Smartphone, label: "Mobile", width: "375px" },
+] as const;
 
-// ─── Toolbar Button ───────────────────────────────────────────────────────────
+// Toolbar Button Component
 function ToolbarBtn({
   onClick,
   disabled,
@@ -72,7 +81,7 @@ function ToolbarBtn({
   title?: string;
   children: React.ReactNode;
   variant?: "ghost" | "primary" | "success" | "code";
-}) {
+}): React.ReactElement {
   const base: React.CSSProperties = {
     display: "flex",
     alignItems: "center",
@@ -128,8 +137,8 @@ function ToolbarBtn({
   );
 }
 
-// ─── Divider ─────────────────────────────────────────────────────────────────
-function Divider() {
+// Divider Component
+function Divider(): React.ReactElement {
   return (
     <div
       style={{
@@ -142,7 +151,7 @@ function Divider() {
   );
 }
 
-// ─── Main Toolbar ─────────────────────────────────────────────────────────────
+// Main Toolbar Component
 export default function EditorToolbar({
   canUndo,
   canRedo,
@@ -154,12 +163,40 @@ export default function EditorToolbar({
   showCode,
   onToggleCode,
   html,
-}: EditorToolbarProps) {
+}: EditorToolbarProps): React.ReactElement {
   const { isDark, toggle: toggleTheme } = useTheme();
-  const [viewportOpen, setViewportOpen] = useState(false);
+  const [viewportOpen, setViewportOpen] = useState<boolean>(false);
+  const [windowWidth, setWindowWidth] = useState<number>(
+    typeof window !== "undefined" ? window.innerWidth : 1200
+  );
 
-  const currentViewport = VIEWPORT_OPTIONS.find(v => v.value === viewport)!;
-  const ViewportIcon = currentViewport.icon;
+  // Handle window resize for responsive design
+  useEffect(() => {
+    const handleResize = (): void => {
+      setWindowWidth(window.innerWidth);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const currentViewport = VIEWPORT_OPTIONS.find((v) => v.value === viewport);
+  const ViewportIcon = currentViewport?.icon || Monitor;
+
+  const isMobile: boolean = windowWidth < 768;
+  const isSmallMobile: boolean = windowWidth < 480;
+
+  const handleViewportChange = (value: ViewportSize): void => {
+    onViewportChange(value);
+    setViewportOpen(false);
+  };
+
+  const handleExport = (): void => {
+    exportHtml(html);
+  };
+
+  const handleToggleViewport = (): void => {
+    setViewportOpen((prev: boolean) => !prev);
+  };
 
   return (
     <motion.div
@@ -169,52 +206,62 @@ export default function EditorToolbar({
       style={{
         display: "flex",
         alignItems: "center",
-        gap: "4px",
-        padding: "6px 12px",
+        gap: isMobile ? "2px" : "4px",
+        padding: isMobile ? "4px 8px" : "6px 12px",
         borderBottom: "1px solid var(--brand-border)",
         background: "var(--brand-surface)",
         backdropFilter: "blur(12px)",
         flexShrink: 0,
         zIndex: 50,
-        minHeight: "48px",
+        minHeight: isMobile ? "44px" : "48px",
+        overflowX: "auto",
+        overflowY: "hidden",
+        scrollbarWidth: "thin",
       }}
     >
-      {/* ── Left: Undo / Redo ── */}
-      <div style={{ display: "flex", alignItems: "center", gap: "2px" }}>
+      {/* Undo / Redo */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "2px",
+          flexShrink: 0,
+        }}
+      >
         <ToolbarBtn onClick={onUndo} disabled={!canUndo} title="Undo (Ctrl+Z)">
-          <Undo2 size={15} />
+          <Undo2 size={isMobile ? 13 : 15} />
         </ToolbarBtn>
         <ToolbarBtn onClick={onRedo} disabled={!canRedo} title="Redo (Ctrl+Y)">
-          <Redo2 size={15} />
+          <Redo2 size={isMobile ? 13 : 15} />
         </ToolbarBtn>
       </div>
 
       <Divider />
 
-      {/* ── Export ── */}
-      <ToolbarBtn
-        onClick={() => exportHtml(html)}
-        variant="success"
-        title="Export HTML"
-      >
-        <Download size={14} />
-        <span>Export</span>
+      {/* Export */}
+      <ToolbarBtn onClick={handleExport} variant="success" title="Export HTML">
+        <Download size={isMobile ? 12 : 14} />
+        {!isSmallMobile && <span>Export</span>}
       </ToolbarBtn>
 
       <Divider />
 
-      {/* ── Code toggle ── */}
+      {/* Code toggle */}
       <ToolbarBtn
         onClick={onToggleCode}
         variant="code"
         active={showCode}
         title={showCode ? "Hide Code" : "Show Code"}
       >
-        {showCode ? <Eye size={14} /> : <Code2 size={14} />}
-        <span>{showCode ? "Preview" : "Code"}</span>
+        {showCode ? (
+          <Eye size={isMobile ? 12 : 14} />
+        ) : (
+          <Code2 size={isMobile ? 12 : 14} />
+        )}
+        {!isSmallMobile && <span>{showCode ? "Preview" : "Code"}</span>}
       </ToolbarBtn>
 
-      {/* ── Selected Section Badge ── */}
+      {/* Selected Section Badge */}
       <AnimatePresence>
         {selectedSection && (
           <motion.div
@@ -225,14 +272,15 @@ export default function EditorToolbar({
               display: "flex",
               alignItems: "center",
               gap: "6px",
-              padding: "4px 10px",
+              padding: isMobile ? "4px 8px" : "4px 10px",
               borderRadius: "8px",
               background: "rgba(59,130,246,0.1)",
               border: "1px solid rgba(59,130,246,0.25)",
-              fontSize: "11px",
+              fontSize: isMobile ? "10px" : "11px",
               color: "#60a5fa",
               fontWeight: 500,
               whiteSpace: "nowrap",
+              flexShrink: 0,
             }}
           >
             <div
@@ -243,27 +291,37 @@ export default function EditorToolbar({
                 background: "#3b82f6",
               }}
             />
-            ◈ {selectedSection}
+            {isMobile
+              ? selectedSection.substring(0, 12)
+              : `◈ ${selectedSection}`}
+            {isMobile && selectedSection.length > 12 && "..."}
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* ── Spacer ── */}
-      <div style={{ flex: 1 }} />
+      {/* Spacer */}
+      <div style={{ flex: 1, minWidth: "8px" }} />
 
-      {/* ── Center: Viewport Switcher (dropdown) ── */}
-      <div style={{ position: "relative" }}>
+      {/* Viewport Switcher */}
+      <div style={{ position: "relative", flexShrink: 0 }}>
         <ToolbarBtn
-          onClick={() => setViewportOpen(v => !v)}
+          onClick={handleToggleViewport}
           active={viewportOpen}
           title="Change viewport"
         >
-          <ViewportIcon size={14} />
-          <span style={{ color: "var(--text-muted)", fontSize: "11px" }}>
-            {currentViewport.width}
-          </span>
+          <ViewportIcon size={isMobile ? 12 : 14} />
+          {!isSmallMobile && (
+            <span
+              style={{
+                color: "var(--text-muted)",
+                fontSize: isMobile ? "10px" : "11px",
+              }}
+            >
+              {currentViewport?.width}
+            </span>
+          )}
           <ChevronDown
-            size={12}
+            size={isMobile ? 10 : 12}
             style={{
               color: "var(--text-faint)",
               transform: viewportOpen ? "rotate(180deg)" : "rotate(0deg)",
@@ -282,8 +340,9 @@ export default function EditorToolbar({
               style={{
                 position: "absolute",
                 top: "calc(100% + 6px)",
-                left: "50%",
-                transform: "translateX(-50%)",
+                right: isMobile ? "0" : "auto",
+                left: isMobile ? "auto" : "50%",
+                transform: isMobile ? "translateX(0)" : "translateX(-50%)",
                 background: "var(--brand-surface)",
                 border: "1px solid var(--brand-border)",
                 borderRadius: "10px",
@@ -293,40 +352,45 @@ export default function EditorToolbar({
                 gap: "2px",
                 boxShadow: "var(--shadow-lg)",
                 zIndex: 100,
-                minWidth: "140px",
+                minWidth: isMobile ? "120px" : "140px",
               }}
             >
-              {VIEWPORT_OPTIONS.map(opt => {
+              {VIEWPORT_OPTIONS.map((opt) => {
                 const Icon = opt.icon;
                 const isActive = viewport === opt.value;
                 return (
                   <button
                     key={opt.value}
-                    onClick={() => {
-                      onViewportChange(opt.value);
-                      setViewportOpen(false);
-                    }}
+                    onClick={() => handleViewportChange(opt.value)}
                     style={{
                       display: "flex",
                       alignItems: "center",
                       gap: "8px",
-                      padding: "7px 10px",
+                      padding: isMobile ? "6px 8px" : "7px 10px",
                       borderRadius: "7px",
-                      fontSize: "12px",
+                      fontSize: isMobile ? "11px" : "12px",
                       cursor: "pointer",
                       border: "none",
-                      background: isActive ? "var(--brand-primary-light)" : "transparent",
-                      color: isActive ? "var(--brand-primary)" : "var(--text-muted)",
+                      background: isActive
+                        ? "var(--brand-primary-light)"
+                        : "transparent",
+                      color: isActive
+                        ? "var(--brand-primary)"
+                        : "var(--text-muted)",
                       fontWeight: isActive ? 600 : 400,
                       width: "100%",
                       textAlign: "left",
                     }}
                   >
-                    <Icon size={13} />
+                    <Icon size={isMobile ? 11 : 13} />
                     <span style={{ flex: 1 }}>{opt.label}</span>
-                    <span style={{ fontSize: "10px", color: "var(--text-faint)" }}>
-                      {opt.width}
-                    </span>
+                    {!isSmallMobile && (
+                      <span
+                        style={{ fontSize: "10px", color: "var(--text-faint)" }}
+                      >
+                        {opt.width}
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -337,7 +401,7 @@ export default function EditorToolbar({
 
       <Divider />
 
-      {/* ── Theme Toggle ── */}
+      {/* Theme Toggle */}
       <motion.button
         whileHover={{ scale: 1.06 }}
         whileTap={{ scale: 0.93 }}
@@ -347,8 +411,8 @@ export default function EditorToolbar({
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          width: "32px",
-          height: "32px",
+          width: isMobile ? "28px" : "32px",
+          height: isMobile ? "28px" : "32px",
           borderRadius: "8px",
           border: "1px solid var(--brand-border)",
           background: "var(--brand-glass)",
@@ -368,7 +432,7 @@ export default function EditorToolbar({
               transition={{ duration: 0.2 }}
               style={{ position: "absolute" }}
             >
-              <Sun size={15} style={{ color: "#f59e0b" }} />
+              <Sun size={isMobile ? 13 : 15} style={{ color: "#f59e0b" }} />
             </motion.div>
           ) : (
             <motion.div
@@ -379,11 +443,32 @@ export default function EditorToolbar({
               transition={{ duration: 0.2 }}
               style={{ position: "absolute" }}
             >
-              <Moon size={15} style={{ color: "var(--brand-primary)" }} />
+              <Moon
+                size={isMobile ? 13 : 15}
+                style={{ color: "var(--brand-primary)" }}
+              />
             </motion.div>
           )}
         </AnimatePresence>
       </motion.button>
+
+      {/* Custom scrollbar styling */}
+      <style>
+        {`
+          @media (max-width: 768px) {
+            div::-webkit-scrollbar {
+              height: 3px;
+            }
+            div::-webkit-scrollbar-track {
+              background: transparent;
+            }
+            div::-webkit-scrollbar-thumb {
+              background: var(--border);
+              border-radius: 3px;
+            }
+          }
+        `}
+      </style>
     </motion.div>
   );
 }
