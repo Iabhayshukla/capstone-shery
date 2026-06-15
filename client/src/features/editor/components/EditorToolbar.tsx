@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, MouseEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Undo2,
@@ -363,7 +363,7 @@ export default function EditorToolbar({
                 zIndex: 100,
                 minWidth: isMobile ? "140px" : "140px",
               }}
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e: MouseEvent<HTMLDivElement>) => e.stopPropagation()}
             >
               {VIEWPORT_OPTIONS.map((opt) => {
                 const Icon = opt.icon;

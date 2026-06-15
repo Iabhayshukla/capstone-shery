@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Loader2, Monitor, Tablet, Smartphone, Code2, Undo2, Redo2,
   RotateCcw, ArrowLeft, Download, PanelLeftOpen, PanelLeftClose,
-  PanelRightOpen, PanelRightClose, Sparkles, GitBranch, Terminal, Eye, X
+  PanelRightOpen, PanelRightClose, Sparkles, Terminal, Eye, X
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { exportHtml } from '../api/export.api';

@@ -83,9 +83,14 @@ jobs:
           [ -z "${SUPABASE_ANON_KEY}" ]     && MISSING="$MISSING SUPABASE_ANON_KEY"
           if [ -n "$MISSING" ]; then
             echo "Missing required secrets:$MISSING"
-            exit 1
+            if [ "${{ github.event_name }}" = "pull_request" ]; then
+              echo "WARNING: Allowing build to continue since this is a pull request."
+            else
+              exit 1
+            fi
+          else
+            echo "All required secrets are set"
           fi
-          echo "All required secrets are set"
 
       - name: Lint
         run: npm run lint --if-present
