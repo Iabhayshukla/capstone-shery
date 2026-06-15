@@ -49,9 +49,8 @@ function highlightCode(line: string, isLight: boolean): React.ReactNode {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
-  
+
   if (isLight) {
-    // Light theme syntax colors (no grey)
     html = html
       .replace(/(&lt;\/?)([\w-]+)/g, '<span style="color:#a626a4">$1$2</span>')
       .replace(/([\w-]+=)(".*?")/g, '<span style="color:#50a14f">$1</span><span style="color:#986801">$2</span>')
@@ -61,7 +60,6 @@ function highlightCode(line: string, isLight: boolean): React.ReactNode {
       .replace(/\b(true|false|null|undefined|this)\b/g, '<span style="color:#986801">$1</span>')
       .replace(/\b(\d+)\b/g, '<span style="color:#986801">$1</span>');
   } else {
-    // Dark theme syntax colors
     html = html
       .replace(/(&lt;\/?)([\w-]+)/g, '<span style="color:#c678dd">$1$2</span>')
       .replace(/([\w-]+=)(".*?")/g, '<span style="color:#e5c07b">$1</span><span style="color:#98c379">$2</span>')
@@ -84,7 +82,17 @@ export default function StreamingView({ files, isStreaming, onPreview, error, th
   const prevLinesLength = useRef(0);
   const animationRef = useRef<NodeJS.Timeout | null>(null);
 
+  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
+
   const isLight = theme === 'light';
+  const isMobile = windowWidth < 768;
+  const isSmallMobile = windowWidth < 480;
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     if (animationRef.current) clearInterval(animationRef.current);
@@ -142,7 +150,6 @@ export default function StreamingView({ files, isStreaming, onPreview, error, th
     return <FileCode size={14} />;
   };
 
-  // Theme-specific styles: light theme has NO GREY
   const themeStyles = {
     dark: {
       bg: 'var(--background)',
@@ -162,13 +169,13 @@ export default function StreamingView({ files, isStreaming, onPreview, error, th
     light: {
       bg: '#ffffff',
       surface: '#ffffff',
-      border: '#e0e7ff',           // light purple border
-      textPrimary: '#0f172a',      // dark slate
-      textMuted: '#4c1d95',        // deep purple for muted text (brand-like)
+      border: '#e0e7ff',
+      textPrimary: '#0f172a',
+      textMuted: '#4c1d95',
       brand: '#6c63ff',
       brandGradient: 'linear-gradient(135deg, #6c63ff, #8b85ff)',
       codeBg: '#ffffff',
-      codeHeaderBg: '#faf5ff',     // very light purple background
+      codeHeaderBg: '#faf5ff',
       gridOverlay: `linear-gradient(rgba(108,99,255,0.04) 1px, transparent 1px),
                     linear-gradient(90deg, rgba(108,99,255,0.04) 1px, transparent 1px)`,
       aura1: `linear-gradient(135deg, rgba(108,99,255,0.1) 0%, transparent 60%)`,
@@ -183,335 +190,504 @@ export default function StreamingView({ files, isStreaming, onPreview, error, th
       width: '100%', height: '100%', background: styles.bg, display: 'flex', flexDirection: 'column',
       overflow: 'hidden', fontFamily: 'DM Sans, sans-serif', position: 'relative',
     }}>
-      {/* Grid overlay */}
-      <div style={{
-        position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none',
-        backgroundImage: styles.gridOverlay,
-        backgroundSize: '72px 72px',
-        maskImage: isLight ? 'none' : 'radial-gradient(ellipse 80% 80% at 50% 40%, black 20%, transparent 100%)',
-      }} />
+      {/* Grid overlay (hidden on small screens for simplicity) */}
+      {!isMobile && (
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none',
+          backgroundImage: styles.gridOverlay,
+          backgroundSize: '72px 72px',
+          maskImage: isLight ? 'none' : 'radial-gradient(ellipse 80% 80% at 50% 40%, black 20%, transparent 100%)',
+        }} />
+      )}
 
-      {/* Aurora blobs */}
-      <div style={{ position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none', overflow: 'hidden' }}>
-        <div style={{
-          position: 'absolute', width: 700, height: 400,
-          background: styles.aura1,
-          borderRadius: '50%', filter: 'blur(90px)',
-          top: -120, left: -200, opacity: isLight ? 1 : 0.1,
-          animation: isLight ? 'none' : 'aFloat1 20s ease-in-out infinite',
-        }} />
-        <div style={{
-          position: 'absolute', width: 500, height: 500,
-          background: styles.aura2,
-          borderRadius: '50%', filter: 'blur(90px)',
-          bottom: -50, right: -100, opacity: isLight ? 1 : 0.08,
-          animation: isLight ? 'none' : 'aFloat2 26s ease-in-out infinite',
-        }} />
-      </div>
+      {/* Aurora blobs (desktop only) */}
+      {!isMobile && (
+        <div style={{ position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none', overflow: 'hidden' }}>
+          <div style={{
+            position: 'absolute', width: 700, height: 400,
+            background: styles.aura1,
+            borderRadius: '50%', filter: 'blur(90px)',
+            top: -120, left: -200, opacity: isLight ? 1 : 0.1,
+            animation: isLight ? 'none' : 'aFloat1 20s ease-in-out infinite',
+          }} />
+          <div style={{
+            position: 'absolute', width: 500, height: 500,
+            background: styles.aura2,
+            borderRadius: '50%', filter: 'blur(90px)',
+            bottom: -50, right: -100, opacity: isLight ? 1 : 0.08,
+            animation: isLight ? 'none' : 'aFloat2 26s ease-in-out infinite',
+          }} />
+        </div>
+      )}
 
       {/* Top bar */}
       <div style={{
         position: 'relative', zIndex: 2, flexShrink: 0,
         borderBottom: `1px solid ${styles.border}`,
-        padding: '12px 28px',
-        display: 'flex', alignItems: 'center', gap: 20,
+        padding: isMobile ? '8px 12px' : '12px 28px',
+        display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 20,
         background: isLight ? styles.surface : 'rgba(var(--surface-rgb, 15, 20, 30), 0.7)',
         backdropFilter: isLight ? 'none' : 'blur(12px)',
       }}>
-        <Link to="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
+        <Link to="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 10, textDecoration: 'none' }}>
           <div style={{
-            width: 32, height: 32, borderRadius: 10, background: styles.brandGradient,
+            width: isMobile ? 24 : 32, height: isMobile ? 24 : 32, borderRadius: 8, background: styles.brandGradient,
             display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 2px 8px rgba(108,99,255,0.2)`,
           }}>
-            <Coffee size={16} color="white" />
+            <Coffee size={isMobile ? 12 : 16} color="white" />
           </div>
-          <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 20, letterSpacing: 2, color: isLight ? '#0f172a' : 'white' }}>
+          <span style={{
+            fontFamily: "'Bebas Neue', sans-serif", fontSize: isMobile ? 14 : 20, letterSpacing: 2,
+            color: isLight ? '#0f172a' : 'white',
+          }}>
             Capstone<span style={{ color: styles.brand }}>-Shery</span>
           </span>
         </Link>
-        <div style={{ height: 24, width: 1, background: styles.border }} />
-        <span style={{ fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', color: styles.textMuted }}>
-          Live Stream
-        </span>
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+        {!isMobile && (
+          <>
+            <div style={{ height: 24, width: 1, background: styles.border }} />
+            <span style={{ fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', color: styles.textMuted }}>
+              Live Stream
+            </span>
+          </>
+        )}
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 12 }}>
           <div style={{
-            display: 'flex', alignItems: 'center', gap: 8,
+            display: 'flex', alignItems: 'center', gap: isMobile ? 4 : 8,
             background: isLight ? '#f5f3ff' : 'rgba(0,0,0,0.3)',
-            padding: '4px 14px', borderRadius: 40,
+            padding: isMobile ? '2px 8px' : '4px 14px', borderRadius: 40,
             border: `1px solid ${styles.border}`,
           }}>
-            <span style={{ fontSize: 11, color: styles.textPrimary }}>{activeFile?.name ?? 'index.html'}</span>
+            <span style={{ fontSize: isMobile ? 10 : 11, color: styles.textPrimary, whiteSpace: 'nowrap' }}>
+              {activeFile?.name ?? 'index.html'}
+            </span>
             {allLines.length > 0 && <span style={{ fontSize: 10, color: styles.brand }}>{percentComplete}%</span>}
           </div>
           <div style={{
-            display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px',
+            display: 'flex', alignItems: 'center', gap: isMobile ? 3 : 6, padding: isMobile ? '2px 8px' : '4px 12px',
             border: `1px solid ${isDone ? (isLight ? '#d1fae5' : 'rgba(34,197,94,0.3)') : (isLight ? '#e0e7ff' : 'rgba(108,99,255,0.3)')}`,
-            borderRadius: 40, fontSize: 10, fontWeight: 500, letterSpacing: 1.5,
+            borderRadius: 40, fontSize: isMobile ? 8 : 10, fontWeight: 500, letterSpacing: 1.5,
             color: isDone ? (isLight ? '#059669' : '#22c55e') : styles.brand,
             background: isDone ? (isLight ? '#ecfdf5' : 'rgba(34,197,94,0.05)') : (isLight ? '#f5f3ff' : 'rgba(108,99,255,0.05)'),
           }}>
             <span style={{
-              width: 6, height: 6, borderRadius: '50%',
+              width: isMobile ? 5 : 6, height: isMobile ? 5 : 6, borderRadius: '50%',
               background: isDone ? (isLight ? '#059669' : '#22c55e') : styles.brand,
               animation: isStreaming ? 'blink 1.4s step-end infinite' : 'none',
             }} />
-            {isDone ? 'Completed' : isStreaming ? 'Generating' : 'Ready'}
+            {isMobile ? (isDone ? 'Done' : isStreaming ? 'Gen' : 'Ready') : (isDone ? 'Completed' : isStreaming ? 'Generating' : 'Ready')}
           </div>
         </div>
       </div>
 
-      {/* Main split layout */}
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative', zIndex: 2, minHeight: 0 }}>
-
-        {/* LEFT — AI Assistant */}
-        <div style={{
-          width: 360, flexShrink: 0, display: 'flex', flexDirection: 'column',
-          borderRight: `1px solid ${styles.border}`,
-          padding: '28px 20px', overflowY: 'auto', gap: 28,
-          background: isLight ? '#faf5ff' : 'rgba(0,0,0,0.2)',
-          backdropFilter: isLight ? 'none' : 'blur(4px)',
-        }}>
-          {/* Chat bubble */}
+      {/* Main content - responsive layout */}
+      {isMobile ? (
+        /* MOBILE LAYOUT: stacked, code focused */
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', zIndex: 2, padding: isSmallMobile ? 4 : 8, gap: 4 }}>
+          {/* Condensed assistant card */}
           <div style={{
-            background: isLight ? '#ffffff' : 'var(--surface)',
+            background: isLight ? '#faf5ff' : 'rgba(0,0,0,0.25)',
             border: `1px solid ${styles.border}`,
-            borderRadius: 24, padding: 20,
-            boxShadow: isLight ? '0 4px 12px rgba(0,0,0,0.02)' : '0 12px 28px -8px rgba(0,0,0,0.3)',
+            borderRadius: 16, padding: isSmallMobile ? '8px 10px' : '12px 16px',
+            backdropFilter: isLight ? 'none' : 'blur(8px)',
           }}>
-            <div style={{ display: 'flex', gap: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <div style={{
-                width: 40, height: 40, borderRadius: '50%', background: styles.brandGradient,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 16, fontWeight: 700, color: 'white',
-                boxShadow: `0 2px 8px rgba(108,99,255,0.2)`,
+                width: isSmallMobile ? 24 : 32, height: isSmallMobile ? 24 : 32, borderRadius: '50%',
+                background: styles.brandGradient, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 12, color: 'white', flexShrink: 0,
               }}>✨</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: 2, textTransform: 'uppercase', color: styles.brand, marginBottom: 6 }}>
-                  Shery AI
-                </div>
-                <div style={{ fontSize: 14, fontWeight: isLight ? 400 : 300, color: styles.textPrimary, lineHeight: 1.65, minHeight: 60 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{
+                  fontSize: isSmallMobile ? 8 : 10, fontWeight: 600, letterSpacing: 2, textTransform: 'uppercase',
+                  color: styles.brand, marginBottom: 2,
+                }}>Shery AI</div>
+                <div style={{
+                  fontSize: isSmallMobile ? 10 : 12, fontWeight: isLight ? 400 : 300, color: styles.textPrimary,
+                  lineHeight: 1.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                }}>
                   {displayedMsg}
                   {isStreaming && (
                     <motion.span
                       animate={{ opacity: [1, 0, 1] }}
                       transition={{ repeat: Infinity, duration: 0.8 }}
-                      style={{ display: 'inline-block', width: 2, height: 14, background: styles.brand, borderRadius: 1, marginLeft: 4, verticalAlign: 'middle' }}
+                      style={{ display: 'inline-block', width: 2, height: 12, background: styles.brand, borderRadius: 1, marginLeft: 2, verticalAlign: 'middle' }}
                     />
                   )}
                 </div>
               </div>
-            </div>
-          </div>
-
-          {error && !isStreaming && (
-            <div style={{
-              padding: '14px 18px', background: isLight ? '#fef2f2' : 'rgba(239,68,68,0.08)',
-              border: `1px solid ${isLight ? '#fecaca' : 'rgba(239,68,68,0.2)'}`,
-              borderRadius: 16, color: isLight ? '#dc2626' : '#f87171', fontSize: 13, lineHeight: 1.6,
-            }}>
-              <strong>⚠️ Generation failed</strong><br />{error}
-            </div>
-          )}
-
-          {/* Progress steps */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 0, position: 'relative', paddingLeft: 8 }}>
-            <div style={{
-              position: 'absolute', left: 20, top: 20, bottom: 20, width: 1.5,
-              background: `linear-gradient(to bottom, ${styles.brand}, ${isLight ? '#e9d5ff' : 'transparent'})`,
-              zIndex: 0,
-            }} />
-            {['Parsing prompt', 'Scaffolding HTML', 'Applying styles', 'Finalizing output'].map((step, i) => {
-              const stepProgress = progress * 4;
-              const done = stepProgress > i + 1;
-              const active = stepProgress > i && stepProgress <= i + 1;
-              return (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 0', position: 'relative', zIndex: 1 }}>
-                  <div style={{
-                    width: 28, height: 28, flexShrink: 0, borderRadius: '50%',
-                    background: done ? styles.brand : active ? (isLight ? '#ede9fe' : 'rgba(108,99,255,0.2)') : (isLight ? '#f8fafc' : 'rgba(255,255,255,0.05)'),
-                    border: `1px solid ${done ? 'transparent' : active ? styles.brand : (isLight ? '#e0e7ff' : 'var(--border)')}`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 12, color: done ? 'white' : active ? styles.brand : (isLight ? '#4c1d95' : 'var(--text-muted)'),
-                  }}>
-                    {done ? '✓' : active ? <Sparkles size={12} /> : i + 1}
-                  </div>
-                  <span style={{
-                    fontSize: 13, fontWeight: active ? 500 : 400,
-                    color: done ? styles.textPrimary : active ? styles.brand : styles.textMuted,
-                  }}>
-                    {step}
+              {/* Progress bar */}
+              {allLines.length > 0 && (
+                <div style={{ flexShrink: 0, textAlign: 'center' }}>
+                  <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: isSmallMobile ? 16 : 20, color: styles.brand, lineHeight: 1 }}>
+                    {percentComplete}%
                   </span>
+                  <div style={{ width: isSmallMobile ? 40 : 60, height: 3, background: isLight ? '#e9d5ff' : 'rgba(255,255,255,0.08)', borderRadius: 2, overflow: 'hidden', marginTop: 4 }}>
+                    <motion.div
+                      animate={{ width: `${percentComplete}%` }}
+                      transition={{ duration: 0.3 }}
+                      style={{ height: '100%', background: `linear-gradient(90deg, ${styles.brand}, #8b85ff)`, borderRadius: 2 }}
+                    />
+                  </div>
                 </div>
-              );
-            })}
-          </div>
-
-          {/* Progress card */}
-          {allLines.length > 0 && (
-            <div style={{
-              background: isLight ? '#ffffff' : 'rgba(0,0,0,0.3)',
-              border: `1px solid ${styles.border}`,
-              borderRadius: 20, padding: 18,
-            }}>
-              <div style={{ fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: styles.textMuted, marginBottom: 12 }}>
-                Generation Progress
-              </div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 12 }}>
-                <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 48, color: styles.brand, lineHeight: 1, letterSpacing: 2 }}>
-                  {percentComplete}%
-                </span>
-                <span style={{ fontSize: 11, color: styles.textMuted }}>complete</span>
-              </div>
-              <div style={{ height: 4, background: isLight ? '#e9d5ff' : 'rgba(255,255,255,0.08)', borderRadius: 4, overflow: 'hidden' }}>
-                <motion.div
-                  animate={{ width: `${percentComplete}%` }}
-                  transition={{ duration: 0.3 }}
-                  style={{ height: '100%', background: `linear-gradient(90deg, ${styles.brand}, #8b85ff)`, borderRadius: 4 }}
-                />
-              </div>
+              )}
             </div>
-          )}
-        </div>
-
-        {/* MIDDLE — File Tree */}
-        <div style={{
-          width: 220, flexShrink: 0, display: 'flex', flexDirection: 'column',
-          borderRight: `1px solid ${styles.border}`,
-          background: isLight ? '#ffffff' : 'rgba(0,0,0,0.15)',
-          padding: '28px 16px', gap: 18, overflowY: 'auto',
-        }}>
-          <div style={{ fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: styles.textMuted, fontWeight: 600 }}>
-            Workspace
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {files.length === 0 ? (
-              <div style={{ fontSize: 12, color: styles.textMuted, padding: 8 }}>Waiting for files...</div>
-            ) : (
-              files.map(file => {
-                const isActive = activeFile?.name === file.name;
-                return (
-                  <motion.div
-                    key={file.name}
-                    whileHover={{ x: 2 }}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
-                      background: isActive ? (isLight ? '#f5f3ff' : 'rgba(108,99,255,0.12)') : 'transparent',
-                      border: `1px solid ${isActive ? (isLight ? '#e0e7ff' : 'rgba(108,99,255,0.25)') : 'transparent'}`,
-                      borderRadius: 12, cursor: 'default', transition: 'all 0.15s',
-                      color: isActive ? styles.brand : styles.textMuted,
-                    }}
-                  >
-                    {getFileIcon(file.name, file.language)}
-                    <span style={{ flex: 1, fontSize: 12, fontWeight: isActive ? 500 : 400, letterSpacing: 0.3 }}>{file.name}</span>
-                    {isActive && isStreaming && (
-                      <span style={{
-                        width: 5, height: 5, borderRadius: '50%', background: styles.brand,
-                        boxShadow: `0 0 0 2px rgba(108,99,255,0.2)`, animation: 'blink 1.4s step-end infinite',
-                      }} />
-                    )}
-                  </motion.div>
-                );
-              })
+            {error && !isStreaming && (
+              <div style={{
+                marginTop: 8, padding: '6px 10px', background: isLight ? '#fef2f2' : 'rgba(239,68,68,0.08)',
+                border: `1px solid ${isLight ? '#fecaca' : 'rgba(239,68,68,0.2)'}`,
+                borderRadius: 8, color: isLight ? '#dc2626' : '#f87171', fontSize: 11, lineHeight: 1.4,
+              }}>
+                ⚠️ {error}
+              </div>
             )}
           </div>
-        </div>
 
-        {/* RIGHT — Code Panel */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0, margin: 2 }}>
+          {/* File list (collapsed, only show current file) */}
           <div style={{
-            flex: 1, display: 'flex', flexDirection: 'column',
-            background: isLight ? '#ffffff' : 'rgba(0,0,0,0.25)',
-            border: `1px solid ${isLight ? '#e0e7ff' : 'rgba(108,99,255,0.2)'}`,
-            borderRadius: 16, overflow: 'hidden', margin: 8,
-            boxShadow: isLight ? '0 1px 3px rgba(0,0,0,0.02)' : '0 12px 32px -12px rgba(0,0,0,0.5)',
+            display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px',
+            background: isLight ? '#ffffff' : 'rgba(0,0,0,0.15)',
+            border: `1px solid ${styles.border}`, borderRadius: 12,
+            fontSize: isSmallMobile ? 9 : 10, color: styles.textMuted,
           }}>
-            {/* Code header */}
-            <div style={{
-              padding: '12px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              borderBottom: `1px solid ${styles.border}`,
-              background: isLight ? '#faf5ff' : 'rgba(0,0,0,0.3)',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  {['#ff5f57', '#febc2e', '#28c840'].map(c => <div key={c} style={{ width: 11, height: 11, borderRadius: '50%', background: c }} />)}
-                </div>
-                <span style={{ fontSize: 12, color: styles.textMuted, letterSpacing: 0.5 }}>{activeFile?.name ?? 'index.html'}</span>
-              </div>
-              <button
-                onClick={handleCopy}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase',
-                  color: copied ? (isLight ? '#059669' : '#22c55e') : styles.textMuted,
-                  background: isLight ? '#f5f3ff' : 'transparent',
-                  border: `1px solid ${styles.border}`,
-                  padding: '5px 12px', borderRadius: 30, cursor: 'pointer', transition: 'all 0.2s',
-                }}
-              >
-                {copied ? <Check size={11} /> : <Copy size={11} />}
-                {copied ? 'Copied!' : 'Copy code'}
-              </button>
-            </div>
-
-            {/* Code body */}
-            <div
-              ref={codeBodyRef}
+            {getFileIcon(activeFile?.name ?? 'index.html', activeFile?.language ?? 'html')}
+            <span>{activeFile?.name ?? 'index.html'}</span>
+            <button
+              onClick={handleCopy}
               style={{
-                flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '16px 0',
-                fontFamily: '"Fira Code", "Cascadia Code", monospace', fontSize: 12.5, lineHeight: 1.6,
-                background: isLight ? '#ffffff' : 'transparent',
+                marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, fontSize: isSmallMobile ? 8 : 10,
+                color: copied ? (isLight ? '#059669' : '#22c55e') : styles.textMuted,
+                background: 'transparent', border: `1px solid ${styles.border}`,
+                padding: '2px 10px', borderRadius: 20, cursor: 'pointer',
               }}
             >
-              {visibleLines.length === 0 ? (
-                <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16 }}>
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ repeat: Infinity, duration: 2, ease: 'linear' }}
-                    style={{ width: 32, height: 32, border: `2px solid ${styles.border}`, borderTopColor: styles.brand, borderRadius: '50%' }}
-                  />
-                  <span style={{ fontSize: 12, color: styles.textMuted, letterSpacing: 1.5 }}>Awaiting code stream...</span>
+              {copied ? <Check size={10} /> : <Copy size={10} />}
+              {copied ? 'Copied' : 'Copy'}
+            </button>
+          </div>
+
+          {/* Code panel (full width) */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
+            <div style={{
+              flex: 1, display: 'flex', flexDirection: 'column',
+              background: isLight ? '#ffffff' : 'rgba(0,0,0,0.25)',
+              border: `1px solid ${isLight ? '#e0e7ff' : 'rgba(108,99,255,0.2)'}`,
+              borderRadius: 12, overflow: 'hidden',
+              boxShadow: isLight ? '0 1px 3px rgba(0,0,0,0.02)' : '0 8px 24px -8px rgba(0,0,0,0.5)',
+            }}>
+              <div style={{
+                padding: isSmallMobile ? '6px 10px' : '8px 14px', display: 'flex', alignItems: 'center', gap: 8,
+                borderBottom: `1px solid ${styles.border}`,
+                background: isLight ? '#faf5ff' : 'rgba(0,0,0,0.3)',
+              }}>
+                <div style={{ display: 'flex', gap: 5 }}>
+                  {['#ff5f57', '#febc2e', '#28c840'].map(c => <div key={c} style={{ width: 8, height: 8, borderRadius: '50%', background: c }} />)}
                 </div>
-              ) : (
-                visibleLines.map((line, idx) => (
-                  <motion.div
-                    key={idx}
-                    initial={{ opacity: 0, x: -6 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.12 }}
-                    style={{ display: 'flex', paddingRight: 20, minHeight: 24 }}
-                  >
-                    <span style={{
-                      minWidth: 48, paddingRight: 16, textAlign: 'right',
-                      color: isLight ? '#cbd5e6' : 'rgba(255,255,255,0.12)',
-                      fontSize: 11, userSelect: 'none', flexShrink: 0, fontFamily: 'monospace',
-                    }}>{idx + 1}</span>
-                    <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: styles.textPrimary, flex: 1 }}>
-                      {highlightCode(line || ' ', isLight)}
-                    </span>
-                    {isStreaming && idx === visibleLines.length - 1 && visibleLineCount < allLines.length && (
+                <span style={{ fontSize: isSmallMobile ? 9 : 11, color: styles.textMuted, letterSpacing: 0.5 }}>{activeFile?.name ?? 'index.html'}</span>
+              </div>
+              <div
+                ref={codeBodyRef}
+                style={{
+                  flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: isSmallMobile ? '8px 0' : '12px 0',
+                  fontFamily: '"Fira Code", "Cascadia Code", monospace', fontSize: isSmallMobile ? 10 : 12, lineHeight: 1.6,
+                  background: isLight ? '#ffffff' : 'transparent',
+                }}
+              >
+                {visibleLines.length === 0 ? (
+                  <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12 }}>
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ repeat: Infinity, duration: 2, ease: 'linear' }}
+                      style={{ width: 24, height: 24, border: `2px solid ${styles.border}`, borderTopColor: styles.brand, borderRadius: '50%' }}
+                    />
+                    <span style={{ fontSize: 11, color: styles.textMuted }}>Awaiting code stream...</span>
+                  </div>
+                ) : (
+                  visibleLines.map((line, idx) => (
+                    <motion.div
+                      key={idx}
+                      initial={{ opacity: 0, x: -4 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.1 }}
+                      style={{ display: 'flex', paddingRight: 12, minHeight: 20 }}
+                    >
+                      <span style={{
+                        minWidth: isSmallMobile ? 24 : 36, paddingRight: 8, textAlign: 'right',
+                        color: isLight ? '#cbd5e6' : 'rgba(255,255,255,0.12)',
+                        fontSize: isSmallMobile ? 9 : 10, userSelect: 'none', flexShrink: 0, fontFamily: 'monospace',
+                      }}>{idx + 1}</span>
+                      <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: styles.textPrimary, flex: 1 }}>
+                        {highlightCode(line || ' ', isLight)}
+                      </span>
+                      {isStreaming && idx === visibleLines.length - 1 && visibleLineCount < allLines.length && (
+                        <motion.span
+                          animate={{ opacity: [1, 0, 1] }}
+                          transition={{ repeat: Infinity, duration: 0.6 }}
+                          style={{ width: 2, height: 12, background: styles.brand, borderRadius: 1, marginLeft: 4, alignSelf: 'center' }}
+                        />
+                      )}
+                    </motion.div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* DESKTOP LAYOUT: three columns */
+        <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative', zIndex: 2, minHeight: 0 }}>
+          {/* LEFT — AI Assistant */}
+          <div style={{
+            width: 360, flexShrink: 0, display: 'flex', flexDirection: 'column',
+            borderRight: `1px solid ${styles.border}`,
+            padding: '28px 20px', overflowY: 'auto', gap: 28,
+            background: isLight ? '#faf5ff' : 'rgba(0,0,0,0.2)',
+            backdropFilter: isLight ? 'none' : 'blur(4px)',
+          }}>
+            {/* Chat bubble */}
+            <div style={{
+              background: isLight ? '#ffffff' : 'var(--surface)',
+              border: `1px solid ${styles.border}`,
+              borderRadius: 24, padding: 20,
+              boxShadow: isLight ? '0 4px 12px rgba(0,0,0,0.02)' : '0 12px 28px -8px rgba(0,0,0,0.3)',
+            }}>
+              <div style={{ display: 'flex', gap: 14 }}>
+                <div style={{
+                  width: 40, height: 40, borderRadius: '50%', background: styles.brandGradient,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 16, fontWeight: 700, color: 'white',
+                  boxShadow: `0 2px 8px rgba(108,99,255,0.2)`,
+                }}>✨</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: 2, textTransform: 'uppercase', color: styles.brand, marginBottom: 6 }}>
+                    Shery AI
+                  </div>
+                  <div style={{ fontSize: 14, fontWeight: isLight ? 400 : 300, color: styles.textPrimary, lineHeight: 1.65, minHeight: 60 }}>
+                    {displayedMsg}
+                    {isStreaming && (
                       <motion.span
                         animate={{ opacity: [1, 0, 1] }}
-                        transition={{ repeat: Infinity, duration: 0.6 }}
-                        style={{ width: 2, height: 14, background: styles.brand, borderRadius: 1, marginLeft: 6, alignSelf: 'center' }}
+                        transition={{ repeat: Infinity, duration: 0.8 }}
+                        style={{ display: 'inline-block', width: 2, height: 14, background: styles.brand, borderRadius: 1, marginLeft: 4, verticalAlign: 'middle' }}
                       />
                     )}
-                  </motion.div>
-                ))
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {error && !isStreaming && (
+              <div style={{
+                padding: '14px 18px', background: isLight ? '#fef2f2' : 'rgba(239,68,68,0.08)',
+                border: `1px solid ${isLight ? '#fecaca' : 'rgba(239,68,68,0.2)'}`,
+                borderRadius: 16, color: isLight ? '#dc2626' : '#f87171', fontSize: 13, lineHeight: 1.6,
+              }}>
+                <strong>⚠️ Generation failed</strong><br />{error}
+              </div>
+            )}
+
+            {/* Progress steps */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0, position: 'relative', paddingLeft: 8 }}>
+              <div style={{
+                position: 'absolute', left: 20, top: 20, bottom: 20, width: 1.5,
+                background: `linear-gradient(to bottom, ${styles.brand}, ${isLight ? '#e9d5ff' : 'transparent'})`,
+                zIndex: 0,
+              }} />
+              {['Parsing prompt', 'Scaffolding HTML', 'Applying styles', 'Finalizing output'].map((step, i) => {
+                const stepProgress = progress * 4;
+                const done = stepProgress > i + 1;
+                const active = stepProgress > i && stepProgress <= i + 1;
+                return (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 0', position: 'relative', zIndex: 1 }}>
+                    <div style={{
+                      width: 28, height: 28, flexShrink: 0, borderRadius: '50%',
+                      background: done ? styles.brand : active ? (isLight ? '#ede9fe' : 'rgba(108,99,255,0.2)') : (isLight ? '#f8fafc' : 'rgba(255,255,255,0.05)'),
+                      border: `1px solid ${done ? 'transparent' : active ? styles.brand : (isLight ? '#e0e7ff' : 'var(--border)')}`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 12, color: done ? 'white' : active ? styles.brand : (isLight ? '#4c1d95' : 'var(--text-muted)'),
+                    }}>
+                      {done ? '✓' : active ? <Sparkles size={12} /> : i + 1}
+                    </div>
+                    <span style={{
+                      fontSize: 13, fontWeight: active ? 500 : 400,
+                      color: done ? styles.textPrimary : active ? styles.brand : styles.textMuted,
+                    }}>
+                      {step}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Progress card */}
+            {allLines.length > 0 && (
+              <div style={{
+                background: isLight ? '#ffffff' : 'rgba(0,0,0,0.3)',
+                border: `1px solid ${styles.border}`,
+                borderRadius: 20, padding: 18,
+              }}>
+                <div style={{ fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: styles.textMuted, marginBottom: 12 }}>
+                  Generation Progress
+                </div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 12 }}>
+                  <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 48, color: styles.brand, lineHeight: 1, letterSpacing: 2 }}>
+                    {percentComplete}%
+                  </span>
+                  <span style={{ fontSize: 11, color: styles.textMuted }}>complete</span>
+                </div>
+                <div style={{ height: 4, background: isLight ? '#e9d5ff' : 'rgba(255,255,255,0.08)', borderRadius: 4, overflow: 'hidden' }}>
+                  <motion.div
+                    animate={{ width: `${percentComplete}%` }}
+                    transition={{ duration: 0.3 }}
+                    style={{ height: '100%', background: `linear-gradient(90deg, ${styles.brand}, #8b85ff)`, borderRadius: 4 }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* MIDDLE — File Tree */}
+          <div style={{
+            width: 220, flexShrink: 0, display: 'flex', flexDirection: 'column',
+            borderRight: `1px solid ${styles.border}`,
+            background: isLight ? '#ffffff' : 'rgba(0,0,0,0.15)',
+            padding: '28px 16px', gap: 18, overflowY: 'auto',
+          }}>
+            <div style={{ fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: styles.textMuted, fontWeight: 600 }}>
+              Workspace
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {files.length === 0 ? (
+                <div style={{ fontSize: 12, color: styles.textMuted, padding: 8 }}>Waiting for files...</div>
+              ) : (
+                files.map(file => {
+                  const isActive = activeFile?.name === file.name;
+                  return (
+                    <motion.div
+                      key={file.name}
+                      whileHover={{ x: 2 }}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
+                        background: isActive ? (isLight ? '#f5f3ff' : 'rgba(108,99,255,0.12)') : 'transparent',
+                        border: `1px solid ${isActive ? (isLight ? '#e0e7ff' : 'rgba(108,99,255,0.25)') : 'transparent'}`,
+                        borderRadius: 12, cursor: 'default', transition: 'all 0.15s',
+                        color: isActive ? styles.brand : styles.textMuted,
+                      }}
+                    >
+                      {getFileIcon(file.name, file.language)}
+                      <span style={{ flex: 1, fontSize: 12, fontWeight: isActive ? 500 : 400, letterSpacing: 0.3 }}>{file.name}</span>
+                      {isActive && isStreaming && (
+                        <span style={{
+                          width: 5, height: 5, borderRadius: '50%', background: styles.brand,
+                          boxShadow: `0 0 0 2px rgba(108,99,255,0.2)`, animation: 'blink 1.4s step-end infinite',
+                        }} />
+                      )}
+                    </motion.div>
+                  );
+                })
               )}
             </div>
           </div>
+
+          {/* RIGHT — Code Panel */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0, margin: 2 }}>
+            <div style={{
+              flex: 1, display: 'flex', flexDirection: 'column',
+              background: isLight ? '#ffffff' : 'rgba(0,0,0,0.25)',
+              border: `1px solid ${isLight ? '#e0e7ff' : 'rgba(108,99,255,0.2)'}`,
+              borderRadius: 16, overflow: 'hidden', margin: 8,
+              boxShadow: isLight ? '0 1px 3px rgba(0,0,0,0.02)' : '0 12px 32px -12px rgba(0,0,0,0.5)',
+            }}>
+              {/* Code header */}
+              <div style={{
+                padding: '12px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                borderBottom: `1px solid ${styles.border}`,
+                background: isLight ? '#faf5ff' : 'rgba(0,0,0,0.3)',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {['#ff5f57', '#febc2e', '#28c840'].map(c => <div key={c} style={{ width: 11, height: 11, borderRadius: '50%', background: c }} />)}
+                  </div>
+                  <span style={{ fontSize: 12, color: styles.textMuted, letterSpacing: 0.5 }}>{activeFile?.name ?? 'index.html'}</span>
+                </div>
+                <button
+                  onClick={handleCopy}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase',
+                    color: copied ? (isLight ? '#059669' : '#22c55e') : styles.textMuted,
+                    background: isLight ? '#f5f3ff' : 'transparent',
+                    border: `1px solid ${styles.border}`,
+                    padding: '5px 12px', borderRadius: 30, cursor: 'pointer', transition: 'all 0.2s',
+                  }}
+                >
+                  {copied ? <Check size={11} /> : <Copy size={11} />}
+                  {copied ? 'Copied!' : 'Copy code'}
+                </button>
+              </div>
+
+              {/* Code body */}
+              <div
+                ref={codeBodyRef}
+                style={{
+                  flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '16px 0',
+                  fontFamily: '"Fira Code", "Cascadia Code", monospace', fontSize: 12.5, lineHeight: 1.6,
+                  background: isLight ? '#ffffff' : 'transparent',
+                }}
+              >
+                {visibleLines.length === 0 ? (
+                  <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16 }}>
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ repeat: Infinity, duration: 2, ease: 'linear' }}
+                      style={{ width: 32, height: 32, border: `2px solid ${styles.border}`, borderTopColor: styles.brand, borderRadius: '50%' }}
+                    />
+                    <span style={{ fontSize: 12, color: styles.textMuted, letterSpacing: 1.5 }}>Awaiting code stream...</span>
+                  </div>
+                ) : (
+                  visibleLines.map((line, idx) => (
+                    <motion.div
+                      key={idx}
+                      initial={{ opacity: 0, x: -6 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.12 }}
+                      style={{ display: 'flex', paddingRight: 20, minHeight: 24 }}
+                    >
+                      <span style={{
+                        minWidth: 48, paddingRight: 16, textAlign: 'right',
+                        color: isLight ? '#cbd5e6' : 'rgba(255,255,255,0.12)',
+                        fontSize: 11, userSelect: 'none', flexShrink: 0, fontFamily: 'monospace',
+                      }}>{idx + 1}</span>
+                      <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: styles.textPrimary, flex: 1 }}>
+                        {highlightCode(line || ' ', isLight)}
+                      </span>
+                      {isStreaming && idx === visibleLines.length - 1 && visibleLineCount < allLines.length && (
+                        <motion.span
+                          animate={{ opacity: [1, 0, 1] }}
+                          transition={{ repeat: Infinity, duration: 0.6 }}
+                          style={{ width: 2, height: 14, background: styles.brand, borderRadius: 1, marginLeft: 6, alignSelf: 'center' }}
+                        />
+                      )}
+                    </motion.div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Bottom action bar */}
       <div style={{
         position: 'relative', zIndex: 2, flexShrink: 0,
         borderTop: `1px solid ${styles.border}`,
-        padding: '12px 28px',
+        padding: isMobile ? '10px 16px' : '12px 28px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         background: isLight ? '#ffffff' : 'rgba(0,0,0,0.5)',
         backdropFilter: isLight ? 'none' : 'blur(12px)',
       }}>
-        <span style={{ fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: styles.textMuted }}>
+        <span style={{
+          fontSize: isMobile ? 9 : 10, letterSpacing: 2, textTransform: 'uppercase', color: styles.textMuted,
+        }}>
           {isStreaming ? '⚡ Streaming live' : isDone ? '✅ Build complete' : '⏳ Ready'}
         </span>
         <AnimatePresence>
@@ -524,14 +700,14 @@ export default function StreamingView({ files, isStreaming, onPreview, error, th
               whileTap={{ scale: 0.98 }}
               onClick={onPreview}
               style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                fontSize: 11, fontWeight: 600, letterSpacing: 2,
+                display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 10,
+                fontSize: isMobile ? 10 : 11, fontWeight: 600, letterSpacing: 2,
                 color: 'white', background: `linear-gradient(135deg, ${styles.brand}, #8b85ff)`,
-                border: 'none', padding: '10px 28px', borderRadius: 40, cursor: 'pointer',
+                border: 'none', padding: isMobile ? '8px 20px' : '10px 28px', borderRadius: 40, cursor: 'pointer',
                 boxShadow: `0 2px 8px rgba(108,99,255,0.25)`,
               }}
             >
-              <Eye size={13} />
+              <Eye size={isMobile ? 12 : 13} />
               Open Preview
             </motion.button>
           )}

@@ -40,6 +40,18 @@ export default function PromptPanel({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Detect mobile screen for safe spacing
+  const [windowWidth, setWindowWidth] = useState(
+    typeof window !== 'undefined' ? window.innerWidth : 1200
+  );
+  const isMobile = windowWidth < 768;
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -79,7 +91,7 @@ export default function PromptPanel({
 
   return (
     <div className="h-full bg-[var(--surface)] font-[DM Sans] flex flex-col w-full">
-      {/* HEADER with enhanced gradient accent */}
+      {/* HEADER */}
       <div className="relative px-3 sm:px-4 py-2 sm:py-3 border-b border-[var(--border)] flex items-center justify-between flex-shrink-0 bg-black/15">
         <div className="flex items-center gap-1.5 sm:gap-2">
           <span
@@ -105,7 +117,7 @@ export default function PromptPanel({
                 className="flex items-center gap-1 sm:gap-1.5 text-[9px] sm:text-[10px] tracking-wider uppercase text-[var(--text-muted)] bg-transparent border border-[var(--border)] rounded-md px-2 sm:px-2.5 py-1 sm:py-1.5 cursor-pointer transition-all duration-200 hover:text-[var(--brand-primary)] hover:border-[rgba(var(--brand-primary-rgb),0.4)]"
               >
                 <RefreshCw size={9} className="sm:w-[10px] sm:h-[10px]" />
-                <span className="hidden xs:inline">Redo</span>
+                <span>Redo</span>
               </motion.button>
             )}
           </AnimatePresence>
@@ -129,7 +141,7 @@ export default function PromptPanel({
         <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[var(--brand-primary)] to-transparent opacity-30" />
       </div>
 
-      {/* SELECTED SECTION BADGE with animation */}
+      {/* SELECTED SECTION BADGE */}
       <AnimatePresence mode="wait">
         {selectedSection && (
           <motion.div
@@ -150,9 +162,13 @@ export default function PromptPanel({
         )}
       </AnimatePresence>
 
-      {/* MESSAGES AREA */}
-      <div className="flex-1 overflow-y-auto px-2 sm:px-3 py-3 sm:py-4 flex flex-col gap-3 sm:gap-4">
-        {/* Empty state with enhanced visuals */}
+      {/* MESSAGES AREA – added top padding on mobile to clear the close button */}
+      <div
+        className={`flex-1 overflow-y-auto px-2 sm:px-3 py-3 sm:py-4 flex flex-col gap-3 sm:gap-4 ${
+          isMobile ? 'pt-12' : ''
+        }`}
+      >
+        {/* Empty state */}
         {messages.length === 0 && (
           <motion.div
             initial={{ opacity: 0, y: 15 }}
@@ -209,7 +225,7 @@ export default function PromptPanel({
                       whileHover={{ x: 4, borderColor: 'rgba(var(--brand-primary-rgb), 0.5)' }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => setInput(p)}
-                      className="group w-full text-left px-2 sm:px-3 py-2 sm:py-2.5 bg-transparent border border-[var(--border)] rounded-md text-[var(--text-muted)] cursor-pointer transition-all duration-200 font-[DM Sans] font-light text-[11px] sm:text-[12px] tracking-[0.2] flex items-center justify-between hover:bg-[rgba(var(--brand-primary-rgb),0.04)] hover:text-[var(--text-primary)]"
+                      className="group w-full text-left px-2 sm:px-3 py-2 sm:py-2.5 bg-transparent border border-[var(--border)] rounded-md text-[var(--text-muted)] cursor-pointer transition-all duration-200 font-[DM Sans] font-light text-[11px] sm:text-[12px] tracking-[0.2] flex items-center justify-between hover:bg-[rgba(var(--brand-primary-rgb),0.04)] hover:text-[var(--text-primary)] min-h-[36px] sm:min-h-[40px]"
                     >
                       <span className="flex items-center gap-1.5 sm:gap-2 truncate">
                         <MessageSquare size={10} className="sm:w-[11px] sm:h-[11px] opacity-40 group-hover:opacity-100 transition-opacity flex-shrink-0" />
@@ -224,7 +240,7 @@ export default function PromptPanel({
           </motion.div>
         )}
 
-        {/* Chat messages with improved bubble styling */}
+        {/* Chat messages */}
         <AnimatePresence initial={false}>
           {messages.map((msg) => (
             <motion.div
@@ -267,7 +283,7 @@ export default function PromptPanel({
           ))}
         </AnimatePresence>
 
-        {/* Typing indicator with enhanced dots */}
+        {/* Typing indicator */}
         {isGenerating && (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
@@ -297,7 +313,7 @@ export default function PromptPanel({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* INPUT AREA - modern glassmorphic style */}
+      {/* INPUT AREA */}
       <div className="p-2 sm:p-3 border-t border-[var(--border)] flex-shrink-0 bg-black/15">
         <div
           className="relative rounded-md transition-all duration-200 bg-white/2 focus-within:shadow-[0_0_0_2px_rgba(var(--brand-primary-rgb),0.1)]"
@@ -390,19 +406,12 @@ export default function PromptPanel({
           }
         }
         
-        /* Extra small devices */
-        @media (max-width: 480px) {
-          .xs\\:inline {
-            display: inline;
-          }
-        }
-        
         /* Improve touch targets on mobile */
         @media (max-width: 768px) {
           button, 
           [role="button"],
           .cursor-pointer {
-            min-height: 32px;
+            min-height: 36px;
           }
         }
       `}</style>
