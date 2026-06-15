@@ -97,6 +97,7 @@ function ToolbarBtn({
     whiteSpace: "nowrap" as const,
     outline: "none",
     background: "transparent",
+    minHeight: "36px", // touch‑friendly on mobile
   };
 
   const variants: Record<string, React.CSSProperties> = {
@@ -170,7 +171,6 @@ export default function EditorToolbar({
     typeof window !== "undefined" ? window.innerWidth : 1200
   );
 
-  // Handle window resize for responsive design
   useEffect(() => {
     const handleResize = (): void => {
       setWindowWidth(window.innerWidth);
@@ -183,7 +183,8 @@ export default function EditorToolbar({
   const ViewportIcon = currentViewport?.icon || Monitor;
 
   const isMobile: boolean = windowWidth < 768;
-  const isSmallMobile: boolean = windowWidth < 480;
+  // No longer hide text based on "isSmallMobile" – everything stays visible
+  // const isSmallMobile: boolean = windowWidth < 480;
 
   const handleViewportChange = (value: ViewportSize): void => {
     onViewportChange(value);
@@ -197,6 +198,20 @@ export default function EditorToolbar({
   const handleToggleViewport = (): void => {
     setViewportOpen((prev: boolean) => !prev);
   };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (!viewportOpen) return;
+    const handleClickOutside = () => setViewportOpen(false);
+    window.addEventListener("click", handleClickOutside, true);
+    return () => window.removeEventListener("click", handleClickOutside, true);
+  }, [viewportOpen]);
+
+  // Responsive font sizes that shrink on small screens but keep all text visible
+  const labelFontSize = isMobile ? "9px" : "11px";
+  const detailFontSize = isMobile ? "8px" : "10px";
+  const iconSize = isMobile ? 13 : 15;
+  const sectionFontSize = isMobile ? "9px" : "11px";
 
   return (
     <motion.div
@@ -215,8 +230,9 @@ export default function EditorToolbar({
         zIndex: 50,
         minHeight: isMobile ? "44px" : "48px",
         overflowX: "auto",
-        overflowY: "hidden",
+        overflowY: "visible", // allows dropdown to overflow
         scrollbarWidth: "thin",
+        WebkitOverflowScrolling: "touch",
       }}
     >
       {/* Undo / Redo */}
@@ -229,36 +245,34 @@ export default function EditorToolbar({
         }}
       >
         <ToolbarBtn onClick={onUndo} disabled={!canUndo} title="Undo (Ctrl+Z)">
-          <Undo2 size={isMobile ? 13 : 15} />
+          <Undo2 size={iconSize} />
         </ToolbarBtn>
         <ToolbarBtn onClick={onRedo} disabled={!canRedo} title="Redo (Ctrl+Y)">
-          <Redo2 size={isMobile ? 13 : 15} />
+          <Redo2 size={iconSize} />
         </ToolbarBtn>
       </div>
 
       <Divider />
 
-      {/* Export */}
+      {/* Export – always show label */}
       <ToolbarBtn onClick={handleExport} variant="success" title="Export HTML">
-        <Download size={isMobile ? 12 : 14} />
-        {!isSmallMobile && <span>Export</span>}
+        <Download size={iconSize} />
+        <span style={{ fontSize: labelFontSize }}>Export</span>
       </ToolbarBtn>
 
       <Divider />
 
-      {/* Code toggle */}
+      {/* Code toggle – always show label */}
       <ToolbarBtn
         onClick={onToggleCode}
         variant="code"
         active={showCode}
         title={showCode ? "Hide Code" : "Show Code"}
       >
-        {showCode ? (
-          <Eye size={isMobile ? 12 : 14} />
-        ) : (
-          <Code2 size={isMobile ? 12 : 14} />
-        )}
-        {!isSmallMobile && <span>{showCode ? "Preview" : "Code"}</span>}
+        {showCode ? <Eye size={iconSize} /> : <Code2 size={iconSize} />}
+        <span style={{ fontSize: labelFontSize }}>
+          {showCode ? "Preview" : "Code"}
+        </span>
       </ToolbarBtn>
 
       {/* Selected Section Badge */}
@@ -276,11 +290,14 @@ export default function EditorToolbar({
               borderRadius: "8px",
               background: "rgba(59,130,246,0.1)",
               border: "1px solid rgba(59,130,246,0.25)",
-              fontSize: isMobile ? "10px" : "11px",
+              fontSize: sectionFontSize,
               color: "#60a5fa",
               fontWeight: 500,
               whiteSpace: "nowrap",
               flexShrink: 0,
+              maxWidth: isMobile ? "120px" : "auto",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
             }}
           >
             <div
@@ -289,12 +306,12 @@ export default function EditorToolbar({
                 height: "6px",
                 borderRadius: "50%",
                 background: "#3b82f6",
+                flexShrink: 0,
               }}
             />
-            {isMobile
-              ? selectedSection.substring(0, 12)
-              : `◈ ${selectedSection}`}
-            {isMobile && selectedSection.length > 12 && "..."}
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+              {`◈ ${selectedSection}`}
+            </span>
           </motion.div>
         )}
       </AnimatePresence>
@@ -302,26 +319,19 @@ export default function EditorToolbar({
       {/* Spacer */}
       <div style={{ flex: 1, minWidth: "8px" }} />
 
-      {/* Viewport Switcher */}
+      {/* Viewport Switcher – always show width text */}
       <div style={{ position: "relative", flexShrink: 0 }}>
         <ToolbarBtn
           onClick={handleToggleViewport}
           active={viewportOpen}
           title="Change viewport"
         >
-          <ViewportIcon size={isMobile ? 12 : 14} />
-          {!isSmallMobile && (
-            <span
-              style={{
-                color: "var(--text-muted)",
-                fontSize: isMobile ? "10px" : "11px",
-              }}
-            >
-              {currentViewport?.width}
-            </span>
-          )}
+          <ViewportIcon size={iconSize} />
+          <span style={{ fontSize: labelFontSize, color: "var(--text-muted)" }}>
+            {currentViewport?.width}
+          </span>
           <ChevronDown
-            size={isMobile ? 10 : 12}
+            size={iconSize - 2}
             style={{
               color: "var(--text-faint)",
               transform: viewportOpen ? "rotate(180deg)" : "rotate(0deg)",
@@ -340,8 +350,7 @@ export default function EditorToolbar({
               style={{
                 position: "absolute",
                 top: "calc(100% + 6px)",
-                right: isMobile ? "0" : "auto",
-                left: isMobile ? "auto" : "50%",
+                right: isMobile ? "0" : "50%",
                 transform: isMobile ? "translateX(0)" : "translateX(-50%)",
                 background: "var(--brand-surface)",
                 border: "1px solid var(--brand-border)",
@@ -352,8 +361,9 @@ export default function EditorToolbar({
                 gap: "2px",
                 boxShadow: "var(--shadow-lg)",
                 zIndex: 100,
-                minWidth: isMobile ? "120px" : "140px",
+                minWidth: isMobile ? "140px" : "140px",
               }}
+              onClick={(e) => e.stopPropagation()}
             >
               {VIEWPORT_OPTIONS.map((opt) => {
                 const Icon = opt.icon;
@@ -382,15 +392,12 @@ export default function EditorToolbar({
                       textAlign: "left",
                     }}
                   >
-                    <Icon size={isMobile ? 11 : 13} />
+                    <Icon size={isMobile ? 12 : 14} />
                     <span style={{ flex: 1 }}>{opt.label}</span>
-                    {!isSmallMobile && (
-                      <span
-                        style={{ fontSize: "10px", color: "var(--text-faint)" }}
-                      >
-                        {opt.width}
-                      </span>
-                    )}
+                    {/* Always visible width label */}
+                    <span style={{ fontSize: detailFontSize, color: "var(--text-faint)" }}>
+                      {opt.width}
+                    </span>
                   </button>
                 );
               })}
@@ -411,8 +418,10 @@ export default function EditorToolbar({
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          width: isMobile ? "28px" : "32px",
-          height: isMobile ? "28px" : "32px",
+          width: isMobile ? "32px" : "36px",
+          height: isMobile ? "32px" : "36px",
+          minHeight: "36px",
+          minWidth: "36px",
           borderRadius: "8px",
           border: "1px solid var(--brand-border)",
           background: "var(--brand-glass)",
@@ -432,7 +441,7 @@ export default function EditorToolbar({
               transition={{ duration: 0.2 }}
               style={{ position: "absolute" }}
             >
-              <Sun size={isMobile ? 13 : 15} style={{ color: "#f59e0b" }} />
+              <Sun size={iconSize} style={{ color: "#f59e0b" }} />
             </motion.div>
           ) : (
             <motion.div
@@ -443,10 +452,7 @@ export default function EditorToolbar({
               transition={{ duration: 0.2 }}
               style={{ position: "absolute" }}
             >
-              <Moon
-                size={isMobile ? 13 : 15}
-                style={{ color: "var(--brand-primary)" }}
-              />
+              <Moon size={iconSize} style={{ color: "var(--brand-primary)" }} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -455,16 +461,19 @@ export default function EditorToolbar({
       {/* Custom scrollbar styling */}
       <style>
         {`
+          div::-webkit-scrollbar {
+            height: 4px;
+          }
+          div::-webkit-scrollbar-track {
+            background: transparent;
+          }
+          div::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+          }
           @media (max-width: 768px) {
             div::-webkit-scrollbar {
               height: 3px;
-            }
-            div::-webkit-scrollbar-track {
-              background: transparent;
-            }
-            div::-webkit-scrollbar-thumb {
-              background: var(--border);
-              border-radius: 3px;
             }
           }
         `}

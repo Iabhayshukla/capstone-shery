@@ -1,6 +1,10 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, Monitor, Tablet, Smartphone, Code2, Undo2, Redo2, RotateCcw, ArrowLeft, Download, PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose, Sparkles, GitBranch, Terminal, Eye } from 'lucide-react';
+import {
+  Loader2, Monitor, Tablet, Smartphone, Code2, Undo2, Redo2,
+  RotateCcw, ArrowLeft, Download, PanelLeftOpen, PanelLeftClose,
+  PanelRightOpen, PanelRightClose, Sparkles, GitBranch, Terminal, Eye, X
+} from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { exportHtml } from '../api/export.api';
 import { PreviewPane } from '@/features/preview';
@@ -72,13 +76,27 @@ export default function PreviewScreen({
   const [isResizingMonaco, setIsResizingMonaco] = useState(false);
   const [isDraggingPanel, setIsDraggingPanel] = useState(false);
 
+  const [windowWidth, setWindowWidth] = useState(
+    typeof window !== 'undefined' ? window.innerWidth : 1200
+  );
+
   const containerRef = useRef<HTMLDivElement>(null);
   const dragStartX = useRef(0);
 
+  const isMobile = windowWidth < 768;
+  const isSmallMobile = windowWidth < 480;
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Disable custom resizing on mobile – panel becomes a fixed bottom sheet
   const startPanelResize = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
-    setIsResizingPanel(true);
-  }, []);
+    if (!isMobile) setIsResizingPanel(true);
+  }, [isMobile]);
 
   useEffect(() => {
     if (!isResizingPanel) return;
@@ -94,33 +112,42 @@ export default function PreviewScreen({
     const onUp = () => setIsResizingPanel(false);
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
-    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
   }, [isResizingPanel, panelSide]);
 
   const startMonacoResize = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
-    setIsResizingMonaco(true);
-  }, []);
+    if (!isMobile) setIsResizingMonaco(true);
+  }, [isMobile]);
 
   useEffect(() => {
     if (!isResizingMonaco) return;
     const onMove = (e: MouseEvent) => {
       setMonacoWidth(prev => {
         const newWidth = prev - e.movementX;
-        return Math.max(340, Math.min(newWidth, 900));
+        return Math.max(300, Math.min(newWidth, 900));
       });
     };
     const onUp = () => setIsResizingMonaco(false);
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
-    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
   }, [isResizingMonaco]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
-        if (e.shiftKey) { if (canRedo) { e.preventDefault(); onRedo(); } }
-        else { if (canUndo) { e.preventDefault(); onUndo(); } }
+        if (e.shiftKey) {
+          if (canRedo) { e.preventDefault(); onRedo(); }
+        } else {
+          if (canUndo) { e.preventDefault(); onUndo(); }
+        }
       }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
         if (canRedo) { e.preventDefault(); onRedo(); }
@@ -135,9 +162,10 @@ export default function PreviewScreen({
   }, [canUndo, canRedo, onUndo, onRedo]);
 
   const handlePanelDragStart = useCallback((e: React.MouseEvent) => {
+    if (isMobile) return;
     dragStartX.current = e.clientX;
     setIsDraggingPanel(true);
-  }, []);
+  }, [isMobile]);
 
   useEffect(() => {
     if (!isDraggingPanel) return;
@@ -154,12 +182,15 @@ export default function PreviewScreen({
   const isReady = previewMethod === 'iframe' ? true : status.status === 'ready';
   const vpLabel = viewport === 'mobile' ? '375px' : viewport === 'tablet' ? '768px' : '1280px';
 
+  // Responsive panel width
+  const effectivePanelWidth = isMobile ? windowWidth * 0.85 : panelWidth;
+
   const slideVariants = {
-    open: { width: panelWidth, opacity: 1, x: 0 },
+    open: { width: isMobile ? '100%' : effectivePanelWidth, opacity: 1, x: 0 },
     closed: {
-      width: 0,
-      opacity: 0,
-      x: panelSide === 'left' ? -panelWidth : panelWidth,
+      width: isMobile ? 0 : 0,
+      opacity: isMobile ? 0 : 0,
+      x: isMobile ? 0 : (panelSide === 'left' ? -panelWidth : panelWidth),
     },
   };
 
@@ -178,36 +209,71 @@ export default function PreviewScreen({
         display: 'flex',
         flexDirection: 'column',
         background: 'var(--surface)',
-        borderLeft: panelSide === 'right' ? '1px solid var(--border)' : 'none',
-        borderRight: panelSide === 'left' ? '1px solid var(--border)' : 'none',
-        position: 'relative',
-        zIndex: 10,
+        borderLeft: panelSide === 'right' && !isMobile ? '1px solid var(--border)' : 'none',
+        borderRight: panelSide === 'left' && !isMobile ? '1px solid var(--border)' : 'none',
+        borderTop: isMobile ? '1px solid var(--border)' : 'none',
+        position: isMobile ? 'fixed' : 'relative',
+        zIndex: isMobile ? 50 : 10,
         fontFamily: 'DM Sans, sans-serif',
         overflow: 'hidden',
         minWidth: 0,
+        bottom: isMobile ? 0 : undefined,
+        left: isMobile ? 0 : undefined,
+        right: isMobile ? 0 : undefined,
+        height: isMobile ? '85vh' : 'auto',
+        borderTopLeftRadius: isMobile ? 16 : 0,
+        borderTopRightRadius: isMobile ? 16 : 0,
+        boxShadow: isMobile ? '0 -8px 32px rgba(0,0,0,0.5)' : 'none',
       }}
     >
-      <div
-        onMouseDown={handlePanelDragStart}
-        style={{
-          padding: '10px 0',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 6,
-          cursor: isDraggingPanel ? 'grabbing' : 'grab',
-          flexShrink: 0,
-          borderBottom: '1px solid var(--border)',
-          background: 'rgba(0,0,0,0.15)',
-          transition: 'background 0.2s',
-        }}
-        title="Drag to switch sides"
-      >
-        {[0, 1, 2].map(i => (
-          <div key={i} style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--text-muted)' }} />
-        ))}
-        <span style={{ fontSize: 9, marginLeft: 8, color: 'var(--text-muted)', letterSpacing: 1 }}>⇄</span>
-      </div>
+      {/* Mobile close button */}
+      {isMobile && isPanelOpen && (
+        <button
+          onClick={() => setIsPanelOpen(false)}
+          style={{
+            position: 'absolute',
+            top: 12,
+            right: 12,
+            width: 32,
+            height: 32,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'rgba(0,0,0,0.5)',
+            border: 'none',
+            borderRadius: '50%',
+            color: 'var(--text-primary)',
+            cursor: 'pointer',
+            zIndex: 10,
+          }}
+        >
+          <X size={16} />
+        </button>
+      )}
+
+      {!isMobile && (
+        <div
+          onMouseDown={handlePanelDragStart}
+          style={{
+            padding: '10px 0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
+            cursor: isDraggingPanel ? 'grabbing' : 'grab',
+            flexShrink: 0,
+            borderBottom: '1px solid var(--border)',
+            background: 'rgba(0,0,0,0.15)',
+            transition: 'background 0.2s',
+          }}
+          title="Drag to switch sides"
+        >
+          {[0, 1, 2].map(i => (
+            <div key={i} style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--text-muted)' }} />
+          ))}
+          <span style={{ fontSize: 9, marginLeft: 8, color: 'var(--text-muted)', letterSpacing: 1 }}>⇄</span>
+        </div>
+      )}
 
       <div style={{ flex: 1, overflow: 'hidden' }}>
         <PromptPanel
@@ -222,17 +288,23 @@ export default function PreviewScreen({
         />
       </div>
 
-      <div
-        onMouseDown={startPanelResize}
-        className="glow-divider"
-        style={{
-          position: 'absolute', top: 0, bottom: 0, width: 4,
-          cursor: 'col-resize', zIndex: 20,
-          [panelSide === 'left' ? 'right' : 'left']: 0,
-          background: isResizingPanel ? 'var(--brand-primary)' : 'var(--border)',
-          transition: 'background 0.15s',
-        }}
-      />
+      {!isMobile && (
+        <div
+          onMouseDown={startPanelResize}
+          className="glow-divider"
+          style={{
+            position: 'absolute',
+            top: 0,
+            bottom: 0,
+            width: 4,
+            cursor: 'col-resize',
+            zIndex: 20,
+            [panelSide === 'left' ? 'right' : 'left']: 0,
+            background: isResizingPanel ? 'var(--brand-primary)' : 'var(--border)',
+            transition: 'background 0.15s',
+          }}
+        />
+      )}
     </motion.div>
   );
 
@@ -240,8 +312,10 @@ export default function PreviewScreen({
     <div
       ref={containerRef}
       style={{
-        display: 'flex', flexDirection: 'column',
-        width: '100%', height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        width: '100%',
+        height: '100%',
         background: 'var(--background)',
         userSelect: isResizingPanel || isResizingMonaco ? 'none' : undefined,
         fontFamily: 'DM Sans, sans-serif',
@@ -249,102 +323,107 @@ export default function PreviewScreen({
       }}
     >
       {/* Top toolbar */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 0,
-        padding: '0 20px',
-        borderBottom: '1px solid var(--border)',
-        background: 'var(--surface)',
-        flexShrink: 0, height: 52,
-      }}>
-        <Link
-          to="/dashboard"
-          style={{
-            display: 'flex', alignItems: 'center', gap: 10,
-            color: 'var(--text-primary)', textDecoration: 'none',
-            marginRight: 24, cursor: 'pointer', transition: 'opacity 0.2s',
-          }}
-          onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.opacity = '0.8'; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.opacity = '1'; }}
-        >
-          <div style={{
-            width: 28, height: 28, borderRadius: 8,
-            background: 'linear-gradient(135deg, var(--brand-primary), var(--brand-accent))',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <GitBranch size={14} color="white" />
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: isMobile ? 6 : 0,
+          padding: isMobile ? '0 8px' : '0 20px',
+          borderBottom: '1px solid var(--border)',
+          background: 'var(--surface)',
+          flexShrink: 0,
+          height: isMobile ? 48 : 52,
+          overflowX: isMobile ? 'auto' : 'visible',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {/* Panel toggle button (only on larger screens) */}
+        {!isSmallMobile && (
+          <button
+            onClick={() => setIsPanelOpen(v => !v)}
+            title={`${isPanelOpen ? 'Hide' : 'Show'} Prompt Panel (Ctrl+B)`}
+            className="toolbar-btn"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 34,
+              height: 34,
+              background: isPanelOpen ? 'rgba(var(--brand-primary-rgb), 0.1)' : 'transparent',
+              border: isPanelOpen ? `1px solid rgba(var(--brand-primary-rgb), 0.25)` : '1px solid transparent',
+              color: isPanelOpen ? 'var(--brand-primary)' : 'var(--text-muted)',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              borderRadius: 8,
+              marginRight: 6,
+            }}
+          >
+            <PanelToggleIcon size={15} />
+          </button>
+        )}
+
+        {!isMobile && <div style={{ width: 1, height: 24, background: 'var(--border)', marginRight: 12, flexShrink: 0 }} />}
+
+        {/* Undo / Redo (hidden on small mobile) */}
+        {!isSmallMobile && (
+          <div style={{ display: 'flex', gap: 4 }}>
+            {[
+              { icon: <Undo2 size={14} />, action: onUndo, disabled: !canUndo, title: 'Undo (Ctrl+Z)' },
+              { icon: <Redo2 size={14} />, action: onRedo, disabled: !canRedo, title: 'Redo (Ctrl+Y)' },
+            ].map((btn, i) => (
+              <button
+                key={i}
+                onClick={btn.action}
+                disabled={btn.disabled}
+                title={btn.title}
+                className="toolbar-btn"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 34,
+                  height: 34,
+                  background: 'transparent',
+                  border: '1px solid transparent',
+                  color: btn.disabled ? 'rgba(255,255,255,0.15)' : 'var(--text-muted)',
+                  cursor: btn.disabled ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.15s',
+                  borderRadius: 8,
+                }}
+                onMouseEnter={e => { if (!btn.disabled) (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'transparent'; }}
+              >
+                {btn.icon}
+              </button>
+            ))}
           </div>
-          <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 2.5 }}>
-            Capstone<span style={{ color: 'var(--brand-primary)' }}>-Shery</span>
-          </span>
-        </Link>
+        )}
 
-        <div style={{ width: 1, height: 24, background: 'var(--border)', marginRight: 16, flexShrink: 0 }} />
+        {!isMobile && <div style={{ width: 1, height: 24, background: 'var(--border)', margin: '0 12px', flexShrink: 0 }} />}
 
-        <button
-          onClick={() => setIsPanelOpen(v => !v)}
-          title={`${isPanelOpen ? 'Hide' : 'Show'} Prompt Panel (Ctrl+B)`}
-          className="toolbar-btn"
-          style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            width: 34, height: 34,
-            background: isPanelOpen ? 'rgba(var(--brand-primary-rgb), 0.1)' : 'transparent',
-            border: isPanelOpen ? `1px solid rgba(var(--brand-primary-rgb), 0.25)` : '1px solid transparent',
-            color: isPanelOpen ? 'var(--brand-primary)' : 'var(--text-muted)',
-            cursor: 'pointer', transition: 'all 0.2s', borderRadius: 8,
-            marginRight: 6,
-          }}
-        >
-          <PanelToggleIcon size={15} />
-        </button>
-
-        <div style={{ width: 1, height: 24, background: 'var(--border)', marginRight: 12, flexShrink: 0 }} />
-
-        <div style={{ display: 'flex', gap: 4 }}>
-          {[
-            { icon: <Undo2 size={14} />, action: onUndo, disabled: !canUndo, title: 'Undo (Ctrl+Z)' },
-            { icon: <Redo2 size={14} />, action: onRedo, disabled: !canRedo, title: 'Redo (Ctrl+Y)' },
-          ].map((btn, i) => (
-            <button
-              key={i}
-              onClick={btn.action}
-              disabled={btn.disabled}
-              title={btn.title}
-              className="toolbar-btn"
-              style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                width: 34, height: 34,
-                background: 'transparent', border: '1px solid transparent',
-                color: btn.disabled ? 'rgba(255,255,255,0.15)' : 'var(--text-muted)',
-                cursor: btn.disabled ? 'not-allowed' : 'pointer',
-                transition: 'all 0.15s', borderRadius: 8,
-              }}
-              onMouseEnter={e => { if (!btn.disabled) (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'transparent'; }}
-            >
-              {btn.icon}
-            </button>
-          ))}
-        </div>
-
-        <div style={{ width: 1, height: 24, background: 'var(--border)', margin: '0 12px', flexShrink: 0 }} />
-
-        <div style={{ display: 'flex', gap: 6, background: 'rgba(0,0,0,0.2)', padding: '2px', borderRadius: 10 }}>
+        {/* Viewport switcher */}
+        <div style={{ display: 'flex', gap: isMobile ? 2 : 6, background: 'rgba(0,0,0,0.2)', padding: '2px', borderRadius: 10 }}>
           {([
-            { v: 'desktop' as ViewportSize, icon: <Monitor size={14} /> },
-            { v: 'tablet' as ViewportSize, icon: <Tablet size={14} /> },
-            { v: 'mobile' as ViewportSize, icon: <Smartphone size={14} /> },
+            { v: 'desktop' as ViewportSize, icon: <Monitor size={isMobile ? 12 : 14} /> },
+            { v: 'tablet' as ViewportSize, icon: <Tablet size={isMobile ? 12 : 14} /> },
+            { v: 'mobile' as ViewportSize, icon: <Smartphone size={isMobile ? 12 : 14} /> },
           ]).map(({ v, icon }) => (
             <button
               key={v}
               onClick={() => setViewport(v)}
               className="toolbar-btn"
               style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                width: 32, height: 32,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: isMobile ? 28 : 32,
+                height: isMobile ? 28 : 32,
                 background: viewport === v ? 'rgba(var(--brand-primary-rgb), 0.15)' : 'transparent',
                 border: 'none',
                 color: viewport === v ? 'var(--brand-primary)' : 'var(--text-muted)',
-                cursor: 'pointer', transition: 'all 0.15s', borderRadius: 8,
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+                borderRadius: 8,
               }}
             >
               {icon}
@@ -352,159 +431,254 @@ export default function PreviewScreen({
           ))}
         </div>
 
-        <div style={{
-          marginLeft: 12,
-          fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase',
-          color: previewMethod === 'webcontainer' ? 'var(--brand-primary)' : 'var(--text-muted)',
-          border: `1px solid ${previewMethod === 'webcontainer' ? 'rgba(var(--brand-primary-rgb), 0.3)' : 'var(--border)'}`,
-          padding: '4px 12px', borderRadius: 20, background: previewMethod === 'webcontainer' ? 'rgba(var(--brand-primary-rgb), 0.05)' : 'transparent',
-        }}>
-          {previewMethod === 'webcontainer' ? '⚡ WebContainer' : '◈ iframe'}
-        </div>
-
         <div style={{ flex: 1 }} />
 
-        {lastPrompt && (
+        {/* Back to Dashboard button – top right, always visible */}
+        <Link
+          to="/dashboard"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: isMobile ? 4 : 8,
+            color: 'var(--text-muted)',
+            textDecoration: 'none',
+            fontSize: isMobile ? 10 : 11,
+            fontWeight: 500,
+            letterSpacing: 1.5,
+            textTransform: 'uppercase',
+            border: '1px solid var(--border)',
+            borderRadius: 20,
+            padding: isMobile ? '4px 8px' : '6px 14px',
+            background: 'rgba(0,0,0,0.15)',
+            transition: 'all 0.2s',
+            marginRight: 8,
+            flexShrink: 0,
+          }}
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLAnchorElement).style.borderColor = 'var(--brand-primary)';
+            (e.currentTarget as HTMLAnchorElement).style.color = 'var(--brand-primary)';
+            (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(var(--brand-primary-rgb), 0.05)';
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLAnchorElement).style.borderColor = 'var(--border)';
+            (e.currentTarget as HTMLAnchorElement).style.color = 'var(--text-muted)';
+            (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(0,0,0,0.15)';
+          }}
+        >
+          <ArrowLeft size={isMobile ? 12 : 14} />
+          <span>{isSmallMobile ? 'Back' : 'Dashboard'}</span>
+        </Link>
+
+        {/* Export button – ALWAYS VISIBLE */}
+        <button
+          onClick={() => exportHtml(html)}
+          className="toolbar-btn"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: isMobile ? 4 : 8,
+            fontSize: 10,
+            letterSpacing: 1.5,
+            textTransform: 'uppercase',
+            color: '#22c55e',
+            background: 'rgba(34,197,94,0.08)',
+            border: '1px solid rgba(34,197,94,0.3)',
+            padding: isMobile ? '4px 8px' : '6px 16px',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            borderRadius: 20,
+            height: isMobile ? 28 : 34,
+            marginRight: 8,
+          }}
+          title="Export HTML Website"
+        >
+          <Download size={12} />
+          {!isSmallMobile && <span>Export</span>}
+        </button>
+
+        {/* Regenerate (only if lastPrompt and not generating) – hidden on small mobile to save space */}
+        {lastPrompt && !isGenerating && (
           <button
             onClick={onRegenerate}
             disabled={isGenerating}
             className="toolbar-btn"
             style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase',
-              color: 'var(--text-muted)', background: 'transparent',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              fontSize: 10,
+              letterSpacing: 1.5,
+              textTransform: 'uppercase',
+              color: 'var(--text-muted)',
+              background: 'transparent',
               border: '1px solid var(--border)',
-              padding: '6px 16px', cursor: isGenerating ? 'not-allowed' : 'pointer',
-              transition: 'all 0.2s', marginRight: 8, borderRadius: 20,
-              height: 34,
+              padding: isMobile ? '4px 8px' : '6px 16px',
+              cursor: isGenerating ? 'not-allowed' : 'pointer',
+              transition: 'all 0.2s',
+              marginRight: 8,
+              borderRadius: 20,
+              height: isMobile ? 28 : 34,
             }}
           >
             <RotateCcw size={12} />
-            Regenerate
+            {!isSmallMobile && <span>Regen</span>}
           </button>
         )}
 
+        {/* Reset button */}
         <button
           onClick={onReset}
           className="toolbar-btn"
           style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase',
-            color: '#ef4444', background: 'rgba(239, 68, 68, 0.08)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            fontSize: 10,
+            letterSpacing: 1.5,
+            textTransform: 'uppercase',
+            color: '#ef4444',
+            background: 'rgba(239, 68, 68, 0.08)',
             border: '1px solid rgba(239, 68, 68, 0.3)',
-            padding: '6px 16px', cursor: 'pointer',
-            transition: 'all 0.2s', borderRadius: 20, height: 34, marginRight: 8,
+            padding: isMobile ? '4px 8px' : '6px 16px',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            borderRadius: 20,
+            height: isMobile ? 28 : 34,
+            marginRight: 8,
           }}
           title="Reset Code to Original"
         >
           <RotateCcw size={12} />
-          Reset
+          {!isSmallMobile && <span>Reset</span>}
         </button>
 
-        <button
-          onClick={() => exportHtml(html)}
-          className="toolbar-btn"
-          style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase',
-            color: '#22c55e', background: 'rgba(34,197,94,0.08)',
-            border: '1px solid rgba(34,197,94,0.3)',
-            padding: '6px 16px', cursor: 'pointer',
-            transition: 'all 0.2s', borderRadius: 20, height: 34, marginRight: 8,
-          }}
-          title="Export HTML Website"
-        >
-          <Download size={12} />
-          Export
-        </button>
-
+        {/* Code toggle button – ALWAYS VISIBLE */}
         <button
           onClick={() => setShowMonaco(v => !v)}
           className="toolbar-btn"
           style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase',
+            display: 'flex',
+            alignItems: 'center',
+            gap: isMobile ? 4 : 8,
+            fontSize: 10,
+            letterSpacing: 1.5,
+            textTransform: 'uppercase',
             color: showMonaco ? 'var(--brand-primary)' : 'var(--text-muted)',
             background: showMonaco ? 'rgba(var(--brand-primary-rgb), 0.1)' : 'transparent',
             border: `1px solid ${showMonaco ? 'rgba(var(--brand-primary-rgb), 0.3)' : 'var(--border)'}`,
-            padding: '6px 16px', cursor: 'pointer',
-            transition: 'all 0.2s', borderRadius: 20, height: 34,
+            padding: isMobile ? '4px 8px' : '6px 16px',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            borderRadius: 20,
+            height: isMobile ? 28 : 34,
           }}
         >
           <Code2 size={12} />
-          {showMonaco ? 'Hide Code' : 'Edit Code'}
+          <span style={{ fontSize: isMobile ? 9 : 11 }}>
+            {showMonaco ? 'Hide Code' : 'Code'}
+          </span>
         </button>
       </div>
 
-      {/* Body */}
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        {panelSide === 'left' && promptPanel}
+      {/* Body – unchanged from previous responsive version */}
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
+        {panelSide === 'left' && !isMobile && promptPanel}
 
         <div style={{ flex: 1, display: 'flex', flexDirection: 'row', overflow: 'hidden', minWidth: 0 }}>
-          {/* Browser chrome wrapper - NO CURVES */}
-          <div className="preview-container" style={{ flex: 1, display: 'flex', flexDirection: 'column', margin: 4 }}>
-            <div style={{
-              flex: 1, display: 'flex', flexDirection: 'column',
-              overflow: 'hidden', minHeight: 0,
-              padding: 12, gap: 12,
-              background: 'var(--background)',
-            }}>
-              {/* Browser address bar - square corners */}
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 16,
-                flexShrink: 0, padding: '8px 16px',
-                background: 'var(--surface-elevated)',
-                border: '1px solid var(--border)',
-              }}>
-                <div style={{ display: 'flex', gap: 8 }}>
+          <div className="preview-container" style={{ flex: 1, display: 'flex', flexDirection: 'column', margin: isMobile ? 0 : 4 }}>
+            <div
+              style={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
+                minHeight: 0,
+                padding: isMobile ? '4px' : 12,
+                gap: isMobile ? 6 : 12,
+                background: 'var(--background)',
+              }}
+            >
+              {/* Browser address bar */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: isMobile ? 8 : 16,
+                  flexShrink: 0,
+                  padding: isMobile ? '6px 8px' : '8px 16px',
+                  background: 'var(--surface-elevated)',
+                  border: '1px solid var(--border)',
+                  borderRadius: isMobile ? 4 : 0,
+                }}
+              >
+                <div style={{ display: 'flex', gap: isMobile ? 5 : 8 }}>
                   {['#ff5f57', '#febc2e', '#28c840'].map(c => (
-                    <div key={c} style={{ width: 11, height: 11, borderRadius: '50%', background: c, boxShadow: '0 0 2px rgba(0,0,0,0.2)' }} />
+                    <div key={c} style={{ width: isMobile ? 8 : 11, height: isMobile ? 8 : 11, borderRadius: '50%', background: c, boxShadow: '0 0 2px rgba(0,0,0,0.2)' }} />
                   ))}
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: 'var(--text-muted)' }}>
-                  <ArrowLeft size={14} style={{ cursor: 'not-allowed', opacity: 0.4 }} />
-                  <ArrowLeft size={14} style={{ cursor: 'not-allowed', opacity: 0.4, transform: 'rotate(180deg)' }} />
-                  <motion.div
-                    animate={!isReady ? { rotate: 360 } : {}}
-                    transition={{ repeat: Infinity, duration: 1.2, ease: 'linear' }}
-                    style={{ display: 'inline-flex', cursor: isReady ? 'pointer' : 'not-allowed' }}
-                    onClick={() => { if (isReady) setRefreshTrigger(prev => prev + 1); }}
-                  >
-                    <RotateCcw size={13} style={{ opacity: isReady ? 0.7 : 0.4 }} />
-                  </motion.div>
-                </div>
+                {!isSmallMobile && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)' }}>
+                    <ArrowLeft size={14} style={{ cursor: 'not-allowed', opacity: 0.4 }} />
+                    <ArrowLeft size={14} style={{ cursor: 'not-allowed', opacity: 0.4, transform: 'rotate(180deg)' }} />
+                    <motion.div
+                      animate={!isReady ? { rotate: 360 } : {}}
+                      transition={{ repeat: Infinity, duration: 1.2, ease: 'linear' }}
+                      style={{ display: 'inline-flex', cursor: isReady ? 'pointer' : 'not-allowed' }}
+                      onClick={() => { if (isReady) setRefreshTrigger(prev => prev + 1); }}
+                    >
+                      <RotateCcw size={13} style={{ opacity: isReady ? 0.7 : 0.4 }} />
+                    </motion.div>
+                  </div>
+                )}
 
-                <div style={{
-                  flex: 1, padding: '6px 14px',
-                  background: 'rgba(0,0,0,0.2)',
-                  border: '1px solid var(--border)',
-                  fontSize: 11, color: 'var(--text-muted)',
-                  fontFamily: 'monospace', letterSpacing: 0.3,
-                  display: 'flex', alignItems: 'center', gap: 8,
-                }}>
+                <div
+                  style={{
+                    flex: 1,
+                    padding: isMobile ? '4px 8px' : '6px 14px',
+                    background: 'rgba(0,0,0,0.2)',
+                    border: '1px solid var(--border)',
+                    fontSize: isMobile ? 10 : 11,
+                    color: 'var(--text-muted)',
+                    fontFamily: 'monospace',
+                    letterSpacing: 0.3,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    overflow: 'hidden',
+                  }}
+                >
                   {previewMethod === 'webcontainer' && (
                     <Loader2 size={11} style={{ color: 'var(--brand-primary)', animation: isReady ? 'none' : 'spin 1s linear infinite' }} />
                   )}
-                  <span style={{ color: 'var(--text-primary)' }}>
+                  <span style={{ color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {previewMethod === 'webcontainer' ? 'localhost:3001' : 'live preview'}
                   </span>
-                  <span style={{ color: 'var(--text-muted)' }}>/index.html</span>
-                  <span style={{ marginLeft: 'auto', color: 'var(--text-muted)' }}>· {vpLabel}</span>
+                  {!isSmallMobile && <span style={{ color: 'var(--text-muted)' }}>/index.html</span>}
+                  <span style={{ marginLeft: 'auto', color: 'var(--text-muted)', flexShrink: 0 }}>
+                    {isSmallMobile ? vpLabel.replace('px', '') : `· ${vpLabel}`}
+                  </span>
                 </div>
 
-                {selectedSection && (
-                  <div style={{
-                    fontSize: 10, letterSpacing: 1, textTransform: 'uppercase',
-                    color: 'var(--brand-primary)', border: `1px solid rgba(var(--brand-primary-rgb), 0.25)`,
-                    padding: '4px 14px', background: 'rgba(var(--brand-primary-rgb), 0.05)',
-                  }}>
+                {selectedSection && !isSmallMobile && (
+                  <div
+                    style={{
+                      fontSize: 10,
+                      letterSpacing: 1,
+                      textTransform: 'uppercase',
+                      color: 'var(--brand-primary)',
+                      border: `1px solid rgba(var(--brand-primary-rgb), 0.25)`,
+                      padding: '4px 14px',
+                      background: 'rgba(var(--brand-primary-rgb), 0.05)',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
                     ◈ {selectedSection}
                   </div>
                 )}
               </div>
 
-              {/* Preview pane - NO BORDER RADIUS, sharp edges */}
+              {/* Preview pane */}
               <div style={{ position: 'relative', flex: 1, overflow: 'hidden', border: '1px solid var(--border)', boxShadow: '0 8px 24px rgba(0,0,0,0.1)' }}>
                 <PreviewPane
                   html={html}
@@ -524,10 +698,14 @@ export default function PreviewScreen({
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
                       style={{
-                        position: 'absolute', inset: 0,
-                        display: 'flex', flexDirection: 'column',
-                        alignItems: 'center', justifyContent: 'center',
-                        gap: 16, zIndex: 20,
+                        position: 'absolute',
+                        inset: 0,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 12,
+                        zIndex: 20,
                         background: 'rgba(7,7,7,0.9)',
                         backdropFilter: 'blur(8px)',
                       }}
@@ -544,7 +722,7 @@ export default function PreviewScreen({
                 </AnimatePresence>
 
                 <AnimatePresence>
-                  {selectedSection && (
+                  {selectedSection && !isSmallMobile && (
                     <motion.button
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -552,15 +730,23 @@ export default function PreviewScreen({
                       onClick={() => onSectionSelect(null)}
                       className="hover-glow"
                       style={{
-                        position: 'absolute', top: 14, right: 14,
-                        display: 'flex', alignItems: 'center', gap: 8,
+                        position: 'absolute',
+                        top: 12,
+                        right: 12,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
                         padding: '6px 14px',
                         background: 'rgba(var(--brand-primary-rgb), 0.12)',
                         backdropFilter: 'blur(8px)',
                         border: `1px solid rgba(var(--brand-primary-rgb), 0.3)`,
-                        color: 'var(--brand-primary)', fontSize: 10,
-                        letterSpacing: 1.5, textTransform: 'uppercase',
-                        fontWeight: 500, cursor: 'pointer', zIndex: 30,
+                        color: 'var(--brand-primary)',
+                        fontSize: 10,
+                        letterSpacing: 1.5,
+                        textTransform: 'uppercase',
+                        fontWeight: 500,
+                        cursor: 'pointer',
+                        zIndex: 30,
                         fontFamily: 'DM Sans, sans-serif',
                         transition: 'all 0.2s',
                       }}
@@ -584,15 +770,18 @@ export default function PreviewScreen({
                       style={{
                         position: 'absolute',
                         top: '50%',
-                        [panelSide === 'left' ? 'left' : 'right']: 16,
+                        [panelSide === 'left' ? 'left' : 'right']: 12,
                         transform: 'translateY(-50%)',
-                        display: 'flex', alignItems: 'center', gap: 8,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
                         padding: '10px 12px',
                         background: 'rgba(var(--brand-primary-rgb), 0.12)',
                         backdropFilter: 'blur(12px)',
                         border: `1px solid rgba(var(--brand-primary-rgb), 0.3)`,
                         color: 'var(--brand-primary)',
-                        cursor: 'pointer', zIndex: 30,
+                        cursor: 'pointer',
+                        zIndex: 30,
                         flexDirection: 'row',
                         fontFamily: 'DM Sans, sans-serif',
                         transition: 'all 0.2s',
@@ -607,15 +796,18 @@ export default function PreviewScreen({
             </div>
           </div>
 
-          {/* Monaco resize handle */}
+          {/* Monaco resize handle (only desktop) */}
           <AnimatePresence>
-            {showMonaco && (
+            {showMonaco && !isMobile && (
               <div
                 onMouseDown={startMonacoResize}
                 className="glow-divider"
                 style={{
-                  width: 4, flexShrink: 0,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: 4,
+                  flexShrink: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                   cursor: 'col-resize',
                   background: isResizingMonaco ? 'var(--brand-primary)' : 'var(--border)',
                   transition: 'background 0.15s',
@@ -630,28 +822,63 @@ export default function PreviewScreen({
             {showMonaco && (
               <motion.div
                 initial={{ width: 0, opacity: 0 }}
-                animate={{ width: monacoWidth, opacity: 1 }}
+                animate={{
+                  width: isMobile ? '100%' : monacoWidth,
+                  opacity: 1,
+                  x: 0,
+                }}
                 exit={{ width: 0, opacity: 0 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                 style={{
-                  flexShrink: 0, overflow: 'hidden',
-                  display: 'flex', flexDirection: 'column',
+                  flexShrink: 0,
+                  overflow: 'hidden',
+                  display: 'flex',
+                  flexDirection: 'column',
                   background: 'var(--surface)',
-                  borderLeft: '1px solid var(--border)',
-                  margin: '4px 4px 4px 0',
+                  borderLeft: isMobile ? 'none' : '1px solid var(--border)',
+                  borderTop: isMobile ? '1px solid var(--border)' : 'none',
+                  margin: isMobile ? '0' : '4px 4px 4px 0',
+                  position: isMobile ? 'absolute' : 'relative',
+                  top: isMobile ? 0 : undefined,
+                  right: isMobile ? 0 : undefined,
+                  bottom: isMobile ? 0 : undefined,
+                  zIndex: 40,
+                  height: isMobile ? '100%' : 'auto',
                 }}
               >
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '10px 18px',
-                  background: 'var(--surface-elevated)',
-                  borderBottom: '1px solid var(--border)',
-                  fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase',
-                  color: 'var(--text-muted)', height: 44, flexShrink: 0,
-                }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    padding: isMobile ? '8px 12px' : '10px 18px',
+                    background: 'var(--surface-elevated)',
+                    borderBottom: '1px solid var(--border)',
+                    fontSize: 11,
+                    letterSpacing: 1.5,
+                    textTransform: 'uppercase',
+                    color: 'var(--text-muted)',
+                    height: 44,
+                    flexShrink: 0,
+                  }}
+                >
                   <Code2 size={13} style={{ color: 'var(--brand-primary)' }} />
                   index.html
                   <span style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: 10 }}>HTML Editor</span>
+                  {isMobile && (
+                    <button
+                      onClick={() => setShowMonaco(false)}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--text-muted)',
+                        cursor: 'pointer',
+                        marginLeft: 4,
+                      }}
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
                 </div>
                 <div style={{ flex: 1, minHeight: 0 }}>
                   <MonacoEditor value={html} onChange={onCodeChange} />
@@ -661,78 +888,89 @@ export default function PreviewScreen({
           </AnimatePresence>
         </div>
 
-        {panelSide === 'right' && promptPanel}
+        {panelSide === 'right' && !isMobile && promptPanel}
       </div>
 
-      {/* Status bar */}
-      <div style={{
-        background: 'var(--surface)', padding: '8px 24px',
-        display: 'flex', alignItems: 'center', gap: 24,
-        flexShrink: 0, fontSize: 10,
-        letterSpacing: 1.5, textTransform: 'uppercase',
-        color: 'var(--text-muted)',
-        borderTop: '1px solid var(--border)',
-        fontFamily: 'monospace',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{
-            width: 8, height: 8, borderRadius: '50%',
-            background: isReady ? '#22c55e' : 'var(--brand-primary)',
-            boxShadow: `0 0 8px ${isReady ? '#22c55e' : 'var(--brand-primary)'}`,
-            display: 'inline-block',
-          }} />
-          <span style={{ color: 'var(--text-primary)' }}>
-            {previewMethod === 'webcontainer' ? `WebContainer: ${status.status}` : 'iframe: ready'}
+      {/* Status bar (hidden on mobile) */}
+      {!isMobile && (
+        <div
+          style={{
+            background: 'var(--surface)',
+            padding: '8px 24px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 24,
+            flexShrink: 0,
+            fontSize: 10,
+            letterSpacing: 1.5,
+            textTransform: 'uppercase',
+            color: 'var(--text-muted)',
+            borderTop: '1px solid var(--border)',
+            fontFamily: 'monospace',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                background: isReady ? '#22c55e' : 'var(--brand-primary)',
+                boxShadow: `0 0 8px ${isReady ? '#22c55e' : 'var(--brand-primary)'}`,
+                display: 'inline-block',
+              }}
+            />
+            <span style={{ color: 'var(--text-primary)' }}>
+              {previewMethod === 'webcontainer' ? `WebContainer: ${status.status}` : 'iframe: ready'}
+            </span>
+          </div>
+          <span style={{ color: 'var(--border)' }}>|</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Terminal size={10} />
+            <span style={{ color: selectedSection ? 'var(--brand-primary)' : 'var(--text-muted)' }}>
+              {selectedSection ? `Section: ${selectedSection}` : 'No Selection'}
+            </span>
+          </div>
+          <span style={{ color: 'var(--border)' }}>|</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ color: consoleErrors.length > 0 ? '#ff5f57' : 'var(--text-muted)' }}>
+              Errors: {consoleErrors.length}
+            </span>
+          </div>
+          <span style={{ color: 'var(--border)' }}>|</span>
+          <span>Size: {(html.length / 1024).toFixed(1)} KB</span>
+          <span style={{ color: 'var(--border)' }}>|</span>
+          <span style={{ color: isPanelOpen ? '#22c55e' : 'var(--text-muted)' }}>
+            Panel: {isPanelOpen ? 'Open' : 'Hidden'}
+          </span>
+          <span style={{ color: 'var(--border)' }}>|</span>
+          <span>Mode: {previewMethod}</span>
+          <span style={{ marginLeft: 'auto', fontFamily: 'monospace', color: 'var(--text-muted)' }}>
+            {viewport} · {vpLabel}
           </span>
         </div>
-        <span style={{ color: 'var(--border)' }}>|</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <Terminal size={10} />
-          <span style={{ color: selectedSection ? 'var(--brand-primary)' : 'var(--text-muted)' }}>
-            {selectedSection ? `Section: ${selectedSection}` : 'No Selection'}
-          </span>
-        </div>
-        <span style={{ color: 'var(--border)' }}>|</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ color: consoleErrors.length > 0 ? '#ff5f57' : 'var(--text-muted)' }}>
-            Errors: {consoleErrors.length}
-          </span>
-        </div>
-        <span style={{ color: 'var(--border)' }}>|</span>
-        <span>Size: {(html.length / 1024).toFixed(1)} KB</span>
-        <span style={{ color: 'var(--border)' }}>|</span>
-        <span style={{ color: isPanelOpen ? '#22c55e' : 'var(--text-muted)' }}>
-          Panel: {isPanelOpen ? 'Open' : 'Hidden'}
-        </span>
-        <span style={{ color: 'var(--border)' }}>|</span>
-        <span>Mode: {previewMethod}</span>
-        <span style={{ marginLeft: 'auto', fontFamily: 'monospace', color: 'var(--text-muted)' }}>
-          {viewport} · {vpLabel}
-        </span>
-      </div>
+      )}
 
-      {/* Floating Action Button (FAB) for Generate */}
-      <AnimatePresence>
-        {!isPanelOpen && (
+      {/* Mobile FAB – LEFT SIDE, only when panel is closed */}
+      {isMobile && !isPanelOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: 16,
+            left: 16,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+            zIndex: 60,
+          }}
+        >
           <motion.button
-            initial={{ opacity: 0, scale: 0.8, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.8, y: 20 }}
-            whileHover={{ scale: 1.08, boxShadow: `0 0 28px rgba(var(--brand-primary-rgb), 0.6)` }}
+            whileHover={{ scale: 1.08 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => {
-              setIsPanelOpen(true);
-              setTimeout(() => {
-                const input = document.querySelector('.prompt-input') as HTMLTextAreaElement;
-                if (input) input.focus();
-              }, 200);
-            }}
+            onClick={() => setIsPanelOpen(true)}
             style={{
-              position: 'fixed',
-              bottom: 28,
-              right: 28,
-              width: 60,
-              height: 60,
+              width: 56,
+              height: 56,
               borderRadius: '50%',
               background: 'linear-gradient(135deg, var(--brand-primary), var(--brand-accent))',
               border: 'none',
@@ -741,19 +979,20 @@ export default function PreviewScreen({
               justifyContent: 'center',
               cursor: 'pointer',
               boxShadow: `0 0 20px rgba(var(--brand-primary-rgb), 0.5)`,
-              zIndex: 100,
-              transition: 'all 0.2s',
+              color: '#080808',
             }}
           >
-            <Sparkles size={26} color="#080808" />
+            <Sparkles size={24} />
           </motion.button>
-        )}
-      </AnimatePresence>
+        </div>
+      )}
+
+      {/* Mobile prompt panel (bottom sheet) */}
+      {isMobile && isPanelOpen && promptPanel}
 
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap');
         
-        /* Removed gradient-border animation and border-radius from preview container */
         .preview-container {
           position: relative;
           overflow: hidden;
@@ -785,6 +1024,13 @@ export default function PreviewScreen({
         .hover-glow:hover {
           box-shadow: 0 0 12px rgba(var(--brand-primary-rgb), 0.5);
           background: rgba(var(--brand-primary-rgb), 0.2);
+        }
+
+        /* Hide scrollbar on mobile */
+        @media (max-width: 768px) {
+          ::-webkit-scrollbar {
+            width: 2px;
+          }
         }
       `}</style>
     </div>
