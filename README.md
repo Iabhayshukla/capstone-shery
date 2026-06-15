@@ -74,7 +74,7 @@ cp .env.example .env
 # 3. Run database migration
 # Supabase Dashboard → SQL Editor → paste supabase/migrations/001_initial_schema.sql
 
-# 4. Start backend
+# 4. Start backend(Node)
 cd server
 npm install
 npm run dev          # → http://localhost:5000
@@ -83,8 +83,11 @@ npm run dev          # → http://localhost:5000
 cd client
 npm install
 npm run dev          # → http://localhost:5173
-```
 
+# 6. Start backend(Python)
+cd server
+npm install
+.venv\Scripts\activate; uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ---
 
 ## Environment Variables
@@ -121,5 +124,6 @@ The SRS recommends Next.js, Claude, and Sandpack. We deviated in a few places:
 
 - **Vite + React** instead of Next.js — no SSR needed, faster dev experience. Listed as acceptable in the SRS.
 - **AWS Bedrock (Nova Pro)** instead of Claude — faculty provided AWS credits. Same streaming contract.
+
 - **`<iframe srcdoc>`** instead of Sandpack — lighter bundle, stricter sandbox. Listed as acceptable in the SRS.
 
