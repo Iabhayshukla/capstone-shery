@@ -1,6 +1,6 @@
 import type { PreviewMethod } from '@/shared/classifier';
 
-const API_URL = import.meta.env.VITE_API_URL as string;
+const API_URL = import.meta.env.VITE_GENERATE_URL || import.meta.env.VITE_API_URL as string;
 
 export interface GenerateOptions {
   projectId: string;
