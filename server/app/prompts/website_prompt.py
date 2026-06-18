@@ -427,3 +427,23 @@ def build_website_prompt(user_prompt: str, framework: str = "") -> str:
         return build_node_prompt(user_prompt)
 
     return build_default_prompt(user_prompt)
+
+
+# ─── NEW: get_prompts() — called by nova_service.py ──────────────────────────
+
+def get_prompts(user_prompt: str, framework: str = "", section_id: str = "", section_html: str = "") -> dict:
+    is_section_edit = bool(section_id and section_html)
+
+    if is_section_edit:
+        return {
+            "system_prompt": "You are an expert frontend developer. Edit ONLY the given section. Output ONLY the updated section HTML. Keep data-section-id exactly as-is. No markdown, no explanations. First char <.",
+            "user_message": f'Edit this section (data-section-id="{section_id}"):\n\n{section_html}\n\nEdit request: "{user_prompt}"\n\nOutput ONLY the updated section HTML.',
+            "is_section_edit": True
+        }
+
+    full_prompt = build_website_prompt(user_prompt, framework)
+    return {
+        "system_prompt": "You are an expert frontend developer. Output ONLY raw HTML. First char <. No markdown, no CDN, no Tailwind.",
+        "user_message": full_prompt,
+        "is_section_edit": False
+    }

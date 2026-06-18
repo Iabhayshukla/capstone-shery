@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.routes.generate import router as generate_router
+# from app.routes.generate import router as generate_router
 from app.routes.stream import router as stream_router
 from fastapi.middleware.cors import CORSMiddleware
 from app.routes.projects import router as projects_router
@@ -14,7 +14,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(generate_router)
+# app.include_router(generate_router)
 app.include_router(stream_router)
 app.include_router(projects_router)
 

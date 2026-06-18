@@ -1,22 +1,33 @@
-from fastapi import APIRouter
-from app.validators.generate_request import GenerateRequest
-from app.services.llm_service import generate_website
-from app.services.project_service import save_project
+from fastapi import APIRouter, Request, HTTPException
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
+from app.services.nova_service import nova_service
 
 router = APIRouter()
 
-@router.post("/generate")
-async def generate(request: GenerateRequest):
+class GenerateRequest(BaseModel):
+    prompt: str
+    projectId: str = ""
+    framework: str = ""
+    sectionId: str = ""
+    currentHtml: str = ""
 
-    html = await generate_website(
-    request.prompt
-)
-    save_project(
-    request.prompt,
-    html
-)
+@router.post("/generate")
+async def generate(body: GenerateRequest, request: Request):
+    if not body.prompt.strip():
+        raise HTTPException(status_code=400, detail="prompt is required")
     
-    return {
-        "success": True,
-        "html": html
-    }
+    return StreamingResponse(
+        nova_service.stream_website(
+            user_prompt=body.prompt,
+            framework=body.framework,
+            section_id=body.sectionId,
+            current_html=body.currentHtml,
+        ),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
