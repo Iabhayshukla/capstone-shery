@@ -14,8 +14,8 @@ import json
 import asyncio
 import boto3
 from dotenv import load_dotenv
-from app.prompts.website_prompt import build_website_prompt
-
+from app.prompts.website_prompt import get_prompts
+from app.prompts.website_prompt import get_prompts
 load_dotenv()
 
 # ─── Constants ────────────────────────────────────────────────────────────────
@@ -236,7 +236,9 @@ class NovaService:
         # ── Get prompts from your website_prompt.py ────────────────────────
         section_html = extract_section(current_html, section_id) if is_section_edit else ""
         system_prompt = ("You are an expert web developer.")
-        user_message = build_website_prompt(user_prompt,framework)
+        prompts = get_prompts(user_prompt, framework, section_id, section_html)
+        system_prompt = prompts["system_prompt"]
+        user_message = prompts["user_message"]
 
         # ── Dynamic limits — section edits are small ───────────────────────
         max_tokens  = 2048 if is_section_edit else 8192
