@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Copy, Check, Eye, FileCode, FileJson, FileText, Coffee, Sparkles } from 'lucide-react';
+import { Copy, Check, Eye, FileCode, FileJson, FileText, Coffee, Sparkles, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface StreamingFile {
@@ -252,6 +252,29 @@ export default function StreamingView({ files, isStreaming, onPreview, error, th
           </>
         )}
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 12 }}>
+          <Link
+            to="/dashboard"
+            style={{
+              display: 'flex', alignItems: 'center', gap: isMobile ? 4 : 6,
+              fontSize: isMobile ? 9 : 10, fontWeight: 500, letterSpacing: 1.5, textTransform: 'uppercase',
+              color: styles.textMuted, textDecoration: 'none',
+              border: `1px solid ${styles.border}`, borderRadius: 40,
+              padding: isMobile ? '3px 10px' : '5px 14px',
+              background: isLight ? '#f5f3ff' : 'rgba(0,0,0,0.2)',
+              transition: 'all 0.2s', cursor: 'pointer',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.borderColor = styles.brand;
+              e.currentTarget.style.color = styles.brand;
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.borderColor = styles.border;
+              e.currentTarget.style.color = styles.textMuted;
+            }}
+          >
+            <ArrowLeft size={isMobile ? 10 : 12} />
+            <span>{isMobile ? 'Back' : 'Dashboard'}</span>
+          </Link>
           <div style={{
             display: 'flex', alignItems: 'center', gap: isMobile ? 4 : 8,
             background: isLight ? '#f5f3ff' : 'rgba(0,0,0,0.3)',
