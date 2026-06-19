@@ -75,6 +75,7 @@ export default function PreviewScreen({
   const [isResizingPanel, setIsResizingPanel] = useState(false);
   const [isResizingMonaco, setIsResizingMonaco] = useState(false);
   const [isDraggingPanel, setIsDraggingPanel] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
 
   const [windowWidth, setWindowWidth] = useState(
     typeof window !== 'undefined' ? window.innerWidth : 1200
@@ -82,6 +83,7 @@ export default function PreviewScreen({
 
   const containerRef = useRef<HTMLDivElement>(null);
   const dragStartX = useRef(0);
+  const previewContainerRef = useRef<HTMLDivElement>(null);
 
   const isMobile = windowWidth < 768;
   const isSmallMobile = windowWidth < 480;
@@ -166,6 +168,16 @@ export default function PreviewScreen({
     dragStartX.current = e.clientX;
     setIsDraggingPanel(true);
   }, [isMobile]);
+
+  const toggleFullscreen = useCallback(() => {
+    const el = previewContainerRef.current;
+    if (!el) return;
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      el.requestFullscreen().catch(() => {});
+    }
+  }, []);
 
   useEffect(() => {
     if (!isDraggingPanel) return;
@@ -612,23 +624,63 @@ export default function PreviewScreen({
                 }}
               >
                 <div style={{ display: 'flex', gap: isMobile ? 5 : 8 }}>
-                  {['#ff5f57', '#febc2e', '#28c840'].map(c => (
-                    <div key={c} style={{ width: isMobile ? 8 : 11, height: isMobile ? 8 : 11, borderRadius: '50%', background: c, boxShadow: '0 0 2px rgba(0,0,0,0.2)' }} />
+                  {[
+                    { color: '#ff5f57', glow: 'rgba(255,95,87,0.6)', title: 'Refresh Preview', action: () => setRefreshTrigger(p => p + 1) },
+                    { color: '#febc2e', glow: 'rgba(254,188,46,0.6)', title: isMinimized ? 'Expand Preview' : 'Minimize Preview', action: () => setIsMinimized(v => !v) },
+                    { color: '#28c840', glow: 'rgba(40,200,64,0.6)', title: 'Toggle Fullscreen', action: toggleFullscreen },
+                  ].map(({ color, glow, title, action }) => (
+                    <div
+                      key={color}
+                      onClick={action}
+                      title={title}
+                      style={{
+                        width: isMobile ? 8 : 11,
+                        height: isMobile ? 8 : 11,
+                        borderRadius: '50%',
+                        background: color,
+                        boxShadow: '0 0 2px rgba(0,0,0,0.2)',
+                        cursor: 'pointer',
+                        transition: 'transform 0.15s, box-shadow 0.15s',
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.transform = 'scale(1.3)';
+                        e.currentTarget.style.boxShadow = `0 0 8px ${glow}`;
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.transform = 'scale(1)';
+                        e.currentTarget.style.boxShadow = '0 0 2px rgba(0,0,0,0.2)';
+                      }}
+                    />
                   ))}
                 </div>
 
                 {!isSmallMobile && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)' }}>
-                    <ArrowLeft size={14} style={{ cursor: 'not-allowed', opacity: 0.4 }} />
-                    <ArrowLeft size={14} style={{ cursor: 'not-allowed', opacity: 0.4, transform: 'rotate(180deg)' }} />
-                    <motion.div
-                      animate={!isReady ? { rotate: 360 } : {}}
-                      transition={{ repeat: Infinity, duration: 1.2, ease: 'linear' }}
-                      style={{ display: 'inline-flex', cursor: isReady ? 'pointer' : 'not-allowed' }}
-                      onClick={() => { if (isReady) setRefreshTrigger(prev => prev + 1); }}
-                    >
-                      <RotateCcw size={13} style={{ opacity: isReady ? 0.7 : 0.4 }} />
-                    </motion.div>
+                    <ArrowLeft
+                      size={14}
+                      title={canUndo ? 'Undo (Ctrl+Z)' : 'Nothing to undo'}
+                      style={{
+                        cursor: canUndo ? 'pointer' : 'not-allowed',
+                        opacity: canUndo ? 0.7 : 0.4,
+                        transition: 'all 0.15s',
+                      }}
+                      onClick={() => { if (canUndo) onUndo(); }}
+                      onMouseEnter={e => { if (canUndo) e.currentTarget.style.opacity = '1'; }}
+                      onMouseLeave={e => { e.currentTarget.style.opacity = canUndo ? '0.7' : '0.4'; }}
+                    />
+                    <ArrowLeft
+                      size={14}
+                      title={canRedo ? 'Redo (Ctrl+Y)' : 'Nothing to redo'}
+                      style={{
+                        cursor: canRedo ? 'pointer' : 'not-allowed',
+                        opacity: canRedo ? 0.7 : 0.4,
+                        transform: 'rotate(180deg)',
+                        transition: 'all 0.15s',
+                      }}
+                      onClick={() => { if (canRedo) onRedo(); }}
+                      onMouseEnter={e => { if (canRedo) e.currentTarget.style.opacity = '1'; }}
+                      onMouseLeave={e => { e.currentTarget.style.opacity = canRedo ? '0.7' : '0.4'; }}
+                    />
                   </div>
                 )}
 
@@ -679,7 +731,13 @@ export default function PreviewScreen({
               </div>
 
               {/* Preview pane */}
-              <div style={{ position: 'relative', flex: 1, overflow: 'hidden', border: '1px solid var(--border)', boxShadow: '0 8px 24px rgba(0,0,0,0.1)' }}>
+              <div ref={previewContainerRef} style={{ position: 'relative', flex: isMinimized ? 'none' : 1, height: isMinimized ? 48 : undefined, overflow: 'hidden', border: '1px solid var(--border)', boxShadow: isMinimized ? 'none' : '0 8px 24px rgba(0,0,0,0.1)', transition: 'all 0.3s ease' }}>
+                {isMinimized && (
+                  <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface)', zIndex: 40, gap: 8, color: 'var(--text-muted)', fontSize: 12, letterSpacing: 1 }}>
+                    <Sparkles size={14} style={{ color: 'var(--brand-primary)' }} />
+                    <span>Preview minimized</span>
+                  </div>
+                )}
                 <PreviewPane
                   html={html}
                   onSectionClick={(id) => onSectionSelect(id)}
