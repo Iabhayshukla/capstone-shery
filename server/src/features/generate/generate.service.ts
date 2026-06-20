@@ -1,11 +1,10 @@
-// server/src/features/generate/generate.service.ts (complete fixed version)
-
 import { Response } from 'express';
 import { getBedrockClient, DEFAULT_MODEL_ID, InvokeModelWithResponseStreamCommand } from '../../lib/bedrock';
 import { supabaseAdmin } from '../../lib/supabase';
-import { getSystemPrompt } from './prompt'; // no longer need SECTION_EDIT_SUFFIX
+import { getSystemPrompt, SECTION_EDIT_SYSTEM_PROMPT } from './prompt';
 import { GenerateRequestBody } from './generate.types';
 import { hasTailwindClasses, injectTailwindCSS } from '../../lib/tailwindCompiler';
+import { recordTokenUsage } from '../usage/usage.service';
 
 const MAX_RETRIES = 2;
 const MAX_CORRECTION_ATTEMPTS = 2;
@@ -19,33 +18,74 @@ function sendSSE(res: Response, event: string, data: unknown) {
   res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
 }
 
-// ─── FIXED: buildUserMessage with stronger edit instruction ─────────────────
+// ─── Section helpers ────────────────────────────────────────────────────────
+function extractSection(html: string, sectionId: string): string | null {
+  const regex = new RegExp(
+    `<([a-zA-Z0-9]+)[^>]*data-section-id="${sectionId}"[^>]*>([\\s\\S]*?)<\\/\\1>`,
+    'i'
+  );
+  const match = html.match(regex);
+  return match ? match[0] : null;
+}
+
+function replaceSection(html: string, sectionId: string, newSection: string): string {
+  const regex = new RegExp(
+    `<([a-zA-Z0-9]+)[^>]*data-section-id="${sectionId}"[^>]*>([\\s\\S]*?)<\\/\\1>`,
+    'i'
+  );
+  return html.replace(regex, newSection);
+}
+
+// ─── History formatting ─────────────────────────────────────────────────────
+function formatHistory(history: { role: 'user' | 'assistant'; content: string }[]): string {
+  if (!history || history.length === 0) return '';
+  const recent = history.slice(-10);
+  return recent.map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`).join('\n');
+}
+
+// ─── User message builder ────────────────────────────────────────────────────
 function buildUserMessage(body: GenerateRequestBody): string {
   const basePrompt = body.prompt.trim().slice(0, 2000);
-  
+  const historyContext = body.conversationHistory
+    ? `## PREVIOUS CONVERSATION\n${formatHistory(body.conversationHistory)}\n\n---\n\n`
+    : '';
+
   if (body.sectionId && body.currentHtml) {
-    return `
-## CURRENT FULL PAGE HTML (reference only)
+    const sectionHtml = extractSection(body.currentHtml, body.sectionId);
+
+    if (!sectionHtml) {
+      console.warn(`[generate.service] Section "${body.sectionId}" not found – falling back to full page.`);
+      return `${historyContext}## CURRENT FULL PAGE HTML (reference only)
 \`\`\`html
 ${body.currentHtml}
 \`\`\`
 
-## SECTION EDITING MODE (strict)
+## SECTION EDITING MODE (fallback)
 - Section to edit: data-section-id="${body.sectionId}"
 - Edit request: "${basePrompt}"
-- **CRITICAL RULES**:
-  1. Output the COMPLETE HTML page.
-  2. Change ONLY the section with data-section-id="${body.sectionId}".
-  3. Every other section must be **EXACTLY** as shown above – same content, attributes, order.
-  4. Do NOT add, remove, or modify any other element.
-  5. If you change anything else, the user will reject the output.
+- **CRITICAL RULES**: ...`;
+    }
+
+    return `${historyContext}## SECTION EDIT MODE (strict)
+
+Current section HTML:
+\`\`\`html
+${sectionHtml}
+\`\`\`
+
+Edit request: "${basePrompt}"
+
+**CRITICAL RULES**:
+1. Output ONLY the updated section HTML, keeping the same data-section-id="${body.sectionId}" and all other root attributes.
+2. Do NOT output the full page. Only the section element.
+3. No markdown fences, no explanations, no extra text. First character must be <, last character must be >.
 `;
   }
-  
-  return basePrompt;
+
+  return `${historyContext}${basePrompt}`;
 }
 
-// ─── Strip markdown code fences ──────────────────────────────────────────────
+// ─── Cleaners ───────────────────────────────────────────────────────────────
 function stripCodeFences(text: string): string {
   return text
     .replace(/^```html\s*/i, '')
@@ -54,7 +94,6 @@ function stripCodeFences(text: string): string {
     .trim();
 }
 
-// ─── Force remove any external CDN / font links ─────────────────────────────
 function stripExternalResources(html: string): string {
   let cleaned = html
     .replace(/<script[^>]+src=["']https?:\/\/[^"']+["'][^>]*>(<\/script>)?/gi, '')
@@ -76,7 +115,11 @@ function stripExternalResources(html: string): string {
   return cleaned;
 }
 
-// ─── HTML validation ─────────────────────────────────────────────────────────
+function removeHtmlComments(html: string): string {
+  return html.replace(/<!--[\s\S]*?-->/g, '');
+}
+
+// ─── Validation (full‑page only) ────────────────────────────────────────────
 interface ValidationResult {
   isValid: boolean;
   errors: string[];
@@ -109,14 +152,14 @@ function validateHtml(html: string): ValidationResult {
   return { isValid: errors.length === 0, errors };
 }
 
-// ─── Self‑correction ────────────────────────────────────────────────────────
+// ─── Self‑correction (returns token info) ────────────────────────────────────
 async function correctWithLLM(
   invalidHtml: string,
   validationErrors: string[],
   originalPrompt: string,
   framework: string | undefined,
   res: Response
-): Promise<string> {
+): Promise<{ html: string; inputTokens: number; outputTokens: number }> {
   const correctionPrompt = `
 The previous generated HTML has validation errors:
 ${validationErrors.join('\n')}
@@ -134,20 +177,21 @@ Please fix ALL the errors listed above. Output ONLY the corrected HTML (no markd
 - Include all mandatory sections.
 - Remove any external CDN links and Tailwind classes.
 - Keep the design beautiful and modern.
+- Write the minimum lines of code possible.
 
 Output only the fixed HTML. First character must be <.
 `;
   sendSSE(res, 'correcting', { attempt: 1, message: 'Fixing validation errors...' });
-  const fixedHtml = await streamBedrockResponse(correctionPrompt, framework, res);
-  return fixedHtml;
+  return await streamBedrockResponse(correctionPrompt, framework, res);
 }
 
-// ─── Core streaming call ────────────────────────────────────────────────────
+// ─── Core streaming call (returns token counts) ──────────────────────────────
 async function streamBedrockResponse(
   userMessage: string,
   framework: string | undefined,
-  res: Response
-): Promise<string> {
+  res: Response,
+  systemPromptOverride?: string
+): Promise<{ html: string; inputTokens: number; outputTokens: number }> {
   const client = getBedrockClient();
   let lastError: Error | null = null;
 
@@ -161,7 +205,7 @@ async function streamBedrockResponse(
       const payload = {
         messages: [{ role: 'user', content: [{ text: userMessage }] }],
         inferenceConfig: { maxTokens: 8192, temperature: 0.7, topP: 0.9 },
-        system: [{ text: getSystemPrompt(framework) }],
+        system: [{ text: systemPromptOverride ?? getSystemPrompt(framework) }],
       };
 
       const command = new InvokeModelWithResponseStreamCommand({
@@ -178,12 +222,24 @@ async function streamBedrockResponse(
       let isFirstChunk = true;
       let fenceBuffer = '';
       let fenceStripped = false;
+      let inputTokens = 0;
+      let outputTokens = 0;
 
       for await (const event of response.body) {
         if (event.chunk?.bytes) {
           const decoded = new TextDecoder().decode(event.chunk.bytes);
           let parsed: unknown;
           try { parsed = JSON.parse(decoded); } catch { continue; }
+
+          // Capture token usage from message_stop
+          if ((parsed as any).type === 'message_stop') {
+            const metrics = (parsed as any)['amazon-bedrock-invocationMetrics'];
+            if (metrics) {
+              inputTokens = metrics.inputTokenCount ?? 0;
+              outputTokens = metrics.outputTokenCount ?? 0;
+            }
+            continue;
+          }
 
           const text = extractTextDelta(parsed);
           if (text) {
@@ -209,12 +265,13 @@ async function streamBedrockResponse(
       }
 
       let finalHtml = stripExternalResources(stripCodeFences(accumulated));
+      finalHtml = removeHtmlComments(finalHtml);
       if (hasTailwindClasses(finalHtml)) {
         console.log('[generate.service] Tailwind classes detected — compiling CSS server-side...');
         finalHtml = await injectTailwindCSS(finalHtml);
       }
 
-      return finalHtml;
+      return { html: finalHtml, inputTokens, outputTokens };
 
     } catch (err: unknown) {
       lastError = err instanceof Error ? err : new Error(String(err));
@@ -268,18 +325,51 @@ async function saveGenerationRecord(
 // ─── Main exported function ─────────────────────────────────────────────────
 export async function generateAndStream(
   body: GenerateRequestBody,
+  userId: string,
   res: Response
 ): Promise<void> {
   const userMessage = buildUserMessage(body);
-  let currentHtml = await streamBedrockResponse(userMessage, body.framework, res);
+  const isSectionEdit = !!(body.sectionId && body.currentHtml);
 
-  // Self‑correction loop
+  const systemPrompt = isSectionEdit ? SECTION_EDIT_SYSTEM_PROMPT : undefined;
+
+  let result = await streamBedrockResponse(userMessage, body.framework, res, systemPrompt);
+  let currentHtml = result.html;
+  let totalInputTokens = result.inputTokens;
+  let totalOutputTokens = result.outputTokens;
+
+  if (isSectionEdit) {
+    const newSectionHtml = currentHtml;
+    const fullPage = replaceSection(body.currentHtml!, body.sectionId!, newSectionHtml);
+    currentHtml = fullPage;
+
+    await saveGenerationRecord(
+      body.projectId,
+      body.prompt.trim(),
+      currentHtml,
+      true,
+      body.sectionId ?? null
+    ).catch((err) => console.error('[generate.service] save error:', err));
+
+    sendSSE(res, 'done', { html: currentHtml });
+
+    await recordTokenUsage(userId, totalInputTokens + totalOutputTokens).catch((err) =>
+      console.error('[generate.service] Token usage recording failed:', err)
+    );
+    sendSSE(res, 'usage', { inputTokens: totalInputTokens, outputTokens: totalOutputTokens, total: totalInputTokens + totalOutputTokens });
+    return;
+  }
+
+  // Full‑page generation: self‑correction loop
   for (let correctionAttempt = 0; correctionAttempt < MAX_CORRECTION_ATTEMPTS; correctionAttempt++) {
     const validation = validateHtml(currentHtml);
     if (validation.isValid) break;
     console.log(`[generate.service] Validation failed (attempt ${correctionAttempt + 1}):`, validation.errors);
     sendSSE(res, 'validation_failed', { errors: validation.errors, attempt: correctionAttempt + 1 });
-    currentHtml = await correctWithLLM(currentHtml, validation.errors, body.prompt, body.framework, res);
+    const correctionResult = await correctWithLLM(currentHtml, validation.errors, body.prompt, body.framework, res);
+    currentHtml = correctionResult.html;
+    totalInputTokens += correctionResult.inputTokens;
+    totalOutputTokens += correctionResult.outputTokens;
   }
 
   const finalValidation = validateHtml(currentHtml);
@@ -292,9 +382,14 @@ export async function generateAndStream(
     body.projectId,
     body.prompt.trim(),
     currentHtml,
-    !!body.sectionId,
-    body.sectionId ?? null
+    false,
+    null
   ).catch((err) => console.error('[generate.service] save error:', err));
 
   sendSSE(res, 'done', { html: currentHtml, validation: finalValidation });
+
+  await recordTokenUsage(userId, totalInputTokens + totalOutputTokens).catch((err) =>
+    console.error('[generate.service] Token usage recording failed:', err)
+  );
+  sendSSE(res, 'usage', { inputTokens: totalInputTokens, outputTokens: totalOutputTokens, total: totalInputTokens + totalOutputTokens });
 }

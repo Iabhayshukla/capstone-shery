@@ -16,3 +16,16 @@ export interface Project {
   created_at: string;
   updated_at: string;
 }
+
+export interface ConversationMessage {
+  id: string;
+  project_id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  created_at: string;
+}
+
+export interface AddConversationBody {
+  role: 'user' | 'assistant';
+  content: string;
+}

@@ -1,11 +1,14 @@
 import { supabaseAdmin } from '../../lib/supabase';
 import { createError } from '../../middleware/errorHandler';
-import { CreateProjectBody, UpdateProjectBody, Project } from './projects.types';
+import {
+  CreateProjectBody,
+  UpdateProjectBody,
+  Project,
+  ConversationMessage,
+  AddConversationBody,
+} from './projects.types';
 import { PORTFOLIO_TEMPLATE, LANDING_TEMPLATE } from './templates';
 
-/**
- * Fetch all projects belonging to a user, ordered newest-first.
- */
 export async function getUserProjects(userId: string): Promise<Project[]> {
   const { data, error } = await supabaseAdmin
     .from('projects')
@@ -21,9 +24,6 @@ export async function getUserProjects(userId: string): Promise<Project[]> {
   return (data ?? []) as Project[];
 }
 
-/**
- * Create a new project for the given user.
- */
 export async function createProject(userId: string, body: CreateProjectBody): Promise<Project> {
   let initialCode = null;
   if (body.template === 'portfolio') {
@@ -50,15 +50,11 @@ export async function createProject(userId: string, body: CreateProjectBody): Pr
   return data as Project;
 }
 
-/**
- * Update a project — only if it belongs to the requesting user (ownership check).
- */
 export async function updateProject(
   userId: string,
   projectId: string,
   body: UpdateProjectBody
 ): Promise<Project> {
-  // First verify ownership — fail-closed if project doesn't belong to user
   const { data: existing, error: fetchError } = await supabaseAdmin
     .from('projects')
     .select('id, user_id')
@@ -91,9 +87,6 @@ export async function updateProject(
   return data as Project;
 }
 
-/**
- * Delete a project — only if it belongs to the requesting user.
- */
 export async function deleteProject(userId: string, projectId: string): Promise<void> {
   const { data: existing, error: fetchError } = await supabaseAdmin
     .from('projects')
@@ -119,9 +112,6 @@ export async function deleteProject(userId: string, projectId: string): Promise<
   }
 }
 
-/**
- * Get a single project by ID, verifying it belongs to the user.
- */
 export async function getProjectById(userId: string, projectId: string): Promise<Project> {
   const { data, error } = await supabaseAdmin
     .from('projects')
@@ -135,4 +125,39 @@ export async function getProjectById(userId: string, projectId: string): Promise
   }
 
   return data as Project;
+}
+
+// ─── Conversations ──────────────────────────────────────────────────────────
+
+export async function getConversations(projectId: string): Promise<ConversationMessage[]> {
+  const { data, error } = await supabaseAdmin
+    .from('conversations')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: true });
+
+  if (error) throw createError('Failed to load conversations.', 500);
+  return (data ?? []) as ConversationMessage[];
+}
+
+export async function addConversationMessage(
+  projectId: string,
+  body: AddConversationBody
+): Promise<ConversationMessage> {
+  const { data, error } = await supabaseAdmin
+    .from('conversations')
+    .insert({
+      project_id: projectId,
+      role: body.role,
+      content: body.content,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('[projects.service] addConversationMessage error:', error);
+    throw createError('Failed to save message.', 500);
+  }
+
+  return data as ConversationMessage;
 }

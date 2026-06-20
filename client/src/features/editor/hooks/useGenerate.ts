@@ -14,7 +14,7 @@ interface UseGenerateReturn {
   streamingHtml: string;
   error: string | null;
   classification: ClassifierResult | null;
-  generate: (prompt: string) => Promise<void>;
+  generate: (prompt: string, history?: { role: 'user' | 'assistant'; content: string }[]) => Promise<void>;
   cancel: () => void;
 }
 
@@ -27,7 +27,7 @@ export function useGenerate(options: UseGenerateOptions): UseGenerateReturn {
   const abortRef = useRef<AbortController | null>(null);
 
   const generate = useCallback(
-    async (prompt: string) => {
+    async (prompt: string, history?: { role: 'user' | 'assistant'; content: string }[]) => {
       if (!accessToken) {
         setError('You must be logged in to generate.');
         return;
@@ -38,11 +38,9 @@ export function useGenerate(options: UseGenerateOptions): UseGenerateReturn {
       }
       if (!prompt.trim()) return;
 
-      // ── Classify prompt before generating ──
       const result = classifyPrompt(prompt);
       setClassification(result);
 
-      // Cancel any in-flight request
       abortRef.current?.abort();
       abortRef.current = new AbortController();
 
@@ -58,18 +56,15 @@ export function useGenerate(options: UseGenerateOptions): UseGenerateReturn {
           currentHtml: options.currentHtml ?? undefined,
           framework: result.framework,
           previewMethod: result.previewMethod,
+          conversationHistory: history,
           onChunk: (accumulated) => setStreamingHtml(accumulated),
           onDone: (fullHtml) => setStreamingHtml(fullHtml),
           onError: (message) => setError(message),
           signal: abortRef.current.signal,
         });
       } catch (err: unknown) {
-        if ((err as Error)?.name === 'AbortError') {
-          return;
-        }
-        setError(
-          err instanceof Error ? err.message : 'Generation failed. Please try again.'
-        );
+        if ((err as Error)?.name === 'AbortError') return;
+        setError(err instanceof Error ? err.message : 'Generation failed. Please try again.');
       } finally {
         setIsGenerating(false);
       }

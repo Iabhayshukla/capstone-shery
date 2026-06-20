@@ -78,3 +78,55 @@ export async function fetchProjectById(accessToken: string, projectId: string): 
   if (!res.ok) throw new Error(data.message ?? 'Failed to load project.');
   return mapDBProjectToFrontend(data.project);
 }
+
+// ─── Conversations ──────────────────────────────────────────────────────────
+
+export interface ConversationMessage {
+  id: string;
+  project_id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  created_at: string;
+}
+
+export async function fetchConversations(accessToken: string, projectId: string): Promise<ConversationMessage[]> {
+  const res = await fetch(`${API_BASE}/projects/${projectId}/conversations`, {
+    headers: authHeaders(accessToken),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message ?? 'Failed to load conversations.');
+  return data.messages || [];
+}
+
+export async function addConversationMessage(
+  accessToken: string,
+  projectId: string,
+  role: 'user' | 'assistant',
+  content: string
+): Promise<ConversationMessage> {
+  const res = await fetch(`${API_BASE}/projects/${projectId}/conversations`, {
+    method: 'POST',
+    headers: authHeaders(accessToken),
+    body: JSON.stringify({ role, content }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message ?? 'Failed to save message.');
+  return data.message;
+}
+
+// ─── Token usage ────────────────────────────────────────────────────────────
+
+export interface TokenUsageInfo {
+  tokensUsed: number;
+  maxTokens: number;
+  resetAt: string;
+}
+
+export async function fetchTokenUsage(accessToken: string): Promise<TokenUsageInfo> {
+  const res = await fetch(`${API_BASE}/usage/tokens`, {
+    headers: authHeaders(accessToken),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message ?? 'Failed to fetch token usage.');
+  return data as TokenUsageInfo;
+}
