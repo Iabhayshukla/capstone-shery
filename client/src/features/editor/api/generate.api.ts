@@ -9,21 +9,13 @@ export interface GenerateOptions {
   currentHtml?: string | null;
   framework?: string;
   previewMethod?: PreviewMethod;
+  conversationHistory?: { role: 'user' | 'assistant'; content: string }[];
   onChunk: (accumulated: string) => void;
   onDone: (fullHtml: string) => void;
   onError: (message: string) => void;
   signal?: AbortSignal;
 }
 
-/**
- * Calls POST /api/generate and reads the real SSE stream from the backend.
- *
- * SSE events:
- *   chunk  — { text: string }           a new token fragment from the LLM
- *   done   — { html: string }           full final HTML on completion
- *   error  — { message: string }        generation failed
- *   retry  — { attempt, maxRetries }    transient retry notification
- */
 export async function streamGenerate(
   prompt: string,
   options: GenerateOptions
@@ -35,6 +27,7 @@ export async function streamGenerate(
     currentHtml,
     framework,
     previewMethod,
+    conversationHistory,
     onChunk,
     onDone,
     onError,
@@ -45,10 +38,11 @@ export async function streamGenerate(
     prompt,
     projectId,
   };
-  if (sectionId)     body.sectionId     = sectionId;
-  if (currentHtml)   body.currentHtml   = currentHtml;
-  if (framework)     body.framework     = framework;
-  if (previewMethod) body.previewMethod = previewMethod;
+  if (sectionId)               body.sectionId               = sectionId;
+  if (currentHtml)             body.currentHtml             = currentHtml;
+  if (framework)               body.framework               = framework;
+  if (previewMethod)           body.previewMethod           = previewMethod;
+  if (conversationHistory)     body.conversationHistory     = conversationHistory;
 
   const response = await fetch(`${API_URL}/generate`, {
     method: 'POST',
@@ -84,7 +78,6 @@ export async function streamGenerate(
 
     buffer += decoder.decode(value, { stream: true });
 
-    // SSE messages are separated by double newlines
     const messages = buffer.split('\n\n');
     buffer = messages.pop() ?? '';
 

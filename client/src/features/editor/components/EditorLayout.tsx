@@ -7,6 +7,9 @@ import { useGenerate } from '../hooks/useGenerate';
 import {
   fetchProjectById,
   updateProject as apiUpdateProject,
+  fetchConversations,
+  addConversationMessage,
+  fetchTokenUsage,
 } from '@/features/dashboard/api/projects.api';
 import type { Project } from '@/features/dashboard/components/ProjectCard';
 import WelcomeScreen from './WelcomeScreen';
@@ -25,13 +28,7 @@ interface StreamingFile {
 type EditorPhase = 'loading' | 'welcome' | 'streaming' | 'preview';
 
 function parseFilesFromHtml(rawHtml: string): StreamingFile[] {
-  return [
-    {
-      name: 'index.html',
-      content: rawHtml,
-      language: 'html',
-    },
-  ];
+  return [{ name: 'index.html', content: rawHtml, language: 'html' }];
 }
 
 function decodeEscapedHtml(html: string): string {
@@ -83,11 +80,22 @@ export default function EditorLayout(): React.ReactElement {
   const [messages, setMessages] = useState<Message[]>([]);
   const generatingSectionRef = useRef<string | null>(null);
   const [previewMethod, setPreviewMethod] = useState<PreviewMethod>('iframe');
-  const [windowWidth, setWindowWidth] = useState<number>(
+  const [windowWidth, setWindowWidth] = useState(
     typeof window !== 'undefined' ? window.innerWidth : 1200
   );
+  const [tokenUsage, setTokenUsage] = useState<any>(null); // TokenUsageInfo | null
 
-  // Handle window resize for responsive design
+  // Refresh token usage
+  const refreshTokenUsage = useCallback(async () => {
+    if (!accessToken) return;
+    try {
+      const usage = await fetchTokenUsage(accessToken);
+      setTokenUsage(usage);
+    } catch (err) {
+      console.error('Failed to fetch token usage:', err);
+    }
+  }, [accessToken]);
+
   useEffect(() => {
     const handleResize = (): void => setWindowWidth(window.innerWidth);
     window.addEventListener('resize', handleResize);
@@ -107,7 +115,7 @@ export default function EditorLayout(): React.ReactElement {
     }
   }, [streamingHtml]);
 
-  const wasGenerating = useRef<boolean>(false);
+  const wasGenerating = useRef(false);
   useEffect(() => {
     if (wasGenerating.current && !isGenerating && streamingHtml) {
       push(streamingHtml);
@@ -116,18 +124,27 @@ export default function EditorLayout(): React.ReactElement {
         setPreviewMethod(classification.previewMethod);
       }
       const targetSec = generatingSectionRef.current;
+      const assistantContent = targetSec
+        ? `Updated the "${targetSec}" section! Check the preview.`
+        : 'Website generated! Check the preview. Click any section to select and edit it.';
+
       const aiMsg: Message = {
         id: `msg-${Date.now()}`,
         role: 'assistant',
-        content: targetSec
-          ? `Updated the "${targetSec}" section! Check the preview.`
-          : 'Website generated! Check the preview. Click any section to select and edit it.',
+        content: assistantContent,
       };
-      setMessages((prev: Message[]) => [...prev, aiMsg]);
+      setMessages(prev => [...prev, aiMsg]);
+
+      if (accessToken && projectId) {
+        addConversationMessage(accessToken, projectId, 'assistant', assistantContent)
+          .catch(err => console.error('Failed to save assistant msg:', err));
+      }
+
       generatingSectionRef.current = null;
+      refreshTokenUsage(); // refresh token display after generation
     }
     wasGenerating.current = isGenerating;
-  }, [isGenerating, streamingHtml, push, classification]);
+  }, [isGenerating, streamingHtml, push, classification, accessToken, projectId, refreshTokenUsage]);
 
   useEffect(() => {
     if (!accessToken || !projectId) return;
@@ -138,6 +155,16 @@ export default function EditorLayout(): React.ReactElement {
           proj.currentCode = decodeEscapedHtml(proj.currentCode);
         }
         setProject(proj);
+
+        const history = await fetchConversations(accessToken, projectId);
+        setMessages(
+          history.map(h => ({
+            id: h.id,
+            role: h.role,
+            content: h.content,
+          }))
+        );
+
         if (proj.currentCode) {
           if (initialCodeRef.current === null) {
             initialCodeRef.current = proj.currentCode;
@@ -152,13 +179,15 @@ export default function EditorLayout(): React.ReactElement {
           }
           setPhase('welcome');
         }
+
+        refreshTokenUsage(); // initial token fetch
       } catch (err) {
         console.error('Failed to load project:', err);
         setPhase('welcome');
       }
     };
     load();
-  }, [accessToken, projectId, reset]);
+  }, [accessToken, projectId, reset, refreshTokenUsage]);
 
   useEffect(() => {
     if (!accessToken || !projectId || phase === 'loading') return;
@@ -181,26 +210,26 @@ export default function EditorLayout(): React.ReactElement {
     setStreamingFiles([]);
     setPhase('streaming');
     generatingSectionRef.current = selectedSection;
-    await generate(prompt);
+
+    if (accessToken && projectId) {
+      addConversationMessage(accessToken, projectId, 'user', prompt)
+        .catch(err => console.error('Failed to save user msg:', err));
+    }
+
+    const recentHistory = messages.slice(-10).map(m => ({ role: m.role, content: m.content }));
+    await generate(prompt, recentHistory);
     setSelectedSection(null);
-  }, [generate, selectedSection]);
+  }, [generate, selectedSection, messages, accessToken, projectId]);
 
   const handleRegenerate = useCallback(async (): Promise<void> => {
     if (!lastPrompt) return;
     setStreamingFiles([]);
     setPhase('streaming');
     generatingSectionRef.current = null;
-    setMessages((prev: Message[]) => [
-      ...prev,
-      {
-        id: `msg-${Date.now()}`,
-        role: 'user',
-        content: 'Regenerate',
-      },
-    ]);
-    await generate(lastPrompt);
+    setMessages(prev => [...prev, { id: `msg-${Date.now()}`, role: 'user', content: 'Regenerate' }]);
+    await generate(lastPrompt, messages.slice(-10).map(m => ({ role: m.role, content: m.content })));
     setSelectedSection(null);
-  }, [generate, lastPrompt]);
+  }, [generate, lastPrompt, messages]);
 
   const handleGoToPreview = useCallback((): void => {
     setPhase('preview');
@@ -229,7 +258,6 @@ export default function EditorLayout(): React.ReactElement {
     }
   }, [reset]);
 
-  // Animation variants
   const slideUp = {
     initial: { opacity: 0, y: 20, scale: 0.98 },
     animate: { opacity: 1, y: 0, scale: 1 },
@@ -402,6 +430,7 @@ export default function EditorLayout(): React.ReactElement {
               messages={messages}
               setMessages={setMessages}
               previewMethod={previewMethod}
+              tokenUsage={tokenUsage}   // ← pass token usage down
             />
           </motion.div>
         )}

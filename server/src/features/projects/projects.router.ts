@@ -8,20 +8,16 @@ import {
   updateProject,
   deleteProject,
   getProjectById,
+  getConversations,
+  addConversationMessage,
 } from './projects.service';
-import { CreateProjectBody, UpdateProjectBody } from './projects.types';
+import { CreateProjectBody, UpdateProjectBody, AddConversationBody } from './projects.types';
 
 const router = Router();
 
-// All project routes require a valid session
 router.use(authGuard);
-// Sanitize all inputs
 router.use(sanitise);
 
-/**
- * GET /api/projects
- * Returns all projects for the authenticated user.
- */
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { userId } = req as AuthenticatedRequest;
@@ -32,10 +28,6 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   }
 });
 
-/**
- * GET /api/projects/:id
- * Returns a single project by ID (must belong to the authenticated user).
- */
 router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { userId } = req as AuthenticatedRequest;
@@ -46,10 +38,6 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
   }
 });
 
-/**
- * POST /api/projects
- * Create a new project.
- */
 router.post('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { userId } = req as AuthenticatedRequest;
@@ -69,10 +57,6 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
   }
 });
 
-/**
- * PUT /api/projects/:id
- * Update a project's name or current code.
- */
 router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { userId } = req as AuthenticatedRequest;
@@ -92,15 +76,44 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
   }
 });
 
-/**
- * DELETE /api/projects/:id
- * Permanently delete a project (and its generations via cascade in DB).
- */
 router.delete('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { userId } = req as AuthenticatedRequest;
     await deleteProject(userId, req.params.id);
     res.json({ message: 'Project deleted successfully.' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── Conversations ──────────────────────────────────────────────────────────
+
+router.get('/:id/conversations', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const messages = await getConversations(req.params.id);
+    res.json({ messages });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/:id/conversations', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { userId } = req as AuthenticatedRequest;
+    const body = req.body as AddConversationBody;
+
+    if (!body.role || !['user', 'assistant'].includes(body.role)) {
+      return next(createError('role must be "user" or "assistant".', 400));
+    }
+    if (!body.content || body.content.trim().length === 0) {
+      return next(createError('content is required.', 400));
+    }
+
+    // Verify project ownership
+    await getProjectById(userId, req.params.id);
+
+    const message = await addConversationMessage(req.params.id, body);
+    res.status(201).json({ message });
   } catch (err) {
     next(err);
   }

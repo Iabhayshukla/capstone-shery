@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Loader2, Monitor, Tablet, Smartphone, Code2, Undo2, Redo2,
-  RotateCcw, ArrowLeft, Download, PanelLeftOpen, PanelLeftClose,
+  RotateCcw, ArrowLeft, Download, ExternalLink, PanelLeftOpen, PanelLeftClose,
   PanelRightOpen, PanelRightClose, Sparkles, Terminal, Eye, X
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -38,6 +38,7 @@ interface PreviewScreenProps {
   messages: Message[];
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   previewMethod?: 'iframe' | 'webcontainer';
+  tokenUsage?: any; // TokenUsageInfo | null, added for token bar
 }
 
 type PanelSide = 'left' | 'right';
@@ -61,6 +62,7 @@ export default function PreviewScreen({
   messages,
   setMessages,
   previewMethod = 'iframe',
+  tokenUsage,
 }: PreviewScreenProps) {
   const { status } = useWebContainer();
 
@@ -210,6 +212,18 @@ export default function PreviewScreen({
     ? (panelSide === 'left' ? PanelLeftClose : PanelRightClose)
     : (panelSide === 'left' ? PanelLeftOpen : PanelRightOpen);
 
+  // ─── OPEN IN NEW TAB HANDLER ─────────────────────────────────────────────────
+  const handleOpenInNewTab = useCallback(() => {
+    if (!html) return;
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const newTab = window.open(url, '_blank');
+    if (newTab) {
+      // Clean up the object URL after the tab has loaded (optional)
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    }
+  }, [html]);
+
   const promptPanel = (
     <motion.div
       initial={false}
@@ -297,6 +311,7 @@ export default function PreviewScreen({
           selectedSection={selectedSection}
           messages={messages}
           setMessages={setMessages}
+          tokenUsage={tokenUsage}
         />
       </div>
 
@@ -506,6 +521,33 @@ export default function PreviewScreen({
         >
           <Download size={12} />
           {!isSmallMobile && <span>Export</span>}
+        </button>
+
+        {/* ─── NEW: Open in New Tab button ────────────────────────────────────── */}
+        <button
+          onClick={handleOpenInNewTab}
+          className="toolbar-btn"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: isMobile ? 4 : 8,
+            fontSize: 10,
+            letterSpacing: 1.5,
+            textTransform: 'uppercase',
+            color: '#3b82f6',
+            background: 'rgba(59,130,246,0.08)',
+            border: '1px solid rgba(59,130,246,0.3)',
+            padding: isMobile ? '4px 8px' : '6px 16px',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            borderRadius: 20,
+            height: isMobile ? 28 : 34,
+            marginRight: 8,
+          }}
+          title="Open preview in a new tab"
+        >
+          <ExternalLink size={12} />
+          {!isSmallMobile && <span>New Tab</span>}
         </button>
 
         {/* Regenerate (only if lastPrompt and not generating) – hidden on small mobile to save space */}

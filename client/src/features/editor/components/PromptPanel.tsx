@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, KeyboardEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, Trash2, RefreshCw, RotateCcw, Sparkles, CornerDownLeft, MessageSquare } from 'lucide-react';
+import { TokenUsageInfo } from '@/features/dashboard/api/projects.api';
 
 const SAMPLE_PROMPTS = [
   'Coffee shop landing page',
@@ -24,6 +25,7 @@ interface PromptPanelProps {
   selectedSection?: string | null;
   messages: Message[];
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
+  tokenUsage?: TokenUsageInfo | null;
 }
 
 export default function PromptPanel({
@@ -35,12 +37,12 @@ export default function PromptPanel({
   selectedSection,
   messages,
   setMessages,
+  tokenUsage,
 }: PromptPanelProps) {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Detect mobile screen for safe spacing
   const [windowWidth, setWindowWidth] = useState(
     typeof window !== 'undefined' ? window.innerWidth : 1200
   );
@@ -136,8 +138,6 @@ export default function PromptPanel({
             </motion.button>
           )}
         </div>
-
-        {/* subtle glow line */}
         <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[var(--brand-primary)] to-transparent opacity-30" />
       </div>
 
@@ -162,7 +162,7 @@ export default function PromptPanel({
         )}
       </AnimatePresence>
 
-      {/* MESSAGES AREA – added top padding on mobile to clear the close button */}
+      {/* MESSAGES AREA */}
       <div
         className={`flex-1 overflow-y-auto px-2 sm:px-3 py-3 sm:py-4 flex flex-col gap-3 sm:gap-4 ${
           isMobile ? 'pt-12' : ''
@@ -313,6 +313,25 @@ export default function PromptPanel({
         <div ref={messagesEndRef} />
       </div>
 
+      {/* ─── TOKEN USAGE BAR ────────────────────────────────────────────────── */}
+      {tokenUsage && (
+        <div className="px-2 sm:px-3 pb-1 flex-shrink-0">
+          <div className="flex items-center justify-between text-[8px] sm:text-[9px] text-[var(--text-muted)] opacity-60 mb-1">
+            <span>Tokens</span>
+            <span>{tokenUsage.tokensUsed.toLocaleString()} / {tokenUsage.maxTokens.toLocaleString()}</span>
+          </div>
+          <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-[var(--brand-primary)] rounded-full transition-all duration-500"
+              style={{ width: `${Math.min((tokenUsage.tokensUsed / tokenUsage.maxTokens) * 100, 100)}%` }}
+            />
+          </div>
+          <p className="text-[7px] sm:text-[8px] text-[var(--text-muted)] opacity-30 mt-0.5">
+            Resets {new Date(tokenUsage.resetAt).toLocaleTimeString()}
+          </p>
+        </div>
+      )}
+
       {/* INPUT AREA */}
       <div className="p-2 sm:p-3 border-t border-[var(--border)] flex-shrink-0 bg-black/15">
         <div
@@ -399,14 +418,12 @@ export default function PromptPanel({
           background: var(--brand-primary);
         }
         
-        /* Hide scrollbar on mobile for cleaner look */
         @media (max-width: 640px) {
           ::-webkit-scrollbar {
             width: 2px;
           }
         }
         
-        /* Improve touch targets on mobile */
         @media (max-width: 768px) {
           button, 
           [role="button"],

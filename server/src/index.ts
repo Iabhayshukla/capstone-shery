@@ -11,6 +11,7 @@ import { errorHandler } from './middleware/errorHandler';
 import authRouter from './features/auth/auth.router';
 import projectsRouter from './features/projects/projects.router';
 import generateRouter from './features/generate/generate.router';
+import usageRouter from './features/usage/usage.router'; // ← new
 
 const app = express();
 const PORT = process.env.PORT ?? 5000;
@@ -48,6 +49,9 @@ app.use('/api/projects', projectsRouter);
 // LLM generation route — streams HTML via SSE (protected + rate-limited)
 app.use('/api/generate', generateRouter);
 
+// Token usage route (protected)
+app.use('/api/usage', usageRouter); // ← new
+
 // ─── 404 Handler ──────────────────────────────────────────────────────────────
 app.use((_req: Request, res: Response) => {
   res.status(404).json({ error: 'Not Found', message: 'The requested endpoint does not exist.' });
@@ -64,5 +68,6 @@ app.listen(PORT, () => {
   console.log(`🔐 Auth:   http://localhost:${PORT}/api/auth`);
   console.log(`📁 Projects: http://localhost:${PORT}/api/projects`);
   console.log(`🤖 Generate: http://localhost:${PORT}/api/generate`);
+  console.log(`📊 Usage:   http://localhost:${PORT}/api/usage`);   // ← new
   console.log('=========================================');
 });
