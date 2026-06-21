@@ -79,6 +79,11 @@ export default function PreviewScreen({
   const [isDraggingPanel, setIsDraggingPanel] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
 
+  // NEW: tracks live horizontal drag offset (in px) while switching panel sides
+  const [dragOffsetX, setDragOffsetX] = useState(0);
+  // NEW: drives a brief "fly out / fly in" animation when the side actually flips
+  const [isSwitchingSide, setIsSwitchingSide] = useState(false);
+
   const [windowWidth, setWindowWidth] = useState(
     typeof window !== 'undefined' ? window.innerWidth : 1200
   );
@@ -95,6 +100,28 @@ export default function PreviewScreen({
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Any active drag/resize interaction should suppress text selection globally,
+  // not just the panel-resize ones. This fixes text getting selected while
+  // dragging the side-switch grip.
+  useEffect(() => {
+    const dragging = isResizingPanel || isResizingMonaco || isDraggingPanel;
+    if (dragging) {
+      const prevUserSelect = document.body.style.userSelect;
+      const prevCursor = document.body.style.cursor;
+      document.body.style.userSelect = 'none';
+      // @ts-ignore - vendor-prefixed for Safari
+      document.body.style.webkitUserSelect = 'none';
+      if (isDraggingPanel) document.body.style.cursor = 'grabbing';
+      else document.body.style.cursor = 'col-resize';
+      return () => {
+        document.body.style.userSelect = prevUserSelect;
+        // @ts-ignore
+        document.body.style.webkitUserSelect = '';
+        document.body.style.cursor = prevCursor;
+      };
+    }
+  }, [isResizingPanel, isResizingMonaco, isDraggingPanel]);
 
   // Disable custom resizing on mobile – panel becomes a fixed bottom sheet
   const startPanelResize = useCallback((e: React.MouseEvent) => {
@@ -165,11 +192,57 @@ export default function PreviewScreen({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [canUndo, canRedo, onUndo, onRedo]);
 
+  // FIX: track live drag movement (dragOffsetX) so the panel actually follows
+  // the cursor while dragging, instead of just snapping at mouseup.
   const handlePanelDragStart = useCallback((e: React.MouseEvent) => {
     if (isMobile) return;
+    e.preventDefault();
     dragStartX.current = e.clientX;
+    setDragOffsetX(0);
     setIsDraggingPanel(true);
   }, [isMobile]);
+
+  useEffect(() => {
+    if (!isDraggingPanel) return;
+
+    const onMove = (e: MouseEvent) => {
+      // Live offset relative to drag start — gives the grip a "following the
+      // cursor" feel instead of being static until mouseup.
+      setDragOffsetX(e.clientX - dragStartX.current);
+    };
+
+    const onUp = (e: MouseEvent) => {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const droppedOnRight = e.clientX > rect.left + rect.width / 2;
+      const newSide: PanelSide = droppedOnRight ? 'right' : 'left';
+
+      setIsDraggingPanel(false);
+      setDragOffsetX(0);
+
+      if (newSide !== panelSide) {
+        // Trigger the fly-out/fly-in transition only when the side actually
+        // changes, instead of an instant teleport.
+        setIsSwitchingSide(true);
+        setPanelSide(newSide);
+      }
+    };
+
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, [isDraggingPanel, panelSide]);
+
+  // Clears the "switching" flag once the fly-in animation has had time to
+  // finish, returning to the normal open/closed spring transition.
+  useEffect(() => {
+    if (!isSwitchingSide) return;
+    const t = setTimeout(() => setIsSwitchingSide(false), 420);
+    return () => clearTimeout(t);
+  }, [isSwitchingSide]);
 
   const toggleFullscreen = useCallback(() => {
     const el = previewContainerRef.current;
@@ -181,32 +254,33 @@ export default function PreviewScreen({
     }
   }, []);
 
-  useEffect(() => {
-    if (!isDraggingPanel) return;
-    const onUp = (e: MouseEvent) => {
-      setIsDraggingPanel(false);
-      if (!containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      setPanelSide(e.clientX < rect.left + rect.width / 2 ? 'left' : 'right');
-    };
-    window.addEventListener('mouseup', onUp);
-    return () => window.removeEventListener('mouseup', onUp);
-  }, [isDraggingPanel]);
-
   const isReady = previewMethod === 'iframe' ? true : status.status === 'ready';
   const vpLabel = viewport === 'mobile' ? '375px' : viewport === 'tablet' ? '768px' : '1280px';
 
   // Responsive panel width
   const effectivePanelWidth = isMobile ? windowWidth * 0.85 : panelWidth;
 
+  // FIX: when actively dragging, the panel visually slides with the cursor.
+  // When switching sides (post-drop), it flies out toward the side it came
+  // from and flies back in from that same side, instead of teleporting.
   const slideVariants = {
-    open: { width: isMobile ? '100%' : effectivePanelWidth, opacity: 1, x: 0 },
+    open: {
+      width: isMobile ? '100%' : effectivePanelWidth,
+      opacity: 1,
+      x: isDraggingPanel ? dragOffsetX : 0,
+    },
     closed: {
       width: isMobile ? 0 : 0,
       opacity: isMobile ? 0 : 0,
       x: isMobile ? 0 : (panelSide === 'left' ? -panelWidth : panelWidth),
     },
   };
+
+  const panelTransition = isDraggingPanel
+    ? { type: 'tween' as const, duration: 0 } // 1:1 with cursor, no easing lag
+    : isSwitchingSide
+    ? { type: 'spring' as const, stiffness: 260, damping: 24 } // visible fly-in
+    : { type: 'spring' as const, stiffness: 320, damping: 32 };
 
   const PanelToggleIcon = isPanelOpen
     ? (panelSide === 'left' ? PanelLeftClose : PanelRightClose)
@@ -226,10 +300,11 @@ export default function PreviewScreen({
 
   const promptPanel = (
     <motion.div
-      initial={false}
+      key={panelSide}
+      initial={isSwitchingSide ? { opacity: 0, x: panelSide === 'left' ? -40 : 40 } : false}
       animate={isPanelOpen ? 'open' : 'closed'}
       variants={slideVariants}
-      transition={{ type: 'spring', stiffness: 320, damping: 32 }}
+      transition={panelTransition}
       style={{
         flexShrink: 0,
         display: 'flex',
@@ -250,6 +325,9 @@ export default function PreviewScreen({
         borderTopLeftRadius: isMobile ? 16 : 0,
         borderTopRightRadius: isMobile ? 16 : 0,
         boxShadow: isMobile ? '0 -8px 32px rgba(0,0,0,0.5)' : 'none',
+        // Belt-and-suspenders: this panel specifically must never select text
+        // while its drag handle is active.
+        userSelect: isDraggingPanel ? 'none' : undefined,
       }}
     >
       {/* Mobile close button */}
@@ -289,8 +367,12 @@ export default function PreviewScreen({
             cursor: isDraggingPanel ? 'grabbing' : 'grab',
             flexShrink: 0,
             borderBottom: '1px solid var(--border)',
-            background: 'rgba(0,0,0,0.15)',
-            transition: 'background 0.2s',
+            background: isDraggingPanel ? 'rgba(var(--brand-primary-rgb), 0.08)' : 'rgba(0,0,0,0.15)',
+            transition: isDraggingPanel ? 'none' : 'background 0.2s',
+            userSelect: 'none',
+            // @ts-ignore - vendor-prefixed for Safari
+            WebkitUserSelect: 'none',
+            touchAction: 'none',
           }}
           title="Drag to switch sides"
         >
@@ -301,7 +383,7 @@ export default function PreviewScreen({
         </div>
       )}
 
-      <div style={{ flex: 1, overflow: 'hidden' }}>
+      <div style={{ flex: 1, overflow: 'hidden', userSelect: isDraggingPanel ? 'none' : undefined }}>
         <PromptPanel
           onGenerate={onGenerate}
           isGenerating={isGenerating}
@@ -344,7 +426,9 @@ export default function PreviewScreen({
         width: '100%',
         height: '100%',
         background: 'var(--background)',
-        userSelect: isResizingPanel || isResizingMonaco ? 'none' : undefined,
+        // FIX: also suppress selection during the side-switch drag, not just
+        // width-resizing — this was the main cause of text getting selected.
+        userSelect: (isResizingPanel || isResizingMonaco || isDraggingPanel) ? 'none' : undefined,
         fontFamily: 'DM Sans, sans-serif',
         overflow: 'hidden',
       }}
@@ -634,7 +718,7 @@ export default function PreviewScreen({
         </button>
       </div>
 
-      {/* Body – unchanged from previous responsive version */}
+      {/* Body */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
         {panelSide === 'left' && !isMobile && promptPanel}
 
