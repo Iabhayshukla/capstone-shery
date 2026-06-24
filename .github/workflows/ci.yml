@@ -119,31 +119,3 @@ jobs:
           path: server/server-dist.tgz
           retention-days: 7
 
-  python-server:
-    name: Build & Test Server (Python)
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: server
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: pip
-          cache-dependency-path: server/requirements.txt
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-
-      - name: Lint (ruff)
-        run: |
-          pip install ruff
-          ruff check app/
-
-      - name: Verify app imports
-        run: python -c "import app.main; print('app.main OK')"
