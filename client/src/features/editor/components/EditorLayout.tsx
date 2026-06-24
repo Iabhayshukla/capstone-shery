@@ -148,15 +148,18 @@ export default function EditorLayout(): React.ReactElement {
 
   useEffect(() => {
     if (!accessToken || !projectId) return;
+    let active = true;
     const load = async (): Promise<void> => {
       try {
         const proj = await fetchProjectById(accessToken, projectId);
+        if (!active) return;
         if (proj.currentCode) {
           proj.currentCode = decodeEscapedHtml(proj.currentCode);
         }
         setProject(proj);
 
         const history = await fetchConversations(accessToken, projectId);
+        if (!active) return;
         setMessages(
           history.map(h => ({
             id: h.id,
@@ -182,11 +185,15 @@ export default function EditorLayout(): React.ReactElement {
 
         refreshTokenUsage(); // initial token fetch
       } catch (err) {
+        if (!active) return;
         console.error('Failed to load project:', err);
         setPhase('welcome');
       }
     };
     load();
+    return () => {
+      active = false;
+    };
   }, [accessToken, projectId, reset, refreshTokenUsage]);
 
   useEffect(() => {
@@ -197,7 +204,7 @@ export default function EditorLayout(): React.ReactElement {
       try {
         const updated = await apiUpdateProject(accessToken, projectId, { currentCode: html });
         setProject(updated);
-        localStorage.setItem('generatedHtml', html);
+        localStorage.setItem(`generatedHtml_${projectId}`, html);
       } catch (err) {
         console.error('Auto-save failed:', err);
       }

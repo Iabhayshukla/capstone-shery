@@ -81,8 +81,15 @@ export default function StreamingView({ files, isStreaming, onPreview, error, th
   const [visibleLineCount, setVisibleLineCount] = useState(0);
   const prevLinesLength = useRef(0);
   const animationRef = useRef<NodeJS.Timeout | null>(null);
+  const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
+
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+    };
+  }, []);
 
   const isLight = theme === 'light';
   const isMobile = windowWidth < 768;
@@ -138,7 +145,8 @@ export default function StreamingView({ files, isStreaming, onPreview, error, th
     if (!activeFile) return;
     await navigator.clipboard.writeText(activeFile.content);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+    copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
   };
 
   const getFileIcon = (_fileName: string, lang: string) => {

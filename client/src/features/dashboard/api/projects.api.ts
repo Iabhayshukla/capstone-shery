@@ -14,7 +14,7 @@ function mapDBProjectToFrontend(dbProj: any): Project {
     id: dbProj.id,
     name: dbProj.name,
     description: dbProj.current_code ? "AI generated code present" : "Empty project draft",
-    status: dbProj.current_code ? "active" : "draft",
+    status: dbProj.status || (dbProj.current_code ? "active" : "draft"),
     createdAt: dbProj.created_at,
     updatedAt: dbProj.updated_at,
     currentCode: dbProj.current_code,

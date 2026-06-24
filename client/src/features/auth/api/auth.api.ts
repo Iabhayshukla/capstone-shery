@@ -47,13 +47,17 @@ export async function login(credentials: LoginCredentials) {
  * Log out the current user — clears Supabase local session.
  */
 export async function logout(accessToken: string) {
-  await fetch(`${API_BASE}/auth/logout`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
+  try {
+    await fetch(`${API_BASE}/auth/logout`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+  } catch (err) {
+    console.warn('[auth.api] Server logout failed (will sign out locally):', err);
+  }
   // Always sign out locally regardless of server response
   await supabase.auth.signOut();
 }

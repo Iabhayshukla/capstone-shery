@@ -42,10 +42,15 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
   res.flushHeaders();
 
   const heartbeat = setInterval(() => {
-    res.write(': heartbeat\n\n');
+    try { res.write(': heartbeat\n\n'); } catch {}
   }, 20_000);
 
-  const cleanup = () => clearInterval(heartbeat);
+  const cleanup = () => {
+    clearInterval(heartbeat);
+    if (!res.writableEnded) {
+      try { res.end(); } catch {}
+    }
+  };
   req.on('close', cleanup);
   req.on('abort', cleanup);
 

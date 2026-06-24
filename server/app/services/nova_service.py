@@ -28,6 +28,16 @@ REQUIRED_SECTIONS     = [
 ]
 
 
+async def _async_iter(sync_iterator):
+    """Yield items from a synchronous iterator without blocking the event loop."""
+    iterator = iter(sync_iterator)
+    while True:
+        item = await asyncio.to_thread(next, iterator, None)
+        if item is None:
+            break
+        yield item
+
+
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
 def sse(event: str, data: dict) -> str:
@@ -180,7 +190,7 @@ async def _stream_from_bedrock(
     fence_stripped = False
     fence_buffer   = ""
 
-    for event in response.get("stream", []):
+    async for event in _async_iter(response.get("stream", [])):
         delta = (event.get("contentBlockDelta") or {}).get("delta") or {}
         text  = delta.get("text", "")
         if not text:
@@ -266,7 +276,7 @@ class NovaService:
                 fence_stripped = False
                 fence_buffer   = ""
 
-                for event in response.get("stream", []):
+                async for event in _async_iter(response.get("stream", [])):
                     delta = (event.get("contentBlockDelta") or {}).get("delta") or {}
                     text  = delta.get("text", "")
                     if not text:

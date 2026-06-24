@@ -43,14 +43,18 @@ const statusMap: Record<string, { label: string; variant: "success" | "warning" 
 };
 
 const formatTimeAgo = (dateStr: string): string => {
-  const diff = Date.now() - new Date(dateStr).getTime();
+  if (!dateStr) return 'Unknown';
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return 'Unknown';
+  const diff = Date.now() - date.getTime();
+  if (diff < 0) return 'Just now';
   const minutes = Math.floor(diff / 60000);
   if (minutes < 60) return `${minutes}m ago`;
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}d ago`;
-  return new Date(dateStr).toLocaleDateString();
+  return date.toLocaleDateString();
 };
 
 const getProjectGradient = (id: string) => {

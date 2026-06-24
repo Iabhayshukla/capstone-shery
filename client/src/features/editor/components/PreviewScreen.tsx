@@ -173,6 +173,11 @@ export default function PreviewScreen({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't intercept shortcuts when Monaco editor or inputs have focus
+      const active = document.activeElement;
+      if (active && (active.closest('.monaco-editor') || active.tagName === 'TEXTAREA' || active.tagName === 'INPUT')) {
+        return;
+      }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
         if (e.shiftKey) {
           if (canRedo) { e.preventDefault(); onRedo(); }
@@ -782,31 +787,28 @@ export default function PreviewScreen({
 
                 {!isSmallMobile && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)' }}>
-                    <ArrowLeft
-                      size={14}
-                      title={canUndo ? 'Undo (Ctrl+Z)' : 'Nothing to undo'}
-                      style={{
-                        cursor: canUndo ? 'pointer' : 'not-allowed',
-                        opacity: canUndo ? 0.7 : 0.4,
-                        transition: 'all 0.15s',
-                      }}
-                      onClick={() => { if (canUndo) onUndo(); }}
-                      onMouseEnter={e => { if (canUndo) e.currentTarget.style.opacity = '1'; }}
-                      onMouseLeave={e => { e.currentTarget.style.opacity = canUndo ? '0.7' : '0.4'; }}
-                    />
-                    <ArrowLeft
-                      size={14}
-                      title={canRedo ? 'Redo (Ctrl+Y)' : 'Nothing to redo'}
-                      style={{
-                        cursor: canRedo ? 'pointer' : 'not-allowed',
-                        opacity: canRedo ? 0.7 : 0.4,
-                        transform: 'rotate(180deg)',
-                        transition: 'all 0.15s',
-                      }}
-                      onClick={() => { if (canRedo) onRedo(); }}
-                      onMouseEnter={e => { if (canRedo) e.currentTarget.style.opacity = '1'; }}
-                      onMouseLeave={e => { e.currentTarget.style.opacity = canRedo ? '0.7' : '0.4'; }}
-                    />
+                    <span title={canUndo ? 'Undo (Ctrl+Z)' : 'Nothing to undo'} style={{ display: 'inline-flex' }}>
+                      <ArrowLeft
+                        size={14}
+                        className={`transition-all duration-150 ${
+                          canUndo 
+                            ? 'opacity-70 hover:opacity-100 cursor-pointer' 
+                            : 'opacity-40 cursor-not-allowed'
+                        }`}
+                        onClick={() => { if (canUndo) onUndo(); }}
+                      />
+                    </span>
+                    <span title={canRedo ? 'Redo (Ctrl+Y)' : 'Nothing to redo'} style={{ display: 'inline-flex' }}>
+                      <ArrowLeft
+                        size={14}
+                        className={`transition-all duration-150 rotate-180 ${
+                          canRedo 
+                            ? 'opacity-70 hover:opacity-100 cursor-pointer' 
+                            : 'opacity-40 cursor-not-allowed'
+                        }`}
+                        onClick={() => { if (canRedo) onRedo(); }}
+                      />
+                    </span>
                   </div>
                 )}
 

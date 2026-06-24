@@ -121,6 +121,7 @@ export async function streamGenerate(
   }
 
   if (accumulated) {
+    onError('Generation completed with incomplete response. The result may be partial.');
     onDone(accumulated);
   }
 }

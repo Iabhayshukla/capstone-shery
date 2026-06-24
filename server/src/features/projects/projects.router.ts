@@ -90,6 +90,9 @@ router.delete('/:id', async (req: Request, res: Response, next: NextFunction) =>
 
 router.get('/:id/conversations', async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const { userId } = req as AuthenticatedRequest;
+    // Verify project ownership — throws 404 if not found or not owned
+    await getProjectById(userId, req.params.id);
     const messages = await getConversations(req.params.id);
     res.json({ messages });
   } catch (err) {

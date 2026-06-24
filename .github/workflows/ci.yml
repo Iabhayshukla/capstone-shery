@@ -12,6 +12,11 @@ env:
   AWS_REGION: ${{ secrets.AWS_REGION }}
   SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
   SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+  SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+  MODEL_ID: ${{ secrets.MODEL_ID }}
+  VITE_API_URL: ${{ secrets.VITE_API_URL || 'http://localhost:5000/api' }}
+  VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+  VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
 jobs:
   client:
@@ -36,10 +41,10 @@ jobs:
         run: npm ci
 
       - name: Lint
-        run: npm run lint --if-present
+        run: npm run --if-present lint
 
       - name: Run tests
-        run: npm run test --if-present
+        run: npm run --if-present test
 
       - name: Build
         run: npm run build
@@ -53,7 +58,7 @@ jobs:
           retention-days: 7
 
   server:
-    name: Build & Test Server
+    name: Build & Test Server (Node)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -76,11 +81,12 @@ jobs:
       - name: Verify required secrets
         run: |
           MISSING=""
-          [ -z "${AWS_ACCESS_KEY_ID}" ]     && MISSING="$MISSING AWS_ACCESS_KEY_ID"
-          [ -z "${AWS_SECRET_ACCESS_KEY}" ] && MISSING="$MISSING AWS_SECRET_ACCESS_KEY"
-          [ -z "${AWS_REGION}" ]            && MISSING="$MISSING AWS_REGION"
-          [ -z "${SUPABASE_URL}" ]          && MISSING="$MISSING SUPABASE_URL"
-          [ -z "${SUPABASE_ANON_KEY}" ]     && MISSING="$MISSING SUPABASE_ANON_KEY"
+          [ -z "${AWS_ACCESS_KEY_ID}" ]          && MISSING="$MISSING AWS_ACCESS_KEY_ID"
+          [ -z "${AWS_SECRET_ACCESS_KEY}" ]       && MISSING="$MISSING AWS_SECRET_ACCESS_KEY"
+          [ -z "${AWS_REGION}" ]                  && MISSING="$MISSING AWS_REGION"
+          [ -z "${SUPABASE_URL}" ]               && MISSING="$MISSING SUPABASE_URL"
+          [ -z "${SUPABASE_ANON_KEY}" ]          && MISSING="$MISSING SUPABASE_ANON_KEY"
+          [ -z "${SUPABASE_SERVICE_ROLE_KEY}" ]  && MISSING="$MISSING SUPABASE_SERVICE_ROLE_KEY"
           if [ -n "$MISSING" ]; then
             echo "Missing required secrets:$MISSING"
             if [ "${{ github.event_name }}" = "pull_request" ]; then
@@ -93,10 +99,10 @@ jobs:
           fi
 
       - name: Lint
-        run: npm run lint --if-present
+        run: npm run --if-present lint
 
       - name: Run tests
-        run: npm run test --if-present
+        run: npm run --if-present test
 
       - name: Build
         run: npm run build
@@ -112,3 +118,32 @@ jobs:
           name: server-dist
           path: server/server-dist.tgz
           retention-days: 7
+
+  python-server:
+    name: Build & Test Server (Python)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: server/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Lint (ruff)
+        run: |
+          pip install ruff
+          ruff check app/
+
+      - name: Verify app imports
+        run: python -c "import app.main; print('app.main OK')"

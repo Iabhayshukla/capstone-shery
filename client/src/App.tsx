@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from "react";
+import React, { lazy, Suspense, useState } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { EditorSkeleton } from "@/components/ui/Skeleton";
 import { AuthProvider } from "@/features/auth";
@@ -36,6 +36,40 @@ const EditorLoader = () => (
   </div>
 );
 
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-brand-dark flex items-center justify-center">
+          <div className="text-center p-8">
+            <h1 className="text-xl font-semibold text-white mb-2">Something went wrong</h1>
+            <p className="text-sm text-[var(--text-muted)] mb-4">
+              {this.state.error?.message || 'An unexpected error occurred.'}
+            </p>
+            <button
+              onClick={() => { this.setState({ hasError: false, error: null }); window.location.href = '/dashboard'; }}
+              className="px-4 py-2 rounded-lg bg-brand-primary text-white text-sm hover:opacity-90 transition-opacity"
+            >
+              Go to Dashboard
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 function App() {
   const [showLoading, setShowLoading] = useState(() => {
     return !window.location.pathname.startsWith("/preview/");
@@ -46,6 +80,7 @@ function App() {
       {showLoading && <LoadingScreen onComplete={() => setShowLoading(false)} />}
       <BrowserRouter>
         <AuthProvider>
+          <ErrorBoundary>
           <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/" element={<LandingPage isAppLoading={showLoading} />} />
@@ -111,6 +146,7 @@ function App() {
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </Suspense>
+        </ErrorBoundary>
       </AuthProvider>
     </BrowserRouter>
     </>

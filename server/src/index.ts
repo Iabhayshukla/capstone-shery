@@ -16,6 +16,10 @@ import usageRouter from './features/usage/usage.router'; // ← new
 const app = express();
 const PORT = process.env.PORT ?? 5000;
 
+if (process.env.NODE_ENV === 'production' && !process.env.CLIENT_ORIGIN) {
+  console.warn('⚠️  WARNING: CLIENT_ORIGIN is not set. CORS will reject all cross-origin requests in production.');
+}
+
 // ─── Global Middleware ─────────────────────────────────────────────────────────
 app.use(cors({
   origin: process.env.NODE_ENV === 'production'

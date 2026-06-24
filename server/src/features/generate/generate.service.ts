@@ -37,16 +37,21 @@ function replaceSection(html: string, sectionId: string, newSection: string): st
 }
 
 // ─── History formatting ─────────────────────────────────────────────────────
+type CallType = 'full-page' | 'section-edit' | 'correction';
+
 function formatHistory(history: { role: 'user' | 'assistant'; content: string }[]): string {
   if (!history || history.length === 0) return '';
-  const recent = history.slice(-10);
+  // Keep last 6 messages (3 turns) — enough context without burning tokens
+  const recent = history.slice(-6);
   return recent.map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`).join('\n');
 }
 
 // ─── User message builder ────────────────────────────────────────────────────
 function buildUserMessage(body: GenerateRequestBody): string {
   const basePrompt = body.prompt.trim().slice(0, 2000);
-  const historyContext = body.conversationHistory
+  // Section edits don't need conversation history — the section HTML is full context
+  const isSectionEdit = !!(body.sectionId && body.currentHtml);
+  const historyContext = (!isSectionEdit && body.conversationHistory)
     ? `## PREVIOUS CONVERSATION\n${formatHistory(body.conversationHistory)}\n\n---\n\n`
     : '';
 
@@ -80,6 +85,19 @@ Edit request: "${basePrompt}"
 2. Do NOT output the full page. Only the section element.
 3. No markdown fences, no explanations, no extra text. First character must be <, last character must be >.
 `;
+  }
+
+  // Full-page follow-up edit: send the current HTML so the LLM modifies it
+  // instead of generating a brand-new page from scratch (which resets all CSS).
+  // 30 000 chars covers any typical 8-section page; Nova Pro's context window is 300K tokens.
+  if (body.currentHtml) {
+    const MAX_HTML_CHARS = 30_000;
+    const isTruncated = body.currentHtml.length > MAX_HTML_CHARS;
+    const truncatedHtml = body.currentHtml.slice(0, MAX_HTML_CHARS);
+    const truncationNote = isTruncated
+      ? '\n\n> NOTE: The HTML above was truncated for context length. Make sure the full output still includes ALL mandatory sections (navbar, hero, features, benefits, testimonials, faq, contact, footer).'
+      : '';
+    return `${historyContext}## CURRENT PAGE HTML (modify this — do NOT start from scratch)\n\`\`\`html\n${truncatedHtml}\n\`\`\`${truncationNote}\n\n## EDIT REQUEST\n"${basePrompt}"\n\n**RULES**:\n1. Output the FULL updated page HTML with the requested changes applied.\n2. Preserve all sections, content, and CSS that the user did NOT ask to change.\n3. No markdown fences, no explanations. First character must be <, last character must be >.`;
   }
 
   return `${historyContext}${basePrompt}`;
@@ -158,7 +176,8 @@ async function correctWithLLM(
   validationErrors: string[],
   originalPrompt: string,
   framework: string | undefined,
-  res: Response
+  res: Response,
+  attempt: number = 1
 ): Promise<{ html: string; inputTokens: number; outputTokens: number }> {
   const correctionPrompt = `
 The previous generated HTML has validation errors:
@@ -181,8 +200,24 @@ Please fix ALL the errors listed above. Output ONLY the corrected HTML (no markd
 
 Output only the fixed HTML. First character must be <.
 `;
-  sendSSE(res, 'correcting', { attempt: 1, message: 'Fixing validation errors...' });
-  return await streamBedrockResponse(correctionPrompt, framework, res);
+  sendSSE(res, 'correcting', { attempt, message: `Fixing validation errors (attempt ${attempt})...` });
+  return await streamBedrockResponse(correctionPrompt, framework, res, undefined, 'correction');
+}
+
+// ─── Inference config per call type ────────────────────────────────────────
+function getInferenceConfig(callType: CallType) {
+  switch (callType) {
+    case 'section-edit':
+      // Small output, deterministic — tightly capped
+      return { maxTokens: 2048, temperature: 0.3, topP: 0.85 };
+    case 'correction':
+      // Needs to fix specific errors deterministically, not explore creatively
+      return { maxTokens: 8192, temperature: 0.3, topP: 0.85 };
+    case 'full-page':
+    default:
+      // Creative full-page generation
+      return { maxTokens: 8192, temperature: 0.7, topP: 0.9 };
+  }
 }
 
 // ─── Core streaming call (returns token counts) ──────────────────────────────
@@ -190,7 +225,8 @@ async function streamBedrockResponse(
   userMessage: string,
   framework: string | undefined,
   res: Response,
-  systemPromptOverride?: string
+  systemPromptOverride?: string,
+  callType: CallType = 'full-page'
 ): Promise<{ html: string; inputTokens: number; outputTokens: number }> {
   const client = getBedrockClient();
   let lastError: Error | null = null;
@@ -204,7 +240,7 @@ async function streamBedrockResponse(
     try {
       const payload = {
         messages: [{ role: 'user', content: [{ text: userMessage }] }],
-        inferenceConfig: { maxTokens: 8192, temperature: 0.7, topP: 0.9 },
+        inferenceConfig: getInferenceConfig(callType),
         system: [{ text: systemPromptOverride ?? getSystemPrompt(framework) }],
       };
 
@@ -226,18 +262,35 @@ async function streamBedrockResponse(
       let outputTokens = 0;
 
       for await (const event of response.body) {
+        if (res.destroyed) {
+          console.log('[generate.service] Client disconnected. Aborting generation stream.');
+          throw new Error('Client disconnected');
+        }
         if (event.chunk?.bytes) {
           const decoded = new TextDecoder().decode(event.chunk.bytes);
           let parsed: unknown;
           try { parsed = JSON.parse(decoded); } catch { continue; }
 
-          // Capture token usage from message_stop
-          if ((parsed as any).type === 'message_stop') {
-            const metrics = (parsed as any)['amazon-bedrock-invocationMetrics'];
-            if (metrics) {
-              inputTokens = metrics.inputTokenCount ?? 0;
-              outputTokens = metrics.outputTokenCount ?? 0;
-            }
+          // 1. Capture token usage from Converse metadata/usage format
+          if (parsed && (parsed as any).metadata?.usage) {
+            const usage = (parsed as any).metadata.usage;
+            inputTokens = usage.inputTokens ?? 0;
+            outputTokens = usage.outputTokens ?? 0;
+            console.log(`[generate.service] Captured Converse usage: input=${inputTokens}, output=${outputTokens}`);
+          }
+
+          // 2. Capture token usage from amazon-bedrock-invocationMetrics format
+          const metrics = (parsed as any)['amazon-bedrock-invocationMetrics'] || 
+                          (parsed as any).metadata?.['amazon-bedrock-invocationMetrics'] ||
+                          (parsed as any).messageStop?.['amazon-bedrock-invocationMetrics'] ||
+                          (parsed as any).message_stop?.['amazon-bedrock-invocationMetrics'];
+          if (metrics) {
+            inputTokens = metrics.inputTokenCount ?? 0;
+            outputTokens = metrics.outputTokenCount ?? 0;
+            console.log(`[generate.service] Captured InvocationMetrics: input=${inputTokens}, output=${outputTokens}`);
+          }
+
+          if ((parsed as any).type === 'message_stop' || (parsed as any).messageStop || (parsed as any).metadata) {
             continue;
           }
 
@@ -333,7 +386,8 @@ export async function generateAndStream(
 
   const systemPrompt = isSectionEdit ? SECTION_EDIT_SYSTEM_PROMPT : undefined;
 
-  let result = await streamBedrockResponse(userMessage, body.framework, res, systemPrompt);
+  const callType: CallType = isSectionEdit ? 'section-edit' : 'full-page';
+  let result = await streamBedrockResponse(userMessage, body.framework, res, systemPrompt, callType);
   let currentHtml = result.html;
   let totalInputTokens = result.inputTokens;
   let totalOutputTokens = result.outputTokens;
@@ -366,7 +420,7 @@ export async function generateAndStream(
     if (validation.isValid) break;
     console.log(`[generate.service] Validation failed (attempt ${correctionAttempt + 1}):`, validation.errors);
     sendSSE(res, 'validation_failed', { errors: validation.errors, attempt: correctionAttempt + 1 });
-    const correctionResult = await correctWithLLM(currentHtml, validation.errors, body.prompt, body.framework, res);
+    const correctionResult = await correctWithLLM(currentHtml, validation.errors, body.prompt, body.framework, res, correctionAttempt + 1);
     currentHtml = correctionResult.html;
     totalInputTokens += correctionResult.inputTokens;
     totalOutputTokens += correctionResult.outputTokens;

@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useAuth } from '@/features/auth';
 import { streamGenerate } from '../api/generate.api';
 import { classifyPrompt, ClassifierResult } from '@/shared/classifier';
@@ -75,6 +75,11 @@ export function useGenerate(options: UseGenerateOptions): UseGenerateReturn {
   const cancel = useCallback(() => {
     abortRef.current?.abort();
     setIsGenerating(false);
+  }, []);
+
+  // Abort any in-flight generation when component unmounts
+  useEffect(() => {
+    return () => { abortRef.current?.abort(); };
   }, []);
 
   return { isGenerating, streamingHtml, error, classification, generate, cancel };

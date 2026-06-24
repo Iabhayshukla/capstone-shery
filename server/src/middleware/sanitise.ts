@@ -17,6 +17,7 @@ function sanitizeValue(value: unknown, key?: string): unknown {
   if (value !== null && typeof value === 'object') {
     const sanitized: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      if (k === '__proto__' || k === 'constructor' || k === 'prototype') continue;
       sanitized[k] = sanitizeValue(v, k);
     }
     return sanitized;

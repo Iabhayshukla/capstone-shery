@@ -57,7 +57,7 @@ export function rateLimiter(
 }
 
 // Periodically clean up expired entries to prevent memory leaks
-setInterval(() => {
+const cleanupInterval = setInterval(() => {
   const now = Date.now();
   for (const [userId, entry] of store.entries()) {
     if (now - entry.windowStart >= WINDOW_MS) {
@@ -65,3 +65,9 @@ setInterval(() => {
     }
   }
 }, WINDOW_MS);
+
+// Allow clean shutdown
+if (typeof process !== 'undefined') {
+  process.once('SIGTERM', () => clearInterval(cleanupInterval));
+  process.once('SIGINT', () => clearInterval(cleanupInterval));
+}

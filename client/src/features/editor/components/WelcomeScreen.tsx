@@ -43,11 +43,16 @@ export default function WelcomeScreen({ onGenerate, isGenerating }: WelcomeScree
   const [particles, setParticles] = useState<{ id: number; x: number; y: number }[]>([]);
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const generateBtnRef = useRef<HTMLButtonElement>(null);
+  const particleTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth);
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      if (particleTimeoutRef.current) clearTimeout(particleTimeoutRef.current);
+    };
   }, []);
 
   useEffect(() => {
@@ -69,12 +74,13 @@ export default function WelcomeScreen({ onGenerate, isGenerating }: WelcomeScree
       y: buttonRect.top + buttonRect.height / 2,
     }));
     setParticles(newParticles);
-    setTimeout(() => setParticles([]), 800);
+    if (particleTimeoutRef.current) clearTimeout(particleTimeoutRef.current);
+    particleTimeoutRef.current = setTimeout(() => setParticles([]), 800);
   };
 
   const handleSubmit = () => {
     if (!prompt.trim() || isGenerating) return;
-    const btn = document.querySelector('.generate-btn') as HTMLElement;
+    const btn = generateBtnRef.current;
     if (btn) emitParticles(btn.getBoundingClientRect());
     onGenerate(prompt.trim());
   };
@@ -381,6 +387,7 @@ export default function WelcomeScreen({ onGenerate, isGenerating }: WelcomeScree
                 {charCount > 0 && ` · ${charCount} chars`}
               </span>
               <motion.button
+                ref={generateBtnRef}
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
                 onClick={handleSubmit}
