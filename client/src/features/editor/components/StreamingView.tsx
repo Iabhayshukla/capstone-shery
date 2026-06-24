@@ -123,7 +123,7 @@ export default function StreamingView({ files, isStreaming, onPreview, error, th
 
   useEffect(() => {
     if (codeBodyRef.current && visibleLineCount > 0) {
-      codeBodyRef.current.scrollTo({ top: codeBodyRef.current.scrollHeight, behavior: 'smooth' });
+      codeBodyRef.current.scrollTop = codeBodyRef.current.scrollHeight;
     }
   }, [visibleLineCount]);
 
