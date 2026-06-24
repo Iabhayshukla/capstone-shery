@@ -387,7 +387,7 @@ export async function generateAndStream(
   const systemPrompt = isSectionEdit ? SECTION_EDIT_SYSTEM_PROMPT : undefined;
 
   const callType: CallType = isSectionEdit ? 'section-edit' : 'full-page';
-  let result = await streamBedrockResponse(userMessage, body.framework, res, systemPrompt, callType);
+  const result = await streamBedrockResponse(userMessage, body.framework, res, systemPrompt, callType);
   let currentHtml = result.html;
   let totalInputTokens = result.inputTokens;
   let totalOutputTokens = result.outputTokens;

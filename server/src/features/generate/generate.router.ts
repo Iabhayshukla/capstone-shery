@@ -42,13 +42,13 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
   res.flushHeaders();
 
   const heartbeat = setInterval(() => {
-    try { res.write(': heartbeat\n\n'); } catch {}
+    try { res.write(': heartbeat\n\n'); } catch { /* ignore */ }
   }, 20_000);
 
   const cleanup = () => {
     clearInterval(heartbeat);
     if (!res.writableEnded) {
-      try { res.end(); } catch {}
+      try { res.end(); } catch { /* ignore */ }
     }
   };
   req.on('close', cleanup);
@@ -67,7 +67,7 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
       res.write(
         `event: error\ndata: ${JSON.stringify({ message: 'Generation failed. Please try again.' })}\n\n`
       );
-    } catch {}
+    } catch { /* ignore */ }
   } finally {
     cleanup();
     res.end();
