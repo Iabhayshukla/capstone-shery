@@ -25,6 +25,7 @@ export default defineConfig({
   preview: {
     port: 3000,
     host: '0.0.0.0',
+    allowedHosts: ['capstone-shery.duckdns.org'],
     headers: {
       'Cross-Origin-Opener-Policy': 'same-origin',
       'Cross-Origin-Embedder-Policy': 'require-corp',
