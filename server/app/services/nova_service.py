@@ -244,7 +244,6 @@ class NovaService:
         is_section_edit = bool(section_id and current_html)
 
         # ── Get prompts from your website_prompt.py ────────────────────────
-        section_html = extract_section(current_html, section_id) if is_section_edit else ""
         system_prompt = ("You are an expert web developer.")
         user_message = build_website_prompt(user_prompt,framework)
 

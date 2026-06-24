@@ -110,13 +110,11 @@ export default function PreviewScreen({
       const prevUserSelect = document.body.style.userSelect;
       const prevCursor = document.body.style.cursor;
       document.body.style.userSelect = 'none';
-      // @ts-expect-error - vendor-prefixed for Safari
       document.body.style.webkitUserSelect = 'none';
       if (isDraggingPanel) document.body.style.cursor = 'grabbing';
       else document.body.style.cursor = 'col-resize';
       return () => {
         document.body.style.userSelect = prevUserSelect;
-        // @ts-expect-error - vendor-prefixed for Safari
         document.body.style.webkitUserSelect = '';
         document.body.style.cursor = prevCursor;
       };
@@ -375,7 +373,6 @@ export default function PreviewScreen({
             background: isDraggingPanel ? 'rgba(var(--brand-primary-rgb), 0.08)' : 'rgba(0,0,0,0.15)',
             transition: isDraggingPanel ? 'none' : 'background 0.2s',
             userSelect: 'none',
-            // @ts-expect-error - vendor-prefixed for Safari
             WebkitUserSelect: 'none',
             touchAction: 'none',
           }}
